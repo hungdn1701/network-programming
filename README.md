@@ -4,7 +4,7 @@
 
 TS. Đặng Ngọc Hùng · 3 tín chỉ · Tiếng Việt · Java 21
 
-- Trang học phần: <https://hungdn1701.github.io/int1433/> — khung nội dung, bản xem trước từng phần, slide
+- Trang học phần: <https://hungdn1701.github.io/network-programming/> — khung nội dung, bản xem trước từng phần, slide
 - Mã chạy được: thư mục [`code/`](code/), mỗi phần một thư mục `chapter-<chương>/<thứ tự>-<tên>`
 
 ## Chương 1. Tổng quan lập trình mạng
@@ -22,7 +22,7 @@ TS. Đặng Ngọc Hùng · 3 tín chỉ · Tiếng Việt · Java 21
 
 | | Phần | Phút | |
 |---|---|---|---|
-| 1 | TCP: kết nối giữa client và server | 8′ | [xem trước](https://hungdn1701.github.io/int1433/V08/) · [slide](https://hungdn1701.github.io/int1433/V08/slide.pdf) · [mã](code/chapter-2/01-tcp-connection/) |
+| 1 | TCP: kết nối giữa client và server | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V08/) · [slide](https://hungdn1701.github.io/network-programming/V08/slide.pdf) · [mã](code/chapter-2/01-tcp-connection/) |
 | 2 | TCP: timeout, half-close và lỗi kết nối | 8′ |  |
 | 3 | Bài toán ứng dụng: dịch vụ tra cứu qua TCP | 8′ |  |
 | 4 | Đa luồng: thread và race condition | 7′ |  |

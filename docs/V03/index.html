@@ -1,0 +1,456 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V03 — Giao vận: TCP, UDP và mô hình ứng dụng mạng · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-1/02-transport">Mã</a>
+<h1>V03 · Giao vận: TCP, UDP và mô hình ứng dụng mạng</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 1</div><div class="ten">Giao vận: TCP, UDP và mô hình ứng dụng mạng</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Ứng dụng khác nhau cần dịch vụ giao vận khác nhau</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Cần dữ liệu đến <b>đủ và đúng thứ tự</b>: tải file, dịch vụ tra cứu</li><li data-s="2">Cần <b>độ trễ thấp</b>, chấp nhận mất một phần: gọi video, game nhiều người chơi</li><li data-s="3">Và phải quyết định chương trình nào giữ <b>endpoint cố định</b> để bên kia tìm đến</li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> chọn dịch vụ nào của tầng giao vận, và tổ chức các chương trình theo mô hình nào?</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>TCP truyền một byte stream tin cậy, UDP gửi từng datagram độc lập</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 600" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="TCP: kết nối được thiết lập trước khi gửi; dữ liệu là một byte stream đến đủ, đúng thứ tự, byte mất thì TCP truyền lại. UDP: từng datagram gửi độc lập, mỗi datagram mang endpoint nguồn và đích; datagram có thể mất hoặc đến sai thứ tự, UDP không truyền lại.">
+  <defs>
+    <marker id="tu-net" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#1F5FA8"/></marker>
+  </defs>
+
+  <!-- khung hai hàng: TCP và UDP -->
+  <g data-s="1">
+    <text x="880" y="34" text-anchor="middle" font-size="30" font-weight="500" fill="#051A53">TCP</text>
+    <rect x="40" y="56" width="240" height="140" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="160" y="136" text-anchor="middle" font-size="28" font-weight="500" fill="#051A53">Client</text>
+    <rect x="1480" y="56" width="240" height="140" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1600" y="136" text-anchor="middle" font-size="28" font-weight="500" fill="#051A53">Server</text>
+    <!-- ① kết nối -->
+    <rect x="290" y="86" width="1180" height="80" rx="40" fill="#EAF2FB" stroke="#1F5FA8" stroke-width="2.5"/>
+    <text x="880" y="198" text-anchor="middle" font-size="23" fill="#1F5FA8">kết nối được thiết lập trước khi gửi dữ liệu</text>
+  </g>
+
+  <!-- ② byte stream: đủ, đúng thứ tự -->
+  <g data-s="2" font-family="Consolas, monospace">
+    <rect x="1360" y="100" width="52" height="52" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="1386" y="135" text-anchor="middle" font-size="24" fill="#1F5FA8">1</text>
+    <rect x="1294" y="100" width="52" height="52" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="1320" y="135" text-anchor="middle" font-size="24" fill="#1F5FA8">2</text>
+    <rect x="1228" y="100" width="52" height="52" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="1254" y="135" text-anchor="middle" font-size="24" fill="#1F5FA8">3</text>
+    <rect x="1162" y="100" width="52" height="52" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="1188" y="135" text-anchor="middle" font-size="24" fill="#1F5FA8">4</text>
+    <rect x="1096" y="100" width="52" height="52" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="1122" y="135" text-anchor="middle" font-size="24" fill="#1F5FA8">5</text>
+    <rect x="1030" y="100" width="52" height="52" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="1056" y="135" text-anchor="middle" font-size="24" fill="#1F5FA8">6</text>
+    <rect x="964" y="100" width="52" height="52" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="990" y="135" text-anchor="middle" font-size="24" fill="#1F5FA8">7</text>
+    <rect x="898" y="100" width="52" height="52" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="924" y="135" text-anchor="middle" font-size="24" fill="#1F5FA8">8</text>
+    <line x1="1418" y1="126" x2="1474" y2="126" stroke="#1F5FA8" stroke-width="3" marker-end="url(#tu-net)"/>
+    <text x="880" y="236" text-anchor="middle" font-size="23" fill="#051A53" font-family="Roboto, 'Segoe UI', sans-serif">byte stream: đến đủ, đúng thứ tự; byte mất thì TCP truyền lại</text>
+  </g>
+
+  <!-- ③ UDP: từng datagram độc lập -->
+  <g data-s="3">
+    <text x="880" y="334" text-anchor="middle" font-size="30" font-weight="500" fill="#051A53">UDP</text>
+    <rect x="40" y="356" width="240" height="140" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="160" y="436" text-anchor="middle" font-size="28" font-weight="500" fill="#051A53">Client</text>
+    <rect x="1480" y="356" width="240" height="140" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1600" y="436" text-anchor="middle" font-size="28" font-weight="500" fill="#051A53">Server</text>
+    <rect x="1140" y="362" width="190" height="56" rx="4" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2.5"/>
+    <text x="1235" y="398" text-anchor="middle" font-size="23" fill="#1F5FA8">datagram 1</text>
+    <line x1="1336" y1="390" x2="1386" y2="390" stroke="#1F5FA8" stroke-width="3" marker-end="url(#tu-net)"/>
+    <rect x="780" y="402" width="190" height="56" rx="4" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2.5"/>
+    <text x="875" y="438" text-anchor="middle" font-size="23" fill="#1F5FA8">datagram 2</text>
+    <line x1="976" y1="430" x2="1026" y2="430" stroke="#1F5FA8" stroke-width="3" marker-end="url(#tu-net)"/>
+    <rect x="420" y="442" width="190" height="56" rx="4" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2.5"/>
+    <text x="515" y="478" text-anchor="middle" font-size="23" fill="#1F5FA8">datagram 3</text>
+    <line x1="616" y1="470" x2="666" y2="470" stroke="#1F5FA8" stroke-width="3" marker-end="url(#tu-net)"/>
+    <text x="880" y="540" text-anchor="middle" font-size="23" fill="#051A53">từng datagram gửi độc lập, mang endpoint nguồn và đích riêng</text>
+  </g>
+
+  <!-- ④ có thể mất, sai thứ tự; không gửi lại -->
+  <g data-s="4">
+    <line x1="790" y1="404" x2="960" y2="456" stroke="#BC2626" stroke-width="5"/>
+    <line x1="790" y1="456" x2="960" y2="404" stroke="#BC2626" stroke-width="5"/>
+    <text x="875" y="392" text-anchor="middle" font-size="23" font-weight="500" fill="#BC2626">mất</text>
+    <text x="1600" y="530" text-anchor="middle" font-size="22" fill="#BC2626">nhận: 3, rồi 1</text>
+    <text x="880" y="580" text-anchor="middle" font-size="23" fill="#BC2626">có thể mất, đến sai thứ tự; UDP không truyền lại</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b>TCP</b>: thiết lập kết nối; byte đến đủ, đúng thứ tự.</p><p><b>UDP</b>: không kết nối; từng <b>datagram</b> độc lập, có thể mất hoặc đến sai thứ tự.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Chọn dịch vụ giao vận theo yêu cầu của ứng dụng</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Tải file, chat văn bản, dịch vụ tra cứu → <b>TCP</b>: thiếu một byte là sai</li><li data-s="2">Gọi video, game nhiều người chơi → <b>UDP</b>: dữ liệu đến muộn thì vô ích, gửi lại chỉ thêm trễ</li><li data-s="3">Yêu cầu và phản hồi nhỏ, mất thì hỏi lại được → <b>UDP</b> đủ dùng, không tốn thời gian thiết lập kết nối</li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Client–server cố định endpoint ở server, P2P cho mỗi nút cả hai vai</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 560" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Client–server: server giữ endpoint cố định 203.0.113.10:9199, nhiều client tìm đến endpoint đó. P2P: bốn peer, mỗi peer vừa là client vừa là server, kết nối trực tiếp với nhau.">
+  <defs>
+    <marker id="mh-navy" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+  </defs>
+  <line x1="880" y1="20" x2="880" y2="540" stroke="#D5DAE5" stroke-width="2"/>
+
+  <!-- ① client–server: server giữ endpoint cố định -->
+  <g data-s="1">
+    <text x="420" y="36" text-anchor="middle" font-size="30" font-weight="500" fill="#051A53">Client–server</text>
+    <rect x="230" y="64" width="380" height="120" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="420" y="108" text-anchor="middle" font-size="28" font-weight="500" fill="#051A53">Server</text>
+    <text x="420" y="150" text-anchor="middle" font-size="23" fill="#373D4E" font-family="Consolas, monospace">203.0.113.10:9199</text>
+    <text x="420" y="214" text-anchor="middle" font-size="23" fill="#051A53">endpoint cố định, biết trước</text>
+  </g>
+
+  <!-- ② nhiều client tìm đến -->
+  <g data-s="2">
+    <rect x="40" y="420" width="200" height="90" rx="4" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="140" y="474" text-anchor="middle" font-size="26" fill="#051A53">Client</text>
+    <rect x="320" y="420" width="200" height="90" rx="4" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="420" y="474" text-anchor="middle" font-size="26" fill="#051A53">Client</text>
+    <rect x="600" y="420" width="200" height="90" rx="4" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="700" y="474" text-anchor="middle" font-size="26" fill="#051A53">Client</text>
+    <line x1="160" y1="416" x2="330" y2="236" stroke="#051A53" stroke-width="3" marker-end="url(#mh-navy)"/>
+    <line x1="420" y1="416" x2="420" y2="236" stroke="#051A53" stroke-width="3" marker-end="url(#mh-navy)"/>
+    <line x1="680" y1="416" x2="510" y2="236" stroke="#051A53" stroke-width="3" marker-end="url(#mh-navy)"/>
+    <text x="440" y="346" font-size="22" fill="#051A53">tìm đến endpoint</text>
+    <text x="440" y="374" font-size="22" fill="#051A53">của server</text>
+  </g>
+
+  <!-- ③ P2P: mỗi nút vừa là client vừa là server -->
+  <g data-s="3">
+    <text x="1320" y="36" text-anchor="middle" font-size="30" font-weight="500" fill="#051A53">P2P</text>
+    <rect x="980" y="80" width="240" height="96" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1100" y="122" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Peer</text>
+    <text x="1100" y="156" text-anchor="middle" font-size="21" fill="#373D4E">client + server</text>
+    <rect x="1440" y="80" width="240" height="96" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1560" y="122" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Peer</text>
+    <text x="1560" y="156" text-anchor="middle" font-size="21" fill="#373D4E">client + server</text>
+    <rect x="980" y="400" width="240" height="96" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1100" y="442" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Peer</text>
+    <text x="1100" y="476" text-anchor="middle" font-size="21" fill="#373D4E">client + server</text>
+    <rect x="1440" y="400" width="240" height="96" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1560" y="442" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Peer</text>
+    <text x="1560" y="476" text-anchor="middle" font-size="21" fill="#373D4E">client + server</text>
+  </g>
+
+  <!-- ④ các peer trao đổi trực tiếp -->
+  <g data-s="4" stroke="#051A53" stroke-width="3">
+    <line x1="1226" y1="128" x2="1434" y2="128" marker-start="url(#mh-navy)" marker-end="url(#mh-navy)"/>
+    <line x1="1226" y1="448" x2="1434" y2="448" marker-start="url(#mh-navy)" marker-end="url(#mh-navy)"/>
+    <line x1="1100" y1="182" x2="1100" y2="394" marker-start="url(#mh-navy)" marker-end="url(#mh-navy)"/>
+    <line x1="1560" y1="182" x2="1560" y2="394" marker-start="url(#mh-navy)" marker-end="url(#mh-navy)"/>
+    <line x1="1224" y1="182" x2="1436" y2="394" marker-start="url(#mh-navy)" marker-end="url(#mh-navy)"/>
+    <line x1="1436" y1="182" x2="1224" y2="394" marker-start="url(#mh-navy)" marker-end="url(#mh-navy)"/>
+    <text x="1330" y="540" text-anchor="middle" font-size="22" fill="#051A53" stroke="none">các peer trao đổi trực tiếp với nhau</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b>Client–server</b>: server giữ endpoint cố định, client tìm đến.</p><p><b>P2P</b>: mỗi nút vừa là client vừa là server.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Kết nối TCP có trạng thái, endpoint UDP thì không</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Powershell</span>netstat -ano | findstr <span class="hl-s">"</span><span class="hl-s">9199 9200</span><span class="hl-s">"</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>  TCP    127.0.0.1:9199         0.0.0.0:0              LISTENING       23180
+  TCP    127.0.0.1:9199         127.0.0.1:56456        ESTABLISHED     23180
+  TCP    127.0.0.1:56456        127.0.0.1:9199         ESTABLISHED     23180
+  UDP    127.0.0.1:9200         *:*                                    23180</pre></div><ul class="y-nho"><li data-s="2">TCP có <b>trạng thái</b>: <code>LISTENING</code> là server đang chờ; <code>ESTABLISHED</code> là kết nối, ở đây hai đầu cùng máy nên có hai dòng</li><li data-s="3">UDP chỉ có <b>endpoint</b>, không có trạng thái kết nối</li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>TCP không giữ ranh giới giữa các lần ghi</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="TCP: bên gửi ghi “abc” rồi ghi “def”; dữ liệu đi thành một byte stream abcdef không có ranh giới; một lần đọc ở bên nhận có thể nhận cả abcdef. UDP: gửi “abc” và “def” thành hai datagram; bên nhận nhận đúng hai lần, “abc” và “def”.">
+  <defs>
+    <marker id="rg-net" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#1F5FA8"/></marker>
+  </defs>
+  <text x="300" y="34" text-anchor="middle" font-size="26" font-weight="500" fill="#5B6478">Bên gửi</text>
+  <text x="1460" y="34" text-anchor="middle" font-size="26" font-weight="500" fill="#5B6478">Bên nhận</text>
+
+  <!-- ① TCP: hai lần ghi -->
+  <g data-s="1">
+    <text x="40" y="150" font-size="30" font-weight="500" fill="#051A53">TCP</text>
+    <rect x="160" y="64" width="280" height="64" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="300" y="106" text-anchor="middle" font-size="24" fill="#051A53">ghi “abc”</text>
+    <rect x="160" y="148" width="280" height="64" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="300" y="190" text-anchor="middle" font-size="24" fill="#051A53">ghi “def”</text>
+  </g>
+
+  <!-- ② byte stream, không ranh giới -->
+  <g data-s="2">
+    <rect x="520" y="106" width="680" height="64" rx="32" fill="#EAF2FB" stroke="#1F5FA8" stroke-width="2.5"/>
+    <text x="860" y="148" text-anchor="middle" font-size="28" fill="#1F5FA8" font-family="Consolas, monospace" letter-spacing="6">abcdef</text>
+    <line x1="446" y1="138" x2="512" y2="138" stroke="#1F5FA8" stroke-width="3" marker-end="url(#rg-net)"/>
+    <text x="860" y="210" text-anchor="middle" font-size="22" fill="#1F5FA8">byte stream không có ranh giới giữa hai lần ghi</text>
+  </g>
+
+  <!-- ③ một lần đọc nhận cả hai -->
+  <g data-s="3">
+    <line x1="1206" y1="138" x2="1272" y2="138" stroke="#1F5FA8" stroke-width="3" marker-end="url(#rg-net)"/>
+    <rect x="1280" y="96" width="400" height="84" rx="4" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="1480" y="134" text-anchor="middle" font-size="24" fill="#6B4E06">một lần đọc</text>
+    <text x="1480" y="166" text-anchor="middle" font-size="24" fill="#6B4E06" font-family="Consolas, monospace">“abcdef”</text>
+  </g>
+
+  <!-- ④ UDP: hai datagram, hai lần nhận -->
+  <g data-s="4">
+    <line x1="40" y1="262" x2="1720" y2="262" stroke="#D5DAE5" stroke-width="2"/>
+    <text x="40" y="400" font-size="30" font-weight="500" fill="#051A53">UDP</text>
+    <rect x="160" y="304" width="280" height="64" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="300" y="346" text-anchor="middle" font-size="24" fill="#051A53">gửi “abc”</text>
+    <rect x="160" y="404" width="280" height="64" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="300" y="446" text-anchor="middle" font-size="24" fill="#051A53">gửi “def”</text>
+    <rect x="620" y="304" width="220" height="64" rx="4" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2.5"/>
+    <text x="730" y="346" text-anchor="middle" font-size="24" fill="#1F5FA8" font-family="Consolas, monospace">abc</text>
+    <rect x="880" y="404" width="220" height="64" rx="4" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2.5"/>
+    <text x="990" y="446" text-anchor="middle" font-size="24" fill="#1F5FA8" font-family="Consolas, monospace">def</text>
+    <line x1="446" y1="336" x2="612" y2="336" stroke="#1F5FA8" stroke-width="3" marker-end="url(#rg-net)"/>
+    <line x1="846" y1="336" x2="1272" y2="336" stroke="#1F5FA8" stroke-width="3" marker-end="url(#rg-net)"/>
+    <line x1="446" y1="436" x2="872" y2="436" stroke="#1F5FA8" stroke-width="3" marker-end="url(#rg-net)"/>
+    <line x1="1106" y1="436" x2="1272" y2="436" stroke="#1F5FA8" stroke-width="3" marker-end="url(#rg-net)"/>
+    <text x="1040" y="324" text-anchor="middle" font-size="22" fill="#1F5FA8">datagram 1</text>
+    <text x="1190" y="424" text-anchor="middle" font-size="22" fill="#1F5FA8">datagram 2</text>
+    <rect x="1280" y="304" width="400" height="64" rx="4" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1480" y="346" text-anchor="middle" font-size="24" fill="#22603F">lần nhận 1: “abc”</text>
+    <rect x="1280" y="404" width="400" height="64" rx="4" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1480" y="446" text-anchor="middle" font-size="24" fill="#22603F">lần nhận 2: “def”</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p>Ranh giới message do <b>giao thức ứng dụng</b> tự định nghĩa: đó là framing, học ở nhóm stream.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Ứng dụng nào sau đây phù hợp dùng UDP nhất?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Tải về một file cài đặt dung lượng 2 GB.</div></div><div class="dung"><span>B</span><div>Truy vấn DNS để lấy địa chỉ IP của một tên miền.</div></div><div class=""><span>C</span><div>Gửi tin nhắn chat văn bản.</div></div><div class=""><span>D</span><div>Nộp bài tập lên hệ thống học trực tuyến.</div></div></div><div class="giai-thich">Truy vấn DNS thông thường là một yêu cầu nhỏ và một phản hồi nhỏ; mất thì hỏi lại, không đáng tốn thời gian thiết lập kết nối. Ba ứng dụng còn lại cần đủ từng byte, đúng thứ tự, nên dùng TCP.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Ứng dụng nào sau đây phù hợp dùng UDP nhất?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Tải về một file cài đặt dung lượng 2 GB.</div></div><div class="dung"><span>B</span><div>Truy vấn DNS để lấy địa chỉ IP của một tên miền.</div></div><div class=""><span>C</span><div>Gửi tin nhắn chat văn bản.</div></div><div class=""><span>D</span><div>Nộp bài tập lên hệ thống học trực tuyến.</div></div></div><div class="giai-thich">Truy vấn DNS thông thường là một yêu cầu nhỏ và một phản hồi nhỏ; mất thì hỏi lại, không đáng tốn thời gian thiết lập kết nối. Ba ứng dụng còn lại cần đủ từng byte, đúng thứ tự, nên dùng TCP.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Vì sao TCP thiết lập kết nối trước khi gửi dữ liệu, còn UDP thì không?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Vì chỉ TCP cần biết endpoint của bên nhận.</div></div><div class=""><span>B</span><div>Vì UDP chỉ dùng được trong mạng nội bộ.</div></div><div class="dung"><span>C</span><div>Vì hai đầu TCP phải thống nhất trạng thái ban đầu, như số thứ tự khởi đầu, để bảo đảm dữ liệu đến đủ và đúng thứ tự.</div></div><div class=""><span>D</span><div>Vì dữ liệu gửi qua TCP luôn lớn hơn dữ liệu gửi qua UDP.</div></div></div><div class="giai-thich">TCP dùng số thứ tự để phát hiện byte mất và sắp lại thứ tự, nên hai đầu phải thống nhất số thứ tự khởi đầu khi thiết lập kết nối. UDP gửi từng datagram độc lập, không giữ trạng thái; mỗi datagram vẫn mang endpoint nguồn và đích.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Vì sao TCP thiết lập kết nối trước khi gửi dữ liệu, còn UDP thì không?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Vì chỉ TCP cần biết endpoint của bên nhận.</div></div><div class=""><span>B</span><div>Vì UDP chỉ dùng được trong mạng nội bộ.</div></div><div class="dung"><span>C</span><div>Vì hai đầu TCP phải thống nhất trạng thái ban đầu, như số thứ tự khởi đầu, để bảo đảm dữ liệu đến đủ và đúng thứ tự.</div></div><div class=""><span>D</span><div>Vì dữ liệu gửi qua TCP luôn lớn hơn dữ liệu gửi qua UDP.</div></div></div><div class="giai-thich">TCP dùng số thứ tự để phát hiện byte mất và sắp lại thứ tự, nên hai đầu phải thống nhất số thứ tự khởi đầu khi thiết lập kết nối. UDP gửi từng datagram độc lập, không giữ trạng thái; mỗi datagram vẫn mang endpoint nguồn và đích.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>TCP</b>: kết nối, byte đến đủ và đúng thứ tự; <b>UDP</b>: từng datagram độc lập, nhanh, không bảo đảm</div></div><div class="the" data-s="2"><span class="so">2</span><div>Chọn theo yêu cầu: cần đủ và đúng thứ tự → TCP; cần độ trễ thấp, chịu mất mát → UDP</div></div><div class="the" data-s="3"><span class="so">3</span><div><b>Client–server</b>: server giữ endpoint cố định; <b>P2P</b>: mỗi nút vừa là client vừa là server</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>tầng giao vận</span><span>TCP</span><span>UDP</span><span>datagram</span><span>mô hình client–server</span><span>P2P</span></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>Xu hướng giao thức: HTTP/1.1 → HTTP/2 → HTTP/3 trên QUIC (Chương 3)</li><li>Mô hình hybrid: server điều phối và các peer</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Lập bảng chọn giao thức (TCP hay UDP) và mô hình (client–server hay P2P) cho: gọi video, đồng bộ file, game nhiều người chơi, chat nhóm, giám sát cảm biến; giải thích từng lựa chọn.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Stream: byte stream, contract của read/write, decorator và buffer</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Ở phần trước, đích đến của dữ liệu đã được xác định bằng endpoint. Phần này trả lời câu hỏi: gửi dữ liệu tới endpoint đó bằng dịch vụ nào của tầng giao vận, và các chương trình được tổ chức theo mô hình nào.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:14</span>
+      <h3>Slide 1. Ứng dụng khác nhau cần dịch vụ giao vận khác nhau</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Cần dữ liệu đến **đủ và đúng thứ tự**: tải file, dịch vụ tra cứu</li><li>Cần **độ trễ thấp**, chấp nhận mất một phần: gọi video, game nhiều người chơi</li><li>Và phải quyết định chương trình nào giữ **endpoint cố định** để bên kia tìm đến</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** chọn dịch vụ nào của tầng giao vận, và tổ chức các chương trình theo mô hình nào?</div></div>
+    <div class="kb-thoai"><p>Có ứng dụng cần dữ liệu đến đủ và đúng thứ tự. Một file tải về thiếu một byte là file hỏng. Dịch vụ tra cứu nhận thiếu một ký tự là tra sai khóa. Có ứng dụng ưu tiên độ trễ thấp hơn đủ dữ liệu. Trong cuộc gọi video, một khung hình đến muộn nửa giây thì không còn dùng được. Ngoài cách gửi, ứng dụng còn phải quyết định chương trình nào giữ endpoint cố định để bên kia tìm đến. Câu hỏi của phần này là: chọn dịch vụ nào của tầng giao vận, và tổ chức các chương trình theo mô hình nào?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Có ứng dụng cần”; bước 2 khi đọc “Có ứng dụng ưu tiên độ trễ thấp”; bước 3 khi đọc “Ngoài cách gửi”; bước 4 khi đọc “Câu hỏi của phần này”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:46</span>
+      <h3>Slide 2. TCP truyền một byte stream tin cậy, UDP gửi từng datagram độc lập</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**TCP**: thiết lập kết nối; byte đến đủ, đúng thứ tự.</li><li>**UDP**: không kết nối; từng **datagram** độc lập, có thể mất hoặc đến sai thứ tự.</li></ul></div></div>
+    <div class="kb-thoai"><p>Tầng giao vận, transport layer, cung cấp hai dịch vụ chính cho chương trình: TCP, Transmission Control Protocol, và UDP, User Datagram Protocol. TCP thiết lập kết nối trước khi gửi dữ liệu. Khi thiết lập, hai đầu thống nhất trạng thái ban đầu, trong đó có số thứ tự khởi đầu của byte stream. Sau khi có kết nối, dữ liệu đi thành một byte stream liên tục. Dựa vào số thứ tự, bên nhận báo lại những byte đã đến và sắp chúng về đúng thứ tự. Byte nào chưa được báo đã đến thì TCP phía gửi truyền lại. Chương trình nhận đủ dữ liệu, đúng thứ tự. UDP không thiết lập kết nối. Mỗi lần gửi tạo một datagram, tức một gói dữ liệu độc lập, mang endpoint nguồn và endpoint đích của riêng nó. UDP không bảo đảm datagram đến nơi, không bảo đảm thứ tự và không truyền lại. Đổi lại, UDP không tốn thời gian thiết lập kết nối và không phải chờ truyền lại. So sánh lại hai dịch vụ: TCP đổi độ trễ lấy độ tin cậy, UDP đổi độ tin cậy lấy độ trễ thấp.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình tcp-udp: bốn bước của hình, bước 5 là hai ô kết luận.
+Hiện dần: bước 1 khi đọc “TCP thiết lập kết nối”; bước 2 khi đọc “Sau khi có kết nối”; bước 3 khi đọc “UDP không thiết lập kết nối”; bước 4 khi đọc “UDP không bảo đảm”; bước 5 khi đọc “So sánh lại hai dịch vụ”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:53</span>
+      <h3>Slide 3. Chọn dịch vụ giao vận theo yêu cầu của ứng dụng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Tải file, chat văn bản, dịch vụ tra cứu → **TCP**: thiếu một byte là sai</li><li>Gọi video, game nhiều người chơi → **UDP**: dữ liệu đến muộn thì vô ích, gửi lại chỉ thêm trễ</li><li>Yêu cầu và phản hồi nhỏ, mất thì hỏi lại được → **UDP** đủ dùng, không tốn thời gian thiết lập kết nối</li></ul></div>
+    <div class="kb-thoai"><p>Áp vào các ứng dụng quen thuộc. Tải file, chat văn bản và dịch vụ tra cứu cần đủ từng byte, nên dùng TCP. Gọi video và game nhiều người chơi cần dữ liệu mới nhất: một gói đến muộn thì đã vô ích, gửi lại chỉ làm trễ thêm các gói sau. Hai ứng dụng này dùng UDP, và tự xử lý phần dữ liệu bị mất. Trường hợp thứ ba là trao đổi ngắn: một yêu cầu và một phản hồi đều nhỏ. Nếu mất, chương trình chỉ cần gửi lại yêu cầu. Khi đó UDP đủ dùng và nhanh hơn, vì không tốn thời gian thiết lập kết nối.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt; mỗi ý có biểu tượng nhỏ của ứng dụng (tự vẽ, đơn sắc) nếu đội dựng có sẵn.
+Hiện dần: bước 1 khi đọc “Tải file, chat văn bản”; bước 2 khi đọc “Gọi video và game”; bước 3 khi đọc “Trường hợp thứ ba”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:29</span>
+      <h3>Slide 4. Client–server cố định endpoint ở server, P2P cho mỗi nút cả hai vai</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Client–server**: server giữ endpoint cố định, client tìm đến.</li><li>**P2P**: mỗi nút vừa là client vừa là server.</li></ul></div></div>
+    <div class="kb-thoai"><p>Câu hỏi thứ hai là tổ chức các chương trình. Trong mô hình client–server, server chạy trước và giữ một endpoint cố định, được công bố cho client. Nhiều client tìm đến endpoint đó để gửi yêu cầu. Client không cần endpoint cố định, vì server trả lời về endpoint mà client đã dùng để gửi. Trong mô hình P2P, mỗi nút gọi là một peer, vừa gửi yêu cầu như client vừa phục vụ yêu cầu như server. Các peer trao đổi trực tiếp với nhau, không qua một server trung tâm. Dịch vụ tra cứu theo mô hình client–server: một server, nhiều client.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình mo-hinh: bốn bước của hình, bước 5 là hai ô kết luận.
+Hiện dần: bước 1 khi đọc “Trong mô hình client–server”; bước 2 khi đọc “Nhiều client”; bước 3 khi đọc “Trong mô hình P2P”; bước 4 khi đọc “Các peer trao đổi”; bước 5 khi đọc “Dịch vụ tra cứu”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:07</span>
+      <h3>Slide 5. Kết nối TCP có trạng thái, endpoint UDP thì không</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>TCP có **trạng thái**: `LISTENING` là server đang chờ; `ESTABLISHED` là kết nối, ở đây hai đầu cùng máy nên có hai dòng</li><li>UDP chỉ có **endpoint**, không có trạng thái kết nối</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">observe.ps1</span><pre><code>netstat -ano | findstr &quot;9199 9200&quot;</code></pre></div></div>
+    <div class="kb-thoai"><p>Có thể quan sát hai dịch vụ này bằng lệnh netstat của hệ điều hành. Một chương trình Java nhỏ đang chạy trên máy. Chương trình mở một server chờ kết nối ở port 9199, kết nối sẵn tới server đó, và mở một endpoint UDP ở port 9200. Mã của chương trình này học ở Chương 2 và Chương 3. Lệnh netstat liệt kê mọi endpoint đang mở, kèm số hiệu của tiến trình sở hữu. Lệnh findstr lọc các dòng chứa hai port trên. Kết quả có bốn dòng. Ba dòng đầu là TCP. Dòng thứ nhất ở trạng thái listening. Đó là server đang chờ kết nối ở port 9199, chưa phải một kết nối. Hai dòng sau ở trạng thái established. Đó là cùng một kết nối, nhìn từ hai đầu. Vì cả hai đầu chạy trên cùng máy, netstat in cả hai, và endpoint cục bộ với endpoint ở xa đổi chỗ cho nhau. Dòng cuối là UDP. Dòng này chỉ có endpoint ở port 9200, không có trạng thái, vì UDP không có kết nối.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Lệnh phía trên, kết quả phía dưới. Trong khung kết quả: khi đọc &quot;listening&quot; tô dòng 1; khi đọc &quot;established&quot; tô dòng 2 và 3, nối hai cặp endpoint đổi chỗ bằng mũi tên chéo; khi đọc &quot;Dòng cuối&quot; tô dòng 4. Có thể thay khung kết quả bằng clip replay terminal (chương trình chạy ở terminal trái, netstat ở terminal phải).
+Hiện dần: bước 1 khi đọc “Kết quả có bốn dòng”; bước 2 khi đọc “Ba dòng đầu”; bước 3 khi đọc “Dòng cuối”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:21</span>
+      <h3>Slide 6. TCP không giữ ranh giới giữa các lần ghi</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>Ranh giới message do **giao thức ứng dụng** tự định nghĩa: đó là framing, học ở nhóm stream.</li></ul></div></div>
+    <div class="kb-thoai"><p>Một lưu ý về TCP. Bên gửi ghi chuỗi abc, rồi chuỗi def. TCP chỉ thấy một byte stream, không lưu ranh giới giữa hai lần ghi. Ở bên nhận, một lần đọc có thể lấy cả sáu byte, cũng có thể chỉ lấy một phần. Với UDP, mỗi lần gửi là một datagram. Nếu cả hai datagram đến nơi, phía nhận lấy được hai lần riêng biệt, mỗi lần một datagram nguyên vẹn, không bao giờ gộp lại. Vì vậy, khi dùng TCP, giao thức ứng dụng phải tự định nghĩa một message bắt đầu và kết thúc ở đâu. Việc này gọi là framing, sẽ học ở các phần thuộc nhóm stream.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình ranh-gioi: bốn bước của hình, bước 5 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Bên gửi ghi”; bước 2 khi đọc “TCP chỉ thấy”; bước 3 khi đọc “một lần đọc”; bước 4 khi đọc “Với UDP”; bước 5 khi đọc “Vì vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:02</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Hai câu hỏi sau kiểm tra cách chọn dịch vụ giao vận.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Ứng dụng nào sau đây phù hợp dùng UDP nhất?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Tải về một file cài đặt dung lượng 2 GB.</li>
+      <li><b>B.</b> Truy vấn DNS để lấy địa chỉ IP của một tên miền.</li>
+      <li><b>C.</b> Gửi tin nhắn chat văn bản.</li>
+      <li><b>D.</b> Nộp bài tập lên hệ thống học trực tuyến.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: B</b> — <span>Truy vấn DNS thông thường là một yêu cầu nhỏ và một phản hồi nhỏ; mất thì hỏi lại, không đáng tốn thời gian thiết lập kết nối. Ba ứng dụng còn lại cần đủ từng byte, đúng thứ tự, nên dùng TCP.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là B. Truy vấn DNS là trao đổi ngắn gồm một yêu cầu và một phản hồi, mất thì gửi lại yêu cầu. Ba ứng dụng còn lại cần đủ từng byte nên dùng TCP.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án B được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:24</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu thứ hai về kết nối của TCP.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Vì sao TCP thiết lập kết nối trước khi gửi dữ liệu, còn UDP thì không?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Vì chỉ TCP cần biết endpoint của bên nhận.</li>
+      <li><b>B.</b> Vì UDP chỉ dùng được trong mạng nội bộ.</li>
+      <li><b>C.</b> Vì hai đầu TCP phải thống nhất trạng thái ban đầu, như số thứ tự khởi đầu, để bảo đảm dữ liệu đến đủ và đúng thứ tự.</li>
+      <li><b>D.</b> Vì dữ liệu gửi qua TCP luôn lớn hơn dữ liệu gửi qua UDP.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: C</b> — <span>TCP dùng số thứ tự để phát hiện byte mất và sắp lại thứ tự, nên hai đầu phải thống nhất số thứ tự khởi đầu khi thiết lập kết nối. UDP gửi từng datagram độc lập, không giữ trạng thái; mỗi datagram vẫn mang endpoint nguồn và đích.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là C. TCP cần trạng thái chung ở hai đầu để bảo đảm đủ và đúng thứ tự. UDP gửi từng datagram độc lập, nên không cần kết nối.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án C.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:44</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**TCP**: kết nối, byte đến đủ và đúng thứ tự; **UDP**: từng datagram độc lập, nhanh, không bảo đảm</li><li>Chọn theo yêu cầu: cần đủ và đúng thứ tự → TCP; cần độ trễ thấp, chịu mất mát → UDP</li><li>**Client–server**: server giữ endpoint cố định; **P2P**: mỗi nút vừa là client vừa là server</li></ul></div>
+    <div class="kb-thoai"><p>Trả lời câu hỏi của phần: TCP thiết lập kết nối và truyền một byte stream, byte đến đủ và đúng thứ tự. UDP gửi từng datagram độc lập, nhanh hơn nhưng không bảo đảm. Chọn dịch vụ theo yêu cầu của ứng dụng: cần đủ và đúng thứ tự thì dùng TCP, cần độ trễ thấp và chịu được mất mát thì dùng UDP. Về tổ chức, mô hình client–server có server giữ endpoint cố định, còn trong mô hình P2P, mỗi nút vừa là client vừa là server. Các từ khóa cần nhớ gồm tầng giao vận, TCP, UDP, datagram, mô hình client–server và P2P.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “TCP thiết lập kết nối và”; bước 2 khi đọc “Chọn dịch vụ theo yêu cầu”; bước 3 khi đọc “Về tổ chức”; bước 4 khi đọc “Các từ khóa cần nhớ”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:21</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chủ đề nâng cao của phần gồm hai mục. Thứ nhất là xu hướng giao thức web: từ HTTP 1.1, HTTP 2 đến HTTP 3 chạy trên QUIC, một giao thức xây trên UDP, học ở Chương 3. Thứ hai là mô hình hybrid: một server điều phối giúp các peer tìm thấy nhau, rồi các peer trao đổi trực tiếp. Bài tập mở rộng: lập bảng chọn giao thức và mô hình cho năm ứng dụng, gồm gọi video, đồng bộ file, game nhiều người chơi, chat nhóm và giám sát cảm biến, kèm lý do cho từng lựa chọn.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Chủ đề nâng cao của phần”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:54</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Với TCP, dữ liệu đến chương trình Java dưới dạng byte stream. Phần tiếp theo, về byte stream, contract của read và write, decorator và buffer, trình bày cách đọc và ghi byte stream đúng.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V03", "tieu_de": "Giao vận: TCP, UDP và mô hình ứng dụng mạng", "giong": "vi-VN-NamMinhNeural", "tong": 427.86, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/9d003d0e7fc29431.mp3", "dur": 14.04, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Ở", 1], [2.062, "phần", 1], [2.3, "trước,", 1], [2.775, "đích", 1], [2.987, "đến", 1], [3.288, "của", 1], [3.425, "dữ", 1], [3.612, "liệu", 1], [3.888, "đã", 1], [4.0, "được", 1], [4.162, "xác", 1], [4.4, "định", 1], [4.625, "bằng", 1], [4.888, "endpoint.", 1], [6.175, "Phần", 2], [6.425, "này", 2], [6.612, "trả", 2], [6.787, "lời", 2], [6.938, "câu", 2], [7.125, "hỏi:", 2], [7.7, "gửi", 2], [7.912, "dữ", 2], [8.1, "liệu", 2], [8.325, "tới", 2], [8.575, "endpoint", 2], [9.0, "đó", 2], [9.25, "bằng", 2], [9.463, "dịch", 2], [9.625, "vụ", 2], [9.825, "nào", 2], [10.075, "của", 2], [10.213, "tầng", 2], [10.425, "giao", 2], [10.613, "vận,", 2], [11.125, "và", 2], [11.35, "các", 2], [11.512, "chương", 2], [11.7, "trình", 2], [11.9, "được", 2], [12.037, "tổ", 2], [12.2, "chức", 2], [12.4, "theo", 2], [12.562, "mô", 2], [12.762, "hình", 2], [12.925, "nào.", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Ứng dụng khác nhau cần dịch vụ giao vận khác nhau", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Có ứng dụng cần”; bước 2 khi đọc “Có ứng dụng ưu tiên độ trễ thấp”; bước 3 khi đọc “Ngoài cách gửi”; bước 4 khi đọc “Câu hỏi của phần này”.", "start": 14.64, "audio": "audio/73da056adafa22d8.mp3", "dur": 31.2, "words": [[0.1, "Có", 0], [0.287, "ứng", 0], [0.487, "dụng", 0], [0.738, "cần", 0], [0.95, "dữ", 0], [1.113, "liệu", 0], [1.35, "đến", 0], [1.575, "đủ", 0], [1.825, "và", 0], [2.0, "đúng", 0], [2.212, "thứ", 0], [2.375, "tự.", 0], [3.55, "Một", 1], [3.913, "file", 1], [4.075, "tải", 1], [4.388, "về", 1], [4.537, "thiếu", 1], [4.75, "một", 1], [4.963, "byte", 1], [5.225, "là", 1], [5.362, "file", 1], [5.6, "hỏng.", 1], [6.838, "Dịch", 2], [7.1, "vụ", 2], [7.287, "tra", 2], [7.525, "cứu", 2], [7.75, "nhận", 2], [8.0, "thiếu", 2], [8.188, "một", 2], [8.387, "ký", 2], [8.588, "tự", 2], [8.863, "là", 2], [9.075, "tra", 2], [9.287, "sai", 2], [9.488, "khóa.", 2], [10.725, "Có", 3], [10.912, "ứng", 3], [11.113, "dụng", 3], [11.425, "ưu", 3], [11.525, "tiên", 3], [11.775, "độ", 3], [11.988, "trễ", 3], [12.162, "thấp", 3], [12.338, "hơn", 3], [12.637, "đủ", 3], [12.863, "dữ", 3], [13.075, "liệu.", 3], [14.238, "Trong", 4], [14.55, "cuộc", 4], [14.725, "gọi", 4], [14.963, "video,", 4], [15.713, "một", 4], [15.925, "khung", 4], [16.175, "hình", 4], [16.363, "đến", 4], [16.525, "muộn", 4], [16.7, "nửa", 4], [16.887, "giây", 4], [17.163, "thì", 4], [17.363, "không", 4], [17.575, "còn", 4], [17.75, "dùng", 4], [17.925, "được.", 4], [18.988, "Ngoài", 5], [19.262, "cách", 5], [19.462, "gửi,", 5], [20.025, "ứng", 5], [20.238, "dụng", 5], [20.488, "còn", 5], [20.675, "phải", 5], [20.8, "quyết", 5], [20.988, "định", 5], [21.212, "chương", 5], [21.438, "trình", 5], [21.613, "nào", 5], [21.788, "giữ", 5], [22.062, "endpoint", 5], [22.538, "cố", 5], [22.775, "định", 5], [23.025, "để", 5], [23.175, "bên", 5], [23.387, "kia", 5], [23.6, "tìm", 5], [23.85, "đến.", 5], [25.025, "Câu", 6], [25.225, "hỏi", 6], [25.45, "của", 6], [25.587, "phần", 6], [25.775, "này", 6], [25.925, "là:", 6], [26.387, "chọn", 6], [26.675, "dịch", 6], [26.837, "vụ", 6], [27.05, "nào", 6], [27.3, "của", 6], [27.45, "tầng", 6], [27.663, "giao", 6], [27.85, "vận,", 6], [28.363, "và", 6], [28.613, "tổ", 6], [28.8, "chức", 6], [28.988, "các", 6], [29.15, "chương", 6], [29.375, "trình", 6], [29.587, "theo", 6], [29.738, "mô", 6], [29.925, "hình", 6], [30.075, "nào?", 6]], "cues": [0.1, 10.725, 18.988, 25.025], "lang": 0.6}, {"ten": "Slide 2. TCP truyền một byte stream tin cậy, UDP gửi từng datagram độc lập", "loai": "slide", "slide": "S02", "dung": "Hình tcp-udp: bốn bước của hình, bước 5 là hai ô kết luận.\nHiện dần: bước 1 khi đọc “TCP thiết lập kết nối”; bước 2 khi đọc “Sau khi có kết nối”; bước 3 khi đọc “UDP không thiết lập kết nối”; bước 4 khi đọc “UDP không bảo đảm”; bước 5 khi đọc “So sánh lại hai dịch vụ”.", "start": 46.44, "audio": "audio/4353a9881fc8d440.mp3", "dur": 64.75, "words": [[0.1, "Tầng", 0], [0.388, "giao", 0], [0.562, "vận,", 0], [1.062, "transport", 0], [1.625, "layer,", 0], [2.288, "cung", 0], [2.513, "cấp", 0], [2.7, "hai", 0], [2.9, "dịch", 0], [3.062, "vụ", 0], [3.237, "chính", 0], [3.513, "cho", 0], [3.65, "chương", 0], [3.888, "trình:", 0], [4.594, "TCP,", 0], [5.3, "Transmission", 0], [5.925, "Control", 0], [6.338, "Protocol,", 0], [7.213, "và", 0], [7.781, "UDP,", 0], [8.35, "User", 0], [8.738, "Datagram", 0], [9.375, "Protocol.", 0], [10.506, "TCP", 1], [11.637, "thiết", 1], [11.85, "lập", 1], [12.062, "kết", 1], [12.275, "nối", 1], [12.5, "trước", 1], [12.688, "khi", 1], [12.863, "gửi", 1], [13.113, "dữ", 1], [13.312, "liệu.", 1], [14.475, "Khi", 2], [14.738, "thiết", 2], [14.925, "lập,", 2], [15.363, "hai", 2], [15.562, "đầu", 2], [15.738, "thống", 2], [15.963, "nhất", 2], [16.137, "trạng", 2], [16.4, "thái", 2], [16.587, "ban", 2], [16.788, "đầu,", 2], [17.25, "trong", 2], [17.475, "đó", 2], [17.688, "có", 2], [17.8, "số", 2], [18.0, "thứ", 2], [18.188, "tự", 2], [18.413, "khởi", 2], [18.663, "đầu", 2], [18.887, "của", 2], [19.038, "byte", 2], [19.212, "stream.", 2], [20.438, "Sau", 3], [20.712, "khi", 3], [20.962, "có", 3], [21.087, "kết", 3], [21.288, "nối,", 3], [21.8, "dữ", 3], [22.012, "liệu", 3], [22.275, "đi", 3], [22.413, "thành", 3], [22.625, "một", 3], [22.8, "byte", 3], [22.988, "stream", 3], [23.325, "liên", 3], [23.55, "tục.", 3], [24.613, "Dựa", 4], [24.938, "vào", 4], [25.113, "số", 4], [25.325, "thứ", 4], [25.462, "tự,", 4], [25.988, "bên", 4], [26.2, "nhận", 4], [26.45, "báo", 4], [26.688, "lại", 4], [26.875, "những", 4], [27.1, "byte", 4], [27.3, "đã", 4], [27.438, "đến", 4], [27.712, "và", 4], [27.863, "sắp", 4], [28.1, "chúng", 4], [28.363, "về", 4], [28.488, "đúng", 4], [28.7, "thứ", 4], [28.85, "tự.", 4], [30.012, "Byte", 5], [30.262, "nào", 5], [30.488, "chưa", 5], [30.675, "được", 5], [30.812, "báo", 5], [31.05, "đã", 5], [31.188, "đến", 5], [31.45, "thì", 5], [31.869, "TCP", 5], [32.288, "phía", 5], [32.487, "gửi", 5], [32.712, "truyền", 5], [32.975, "lại.", 5], [34.138, "Chương", 6], [34.487, "trình", 6], [34.663, "nhận", 6], [34.938, "đủ", 6], [35.15, "dữ", 6], [35.362, "liệu,", 6], [35.862, "đúng", 6], [36.125, "thứ", 6], [36.312, "tự.", 6], [37.231, "UDP", 7], [38.15, "không", 7], [38.413, "thiết", 7], [38.625, "lập", 7], [38.825, "kết", 7], [39.025, "nối.", 7], [40.225, "Mỗi", 8], [40.562, "lần", 8], [40.812, "gửi", 8], [40.987, "tạo", 8], [41.225, "một", 8], [41.413, "datagram,", 8], [42.325, "tức", 8], [42.562, "một", 8], [42.725, "gói", 8], [42.925, "dữ", 8], [43.112, "liệu", 8], [43.325, "độc", 8], [43.5, "lập,", 8], [43.962, "mang", 8], [44.312, "endpoint", 8], [44.638, "nguồn", 8], [44.962, "và", 8], [45.138, "endpoint", 8], [45.5, "đích", 8], [45.688, "của", 8], [45.875, "riêng", 8], [46.087, "nó.", 8], [46.975, "UDP", 9], [47.862, "không", 9], [48.1, "bảo", 9], [48.288, "đảm", 9], [48.538, "datagram", 9], [49.175, "đến", 9], [49.337, "nơi,", 9], [49.837, "không", 9], [50.087, "bảo", 9], [50.288, "đảm", 9], [50.5, "thứ", 9], [50.65, "tự", 9], [50.913, "và", 9], [51.075, "không", 9], [51.288, "truyền", 9], [51.5, "lại.", 9], [52.65, "Đổi", 10], [52.925, "lại,", 10], [53.475, "UDP", 10], [54.025, "không", 10], [54.275, "tốn", 10], [54.525, "thời", 10], [54.663, "gian", 10], [54.875, "thiết", 10], [55.062, "lập", 10], [55.25, "kết", 10], [55.438, "nối", 10], [55.712, "và", 10], [55.9, "không", 10], [56.138, "phải", 10], [56.3, "chờ", 10], [56.513, "truyền", 10], [56.75, "lại.", 10], [57.913, "So", 11], [58.188, "sánh", 11], [58.45, "lại", 11], [58.65, "hai", 11], [58.812, "dịch", 11], [58.987, "vụ:", 11], [59.537, "TCP", 11], [60.087, "đổi", 11], [60.288, "độ", 11], [60.5, "trễ", 11], [60.675, "lấy", 11], [60.862, "độ", 11], [61.013, "tin", 11], [61.237, "cậy,", 11], [61.763, "UDP", 11], [62.288, "đổi", 11], [62.487, "độ", 11], [62.65, "tin", 11], [62.888, "cậy", 11], [63.125, "lấy", 11], [63.312, "độ", 11], [63.487, "trễ", 11], [63.675, "thấp.", 11]], "cues": [10.506, 20.438, 37.231, 46.975, 57.913], "lang": 2.6}, {"ten": "Slide 3. Chọn dịch vụ giao vận theo yêu cầu của ứng dụng", "loai": "slide", "slide": "S03", "dung": "Ba ý hiện lần lượt; mỗi ý có biểu tượng nhỏ của ứng dụng (tự vẽ, đơn sắc) nếu đội dựng có sẵn.\nHiện dần: bước 1 khi đọc “Tải file, chat văn bản”; bước 2 khi đọc “Gọi video và game”; bước 3 khi đọc “Trường hợp thứ ba”.", "start": 113.79, "audio": "audio/785a47fc3235f0ab.mp3", "dur": 34.7, "words": [[0.1, "Áp", 0], [0.375, "vào", 0], [0.688, "các", 0], [0.975, "ứng", 0], [1.15, "dụng", 0], [1.387, "quen", 0], [1.65, "thuộc.", 0], [2.737, "Tải", 1], [2.975, "file,", 1], [3.487, "chat", 1], [3.737, "văn", 1], [3.938, "bản", 1], [4.213, "và", 1], [4.338, "dịch", 1], [4.525, "vụ", 1], [4.75, "tra", 1], [4.95, "cứu", 1], [5.225, "cần", 1], [5.45, "đủ", 1], [5.65, "từng", 1], [5.862, "byte,", 1], [6.4, "nên", 1], [6.725, "dùng", 1], [7.638, "TCP.", 1], [8.55, "Gọi", 2], [8.9, "video", 2], [9.463, "và", 2], [9.625, "game", 2], [9.863, "nhiều", 2], [10.075, "người", 2], [10.25, "chơi", 2], [10.512, "cần", 2], [10.762, "dữ", 2], [10.925, "liệu", 2], [11.137, "mới", 2], [11.338, "nhất:", 2], [11.838, "một", 2], [12.062, "gói", 2], [12.25, "đến", 2], [12.438, "muộn", 2], [12.688, "thì", 2], [12.838, "đã", 2], [12.975, "vô", 2], [13.162, "ích,", 2], [13.525, "gửi", 2], [13.738, "lại", 2], [13.963, "chỉ", 2], [14.125, "làm", 2], [14.35, "trễ", 2], [14.512, "thêm", 2], [14.762, "các", 2], [14.95, "gói", 2], [15.125, "sau.", 2], [16.3, "Hai", 3], [16.55, "ứng", 3], [16.725, "dụng", 3], [16.95, "này", 3], [17.125, "dùng", 3], [17.669, "UDP,", 3], [18.212, "và", 3], [18.462, "tự", 3], [18.65, "xử", 3], [18.812, "lý", 3], [19.038, "phần", 3], [19.288, "dữ", 3], [19.45, "liệu", 3], [19.688, "bị", 3], [19.85, "mất.", 3], [20.925, "Trường", 4], [21.288, "hợp", 4], [21.488, "thứ", 4], [21.65, "ba", 4], [21.925, "là", 4], [22.062, "trao", 4], [22.275, "đổi", 4], [22.45, "ngắn:", 4], [23.012, "một", 4], [23.35, "yêu", 4], [23.475, "cầu", 4], [23.75, "và", 4], [23.837, "một", 4], [24.025, "phản", 4], [24.275, "hồi", 4], [24.488, "đều", 4], [24.637, "nhỏ.", 4], [25.925, "Nếu", 5], [26.337, "mất,", 5], [26.75, "chương", 5], [27.025, "trình", 5], [27.275, "chỉ", 5], [27.425, "cần", 5], [27.663, "gửi", 5], [27.863, "lại", 5], [28.075, "yêu", 5], [28.25, "cầu.", 5], [29.4, "Khi", 6], [29.675, "đó", 6], [30.075, "UDP", 6], [30.475, "đủ", 6], [30.675, "dùng", 6], [30.95, "và", 6], [31.075, "nhanh", 6], [31.3, "hơn,", 6], [31.775, "vì", 6], [32.038, "không", 6], [32.288, "tốn", 6], [32.525, "thời", 6], [32.663, "gian", 6], [32.913, "thiết", 6], [33.125, "lập", 6], [33.325, "kết", 6], [33.513, "nối.", 6]], "cues": [2.737, 8.55, 20.925], "lang": 0.6}, {"ten": "Slide 4. Client–server cố định endpoint ở server, P2P cho mỗi nút cả hai vai", "loai": "slide", "slide": "S04", "dung": "Hình mo-hinh: bốn bước của hình, bước 5 là hai ô kết luận.\nHiện dần: bước 1 khi đọc “Trong mô hình client–server”; bước 2 khi đọc “Nhiều client”; bước 3 khi đọc “Trong mô hình P2P”; bước 4 khi đọc “Các peer trao đổi”; bước 5 khi đọc “Dịch vụ tra cứu”.", "start": 149.09, "audio": "audio/70b9d40eed1d4fd3.mp3", "dur": 36.26, "words": [[0.1, "Câu", 0], [0.3, "hỏi", 0], [0.512, "thứ", 0], [0.75, "hai", 0], [1.012, "là", 0], [1.15, "tổ", 0], [1.363, "chức", 0], [1.562, "các", 0], [1.75, "chương", 0], [2.013, "trình.", 0], [3.138, "Trong", 1], [3.438, "mô", 1], [3.625, "hình", 1], [3.85, "client–server,", 1], [5.013, "server", 1], [5.463, "chạy", 1], [5.7, "trước", 1], [5.975, "và", 1], [6.15, "giữ", 1], [6.338, "một", 1], [6.625, "endpoint", 1], [6.987, "cố", 1], [7.225, "định,", 1], [7.725, "được", 1], [7.95, "công", 1], [8.113, "bố", 1], [8.325, "cho", 1], [8.5, "client.", 1], [9.787, "Nhiều", 2], [10.088, "client", 2], [10.463, "tìm", 2], [10.662, "đến", 2], [10.963, "endpoint", 2], [11.312, "đó", 2], [11.588, "để", 2], [11.738, "gửi", 2], [12.012, "yêu", 2], [12.2, "cầu.", 2], [13.35, "Client", 3], [13.838, "không", 3], [14.088, "cần", 3], [14.338, "endpoint", 3], [14.675, "cố", 3], [14.9, "định,", 3], [15.387, "vì", 3], [15.6, "server", 3], [16.0, "trả", 3], [16.175, "lời", 3], [16.4, "về", 3], [16.587, "endpoint", 3], [17.062, "mà", 3], [17.212, "client", 3], [17.65, "đã", 3], [17.775, "dùng", 3], [18.012, "để", 3], [18.163, "gửi.", 3], [19.413, "Trong", 4], [19.7, "mô", 4], [19.887, "hình", 4], [20.468, "P2P,", 4], [21.05, "mỗi", 4], [21.262, "nút", 4], [21.475, "gọi", 4], [21.725, "là", 4], [21.812, "một", 4], [22.0, "peer,", 4], [22.55, "vừa", 4], [22.8, "gửi", 4], [23.062, "yêu", 4], [23.238, "cầu", 4], [23.475, "như", 4], [23.663, "client", 4], [24.087, "vừa", 4], [24.238, "phục", 4], [24.413, "vụ", 4], [24.637, "yêu", 4], [24.812, "cầu", 4], [25.075, "như", 4], [25.262, "server.", 4], [26.587, "Các", 5], [26.8, "peer", 5], [27.012, "trao", 5], [27.212, "đổi", 5], [27.4, "trực", 5], [27.613, "tiếp", 5], [27.837, "với", 5], [28.0, "nhau,", 5], [28.538, "không", 5], [28.812, "qua", 5], [29.012, "một", 5], [29.212, "server", 5], [29.613, "trung", 5], [29.85, "tâm.", 5], [30.962, "Dịch", 6], [31.225, "vụ", 6], [31.438, "tra", 6], [31.637, "cứu", 6], [31.913, "theo", 6], [32.062, "mô", 6], [32.25, "hình", 6], [32.475, "client–server:", 6], [33.638, "một", 6], [33.875, "server,", 6], [34.638, "nhiều", 6], [34.938, "client.", 6]], "cues": [3.138, 9.787, 19.413, 26.587, 30.962], "lang": 2.6}, {"ten": "Slide 5. Kết nối TCP có trạng thái, endpoint UDP thì không", "loai": "slide", "slide": "S05", "dung": "Lệnh phía trên, kết quả phía dưới. Trong khung kết quả: khi đọc \"listening\" tô dòng 1; khi đọc \"established\" tô dòng 2 và 3, nối hai cặp endpoint đổi chỗ bằng mũi tên chéo; khi đọc \"Dòng cuối\" tô dòng 4. Có thể thay khung kết quả bằng clip replay terminal (chương trình chạy ở terminal trái, netstat ở terminal phải).\nHiện dần: bước 1 khi đọc “Kết quả có bốn dòng”; bước 2 khi đọc “Ba dòng đầu”; bước 3 khi đọc “Dòng cuối”.", "start": 187.95, "audio": "audio/fecfa4dc9795b743.mp3", "dur": 63.72, "words": [[0.1, "Có", 0], [0.275, "thể", 0], [0.487, "quan", 0], [0.713, "sát", 0], [0.95, "hai", 0], [1.125, "dịch", 0], [1.3, "vụ", 0], [1.512, "này", 0], [1.75, "bằng", 0], [1.975, "lệnh", 0], [2.212, "netstat", 0], [2.688, "của", 0], [2.9, "hệ", 0], [3.1, "điều", 0], [3.288, "hành.", 0], [4.388, "Một", 1], [4.763, "chương", 1], [4.975, "trình", 1], [5.213, "Java", 1], [5.588, "nhỏ", 1], [5.912, "đang", 1], [6.125, "chạy", 1], [6.325, "trên", 1], [6.525, "máy.", 1], [7.688, "Chương", 2], [8.0, "trình", 2], [8.2, "mở", 2], [8.338, "một", 2], [8.525, "server", 2], [8.9, "chờ", 2], [9.137, "kết", 2], [9.363, "nối", 2], [9.588, "ở", 2], [9.725, "port", 2], [10.412, "9199,", 2], [11.1, "kết", 2], [11.325, "nối", 2], [11.512, "sẵn", 2], [11.75, "tới", 2], [11.963, "server", 2], [12.312, "đó,", 2], [12.825, "và", 2], [13.0, "mở", 2], [13.175, "một", 2], [13.475, "endpoint", 2], [13.988, "UDP", 2], [14.5, "ở", 2], [14.625, "port", 2], [15.644, "9200.", 2], [16.663, "Mã", 3], [17.1, "của", 3], [17.25, "chương", 3], [17.475, "trình", 3], [17.675, "này", 3], [17.863, "học", 3], [18.125, "ở", 3], [18.188, "Chương", 3], [18.475, "2", 3], [18.725, "và", 3], [18.85, "Chương", 3], [19.125, "3.", 3], [20.25, "Lệnh", 4], [20.587, "netstat", 4], [21.125, "liệt", 4], [21.375, "kê", 4], [21.5, "mọi", 4], [21.762, "endpoint", 4], [22.175, "đang", 4], [22.363, "mở,", 4], [22.962, "kèm", 4], [23.212, "số", 4], [23.425, "hiệu", 4], [23.613, "của", 4], [23.75, "tiến", 4], [23.988, "trình", 4], [24.175, "sở", 4], [24.387, "hữu.", 4], [25.613, "Lệnh", 5], [26.025, "findstr", 5], [26.525, "lọc", 5], [26.738, "các", 5], [26.9, "dòng", 5], [27.15, "chứa", 5], [27.4, "hai", 5], [27.575, "port", 5], [27.812, "trên.", 5], [28.962, "Kết", 6], [29.262, "quả", 6], [29.562, "có", 6], [29.712, "bốn", 6], [30.0, "dòng.", 6], [31.15, "Ba", 7], [31.438, "dòng", 7], [31.688, "đầu", 7], [31.938, "là", 7], [32.819, "TCP.", 7], [33.7, "Dòng", 8], [34.0, "thứ", 8], [34.163, "nhất", 8], [34.413, "ở", 8], [34.525, "trạng", 8], [34.812, "thái", 8], [35.038, "listening.", 8], [36.438, "Đó", 9], [36.675, "là", 9], [36.825, "server", 9], [37.263, "đang", 9], [37.475, "chờ", 9], [37.675, "kết", 9], [37.888, "nối", 9], [38.125, "ở", 9], [38.263, "port", 9], [38.963, "9199,", 9], [39.663, "chưa", 9], [39.962, "phải", 9], [40.163, "một", 9], [40.362, "kết", 9], [40.55, "nối.", 9], [41.725, "Hai", 10], [41.95, "dòng", 10], [42.2, "sau", 10], [42.5, "ở", 10], [42.612, "trạng", 10], [42.875, "thái", 10], [43.138, "established.", 10], [44.562, "Đó", 11], [44.812, "là", 11], [44.925, "cùng", 11], [45.15, "một", 11], [45.3, "kết", 11], [45.487, "nối,", 11], [46.013, "nhìn", 11], [46.312, "từ", 11], [46.525, "hai", 11], [46.7, "đầu.", 11], [47.8, "Vì", 12], [48.062, "cả", 12], [48.225, "hai", 12], [48.4, "đầu", 12], [48.575, "chạy", 12], [48.812, "trên", 12], [49.0, "cùng", 12], [49.2, "máy,", 12], [49.712, "netstat", 12], [50.3, "in", 12], [50.462, "cả", 12], [50.638, "hai,", 12], [51.175, "và", 12], [51.425, "endpoint", 12], [51.837, "cục", 12], [52.038, "bộ", 12], [52.263, "với", 12], [52.425, "endpoint", 12], [52.962, "ở", 12], [53.087, "xa", 12], [53.288, "đổi", 12], [53.487, "chỗ", 12], [53.75, "cho", 12], [53.888, "nhau.", 12], [55.038, "Dòng", 13], [55.388, "cuối", 13], [55.638, "là", 13], [56.513, "UDP.", 13], [57.388, "Dòng", 14], [57.675, "này", 14], [57.85, "chỉ", 14], [58.013, "có", 14], [58.15, "endpoint", 14], [58.638, "ở", 14], [58.75, "port", 14], [59.075, "9200,", 14], [59.4, "không", 14], [60.312, "có", 14], [60.425, "trạng", 14], [60.65, "thái,", 14], [61.212, "vì", 14], [61.612, "UDP", 14], [62.013, "không", 14], [62.263, "có", 14], [62.362, "kết", 14], [62.55, "nối.", 14]], "cues": [28.962, 31.15, 55.038], "lang": 9.6}, {"ten": "Slide 6. TCP không giữ ranh giới giữa các lần ghi", "loai": "slide", "slide": "S06", "dung": "Hình ranh-gioi: bốn bước của hình, bước 5 là ô kết luận.\nHiện dần: bước 1 khi đọc “Bên gửi ghi”; bước 2 khi đọc “TCP chỉ thấy”; bước 3 khi đọc “một lần đọc”; bước 4 khi đọc “Với UDP”; bước 5 khi đọc “Vì vậy”.", "start": 261.27, "audio": "audio/f1b9b457bce67f24.mp3", "dur": 38.62, "words": [[0.1, "Một", 0], [0.5, "lưu", 0], [0.713, "ý", 0], [0.963, "về", 0], [1.857, "TCP.", 0], [2.75, "Bên", 1], [3.062, "gửi", 1], [3.312, "ghi", 1], [3.5, "chuỗi", 1], [3.875, "abc,", 1], [4.763, "rồi", 1], [5.088, "chuỗi", 1], [5.338, "def.", 1], [6.232, "TCP", 2], [7.125, "chỉ", 2], [7.325, "thấy", 2], [7.525, "một", 2], [7.7, "byte", 2], [7.862, "stream,", 2], [8.412, "không", 2], [8.675, "lưu", 2], [8.838, "ranh", 2], [9.05, "giới", 2], [9.275, "giữa", 2], [9.5, "hai", 2], [9.725, "lần", 2], [9.925, "ghi.", 2], [11.05, "Ở", 3], [11.25, "bên", 3], [11.438, "nhận,", 3], [11.95, "một", 3], [12.15, "lần", 3], [12.375, "đọc", 3], [12.537, "có", 3], [12.637, "thể", 3], [12.787, "lấy", 3], [12.988, "cả", 3], [13.175, "sáu", 3], [13.412, "byte,", 3], [13.9, "cũng", 3], [14.088, "có", 3], [14.188, "thể", 3], [14.412, "chỉ", 3], [14.625, "lấy", 3], [14.825, "một", 3], [15.012, "phần.", 3], [16.15, "Với", 4], [16.762, "UDP,", 4], [17.375, "mỗi", 4], [17.575, "lần", 4], [17.8, "gửi", 4], [18.038, "là", 4], [18.15, "một", 4], [18.363, "datagram.", 4], [19.988, "Nếu", 5], [20.413, "cả", 5], [20.625, "hai", 5], [20.837, "datagram", 5], [21.45, "đến", 5], [21.625, "nơi,", 5], [22.1, "phía", 5], [22.312, "nhận", 5], [22.587, "lấy", 5], [22.775, "được", 5], [22.938, "hai", 5], [23.125, "lần", 5], [23.325, "riêng", 5], [23.538, "biệt,", 5], [23.95, "mỗi", 5], [24.137, "lần", 5], [24.325, "một", 5], [24.5, "datagram", 5], [25.15, "nguyên", 5], [25.375, "vẹn,", 5], [25.85, "không", 5], [26.113, "bao", 5], [26.25, "giờ", 5], [26.438, "gộp", 5], [26.637, "lại.", 5], [27.812, "Vì", 6], [28.062, "vậy,", 6], [28.45, "khi", 6], [28.65, "dùng", 6], [29.206, "TCP,", 6], [29.762, "giao", 6], [30.012, "thức", 6], [30.262, "ứng", 6], [30.425, "dụng", 6], [30.663, "phải", 6], [30.812, "tự", 6], [30.988, "định", 6], [31.175, "nghĩa", 6], [31.413, "một", 6], [31.637, "message", 6], [32.05, "bắt", 6], [32.25, "đầu", 6], [32.5, "và", 6], [32.625, "kết", 6], [32.825, "thúc", 6], [33.038, "ở", 6], [33.163, "đâu.", 6], [34.275, "Việc", 7], [34.55, "này", 7], [34.75, "gọi", 7], [34.987, "là", 7], [35.15, "framing,", 7], [35.938, "sẽ", 7], [36.163, "học", 7], [36.45, "ở", 7], [36.513, "các", 7], [36.663, "phần", 7], [36.913, "thuộc", 7], [37.125, "nhóm", 7], [37.388, "stream.", 7]], "cues": [2.75, 6.232, 11.95, 16.15, 27.812], "lang": 2.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án B được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 302.49, "audio": "audio/55525e492c7a99a3.mp3", "dur": 3.7, "words": [[0.1, "Hai", 0], [0.325, "câu", 0], [0.5, "hỏi", 0], [0.75, "sau", 0], [0.95, "kiểm", 0], [1.2, "tra", 0], [1.4, "cách", 0], [1.613, "chọn", 0], [1.875, "dịch", 0], [2.05, "vụ", 0], [2.288, "giao", 0], [2.5, "vận.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/513b1a2b36619e32.mp3", "dur2": 11.28, "words2": [[0.1, "Đáp", 0], [0.438, "án", 0], [0.637, "là", 0], [0.738, "B.", 0], [1.125, "Truy", 1], [1.538, "vấn", 1], [1.963, "DNS", 1], [2.388, "là", 1], [2.675, "trao", 1], [2.862, "đổi", 1], [3.038, "ngắn", 1], [3.325, "gồm", 1], [3.513, "một", 1], [3.763, "yêu", 1], [3.875, "cầu", 1], [4.15, "và", 1], [4.237, "một", 1], [4.425, "phản", 1], [4.662, "hồi,", 1], [5.175, "mất", 1], [5.4, "thì", 1], [5.55, "gửi", 1], [5.75, "lại", 1], [5.95, "yêu", 1], [6.112, "cầu.", 1], [7.25, "Ba", 2], [7.537, "ứng", 2], [7.713, "dụng", 2], [7.963, "còn", 2], [8.162, "lại", 2], [8.3, "cần", 2], [8.512, "đủ", 2], [8.738, "từng", 2], [8.975, "byte", 2], [9.25, "nên", 2], [9.488, "dùng", 2], [9.488, "TCP.", 2]], "dap_an": "B", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án C.", "start": 324.07, "audio": "audio/7be91afd79a79be1.mp3", "dur": 3.22, "words": [[0.1, "Câu", 0], [0.325, "thứ", 0], [0.537, "hai", 0], [0.775, "về", 0], [0.925, "kết", 0], [1.175, "nối", 0], [1.4, "của", 0], [1.4, "TCP.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/581e1765ebd885d9.mp3", "dur2": 10.37, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.675, "là", 0], [0.8, "C.", 0], [1.263, "TCP", 1], [1.725, "cần", 1], [1.975, "trạng", 1], [2.188, "thái", 1], [2.362, "chung", 1], [2.737, "ở", 1], [2.8, "hai", 1], [3.0, "đầu", 1], [3.237, "để", 1], [3.362, "bảo", 1], [3.587, "đảm", 1], [3.825, "đủ", 1], [4.088, "và", 1], [4.275, "đúng", 1], [4.487, "thứ", 1], [4.638, "tự.", 1], [5.506, "UDP", 2], [6.375, "gửi", 2], [6.562, "từng", 2], [6.838, "datagram", 2], [7.537, "độc", 2], [7.725, "lập,", 2], [8.2, "nên", 2], [8.525, "không", 2], [8.762, "cần", 2], [8.963, "kết", 2], [9.175, "nối.", 2]], "dap_an": "C", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “TCP thiết lập kết nối và”; bước 2 khi đọc “Chọn dịch vụ theo yêu cầu”; bước 3 khi đọc “Về tổ chức”; bước 4 khi đọc “Các từ khóa cần nhớ”.", "start": 344.26, "audio": "audio/3aa85b4f4db86358.mp3", "dur": 37.13, "words": [[0.1, "Trả", 0], [0.375, "lời", 0], [0.6, "câu", 0], [0.8, "hỏi", 0], [1.0, "của", 0], [1.137, "phần:", 0], [1.675, "TCP", 0], [2.212, "thiết", 0], [2.438, "lập", 0], [2.638, "kết", 0], [2.825, "nối", 0], [3.087, "và", 0], [3.225, "truyền", 0], [3.438, "một", 0], [3.612, "byte", 0], [3.788, "stream,", 0], [4.375, "byte", 0], [4.65, "đến", 0], [4.862, "đủ", 0], [5.112, "và", 0], [5.312, "đúng", 0], [5.525, "thứ", 0], [5.675, "tự.", 0], [6.537, "UDP", 1], [7.4, "gửi", 1], [7.6, "từng", 1], [7.875, "datagram", 1], [8.562, "độc", 1], [8.75, "lập,", 1], [9.213, "nhanh", 1], [9.463, "hơn", 1], [9.7, "nhưng", 1], [9.912, "không", 1], [10.15, "bảo", 1], [10.35, "đảm.", 1], [11.575, "Chọn", 2], [11.912, "dịch", 2], [12.075, "vụ", 2], [12.275, "theo", 2], [12.475, "yêu", 2], [12.662, "cầu", 2], [12.887, "của", 2], [13.075, "ứng", 2], [13.238, "dụng:", 2], [13.738, "cần", 2], [13.963, "đủ", 2], [14.225, "và", 2], [14.35, "đúng", 2], [14.537, "thứ", 2], [14.7, "tự", 2], [14.938, "thì", 2], [15.113, "dùng", 2], [15.688, "TCP,", 2], [16.262, "cần", 2], [16.512, "độ", 2], [16.688, "trễ", 2], [16.875, "thấp", 2], [17.1, "và", 2], [17.275, "chịu", 2], [17.488, "được", 2], [17.65, "mất", 2], [17.85, "mát", 2], [18.125, "thì", 2], [18.288, "dùng", 2], [19.138, "UDP.", 2], [19.988, "Về", 3], [20.275, "tổ", 3], [20.488, "chức,", 3], [20.913, "mô", 3], [21.15, "hình", 3], [21.375, "client–server", 3], [22.212, "có", 3], [22.375, "server", 3], [22.775, "giữ", 3], [23.05, "endpoint", 3], [23.525, "cố", 3], [23.762, "định,", 3], [24.288, "còn", 3], [24.538, "trong", 3], [24.712, "mô", 3], [24.875, "hình", 3], [25.462, "P2P,", 3], [26.05, "mỗi", 3], [26.262, "nút", 3], [26.475, "vừa", 3], [26.675, "là", 3], [26.8, "client", 3], [27.2, "vừa", 3], [27.363, "là", 3], [27.512, "server.", 3], [28.812, "Các", 4], [29.012, "từ", 4], [29.175, "khóa", 4], [29.413, "cần", 4], [29.637, "nhớ", 4], [29.913, "gồm", 4], [30.163, "tầng", 4], [30.4, "giao", 4], [30.587, "vận,", 4], [30.587, "TCP,", 4], [30.587, "UDP,", 4], [30.587, "datagram,", 4], [30.587, "mô", 4], [30.587, "hình", 4], [30.587, "client–server", 4], [30.587, "và", 4], [30.587, "P2P.", 4]], "cues": [1.675, 11.575, 19.988, 28.812], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Chủ đề nâng cao của phần”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 381.99, "audio": "audio/03f1780da7147e84.mp3", "dur": 31.54, "words": [[0.1, "Chủ", 0], [0.388, "đề", 0], [0.588, "nâng", 0], [0.85, "cao", 0], [1.087, "của", 0], [1.238, "phần", 0], [1.5, "gồm", 0], [1.762, "hai", 0], [1.962, "mục.", 0], [3.05, "Thứ", 1], [3.25, "nhất", 1], [3.513, "là", 1], [3.725, "xu", 1], [3.938, "hướng", 1], [4.15, "giao", 1], [4.312, "thức", 1], [4.5, "web:", 1], [4.975, "từ", 1], [5.412, "HTTP", 1], [5.85, "1.1,", 1], [6.612, "HTTP", 1], [7.375, "2", 1], [7.6, "đến", 1], [8.037, "HTTP", 1], [8.475, "3", 1], [8.675, "chạy", 1], [8.912, "trên", 1], [9.231, "QUIC,", 1], [9.55, "một", 1], [9.762, "giao", 1], [9.938, "thức", 1], [10.075, "xây", 1], [10.3, "trên", 1], [10.832, "UDP,", 1], [11.363, "học", 1], [11.662, "ở", 1], [11.762, "Chương", 1], [12.012, "3.", 1], [13.125, "Thứ", 2], [13.338, "hai", 2], [13.613, "là", 2], [13.7, "mô", 2], [13.9, "hình", 2], [14.1, "hybrid:", 2], [14.8, "một", 2], [15.025, "server", 2], [15.463, "điều", 2], [15.637, "phối", 2], [15.863, "giúp", 2], [16.087, "các", 2], [16.275, "peer", 2], [16.5, "tìm", 2], [16.775, "thấy", 2], [16.938, "nhau,", 2], [17.438, "rồi", 2], [17.738, "các", 2], [17.925, "peer", 2], [18.087, "trao", 2], [18.262, "đổi", 2], [18.462, "trực", 2], [18.65, "tiếp.", 2], [19.775, "Bài", 3], [20.025, "tập", 3], [20.225, "mở", 3], [20.413, "rộng:", 3], [20.925, "lập", 3], [21.125, "bảng", 3], [21.375, "chọn", 3], [21.613, "giao", 3], [21.788, "thức", 3], [22.0, "và", 3], [22.175, "mô", 3], [22.375, "hình", 3], [22.6, "cho", 3], [22.75, "năm", 3], [23.0, "ứng", 3], [23.15, "dụng,", 3], [23.663, "gồm", 3], [23.975, "gọi", 3], [24.212, "video,", 3], [24.988, "đồng", 3], [25.225, "bộ", 3], [25.413, "file,", 3], [25.975, "game", 3], [26.225, "nhiều", 3], [26.425, "người", 3], [26.613, "chơi,", 3], [27.188, "chat", 3], [27.438, "nhóm", 3], [27.75, "và", 3], [27.875, "giám", 3], [28.113, "sát", 3], [28.363, "cảm", 3], [28.575, "biến,", 3], [29.075, "kèm", 3], [29.363, "lý", 3], [29.587, "do", 3], [29.788, "cho", 3], [29.913, "từng", 3], [30.137, "lựa", 3], [30.312, "chọn.", 3]], "cues": [0.1, 19.775], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 414.13, "audio": "audio/7b41ab55883efad3.mp3", "dur": 13.13, "words": [[0.1, "Với", 0], [0.7, "TCP,", 0], [1.3, "dữ", 0], [1.512, "liệu", 0], [1.762, "đến", 0], [1.975, "chương", 0], [2.2, "trình", 0], [2.438, "Java", 0], [2.862, "dưới", 0], [3.062, "dạng", 0], [3.35, "byte", 0], [3.513, "stream.", 0], [4.737, "Phần", 1], [5.013, "tiếp", 1], [5.2, "theo,", 1], [5.675, "về", 1], [5.9, "byte", 1], [6.112, "stream,", 1], [6.7, "contract", 1], [7.2, "của", 1], [7.388, "read", 1], [7.575, "và", 1], [7.8, "write,", 1], [8.512, "decorator", 1], [9.3, "và", 1], [9.45, "buffer,", 1], [10.238, "trình", 1], [10.512, "bày", 1], [10.662, "cách", 1], [10.863, "đọc", 1], [11.062, "và", 1], [11.225, "ghi", 1], [11.438, "byte", 1], [11.662, "stream", 1], [11.975, "đúng.", 1]], "cues": [], "lang": 0.6}], "video_sau": "Stream: byte stream, contract của read/write, decorator và buffer"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

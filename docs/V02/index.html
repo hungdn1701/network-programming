@@ -1,0 +1,424 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V02 — Định danh: địa chỉ IP, tên miền, port và endpoint · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-1/01-endpoint">Mã</a>
+<h1>V02 · Định danh: địa chỉ IP, tên miền, port và endpoint</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 1</div><div class="ten">Định danh: địa chỉ IP, tên miền, port và endpoint</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="CH"><header><h1>Chương 1: Tổng quan lập trình mạng</h1></header><main class="bo-cuc-lo-trinh"><div class="lo-trinh" style="--cot: 3"><div class="chang" data-s="1"><div class="ten-chang"><span class="so">1</span>Định danh</div><ol><li class="hien-tai"><span>Địa chỉ IP, tên miền, port và endpoint</span></li></ol></div><div class="chang" data-s="2"><div class="ten-chang"><span class="so">2</span>Giao vận</div><ol><li class=""><span>TCP, UDP và mô hình ứng dụng mạng</span></li></ol></div><div class="chang" data-s="3"><div class="ten-chang"><span class="so">3</span>Stream</div><ol><li class=""><span>Byte stream, contract của read/write, decorator và buffer</span></li><li class=""><span>Dữ liệu có kiểu với DataStream và ObjectStream</span></li><li class=""><span>Character stream, charset và framing message</span></li><li class=""><span>Bài toán ứng dụng: đặc tả và thử giao thức tra cứu</span></li></ol></div></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Muốn gửi dữ liệu, chương trình phải chỉ định được đích đến</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Chương trình mạng gửi dữ liệu cho <b>một chương trình khác</b>, thường chạy trên một máy khác</li><li data-s="2">Ví dụ xuyên suốt học phần: client gửi một dòng chứa khóa tới <b>dịch vụ tra cứu</b>, server trả lại một dòng kết quả</li></ul><div class="khung" data-s="3"><b>Câu hỏi của phần:</b> đích đến được chỉ định bằng những giá trị nào, và Java biểu diễn các giá trị đó ra sao?</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Địa chỉ IP chọn máy, port chọn chương trình trên máy đó</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 580" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Hai máy, mỗi máy bốn tầng giao thức: ứng dụng, giao vận, mạng, liên kết. Dữ liệu đi xuống các tầng ở máy client, qua mạng, đi lên các tầng ở máy server. Địa chỉ IP 203.0.113.10 chọn máy ở tầng mạng; port 9199 chọn chương trình ở tầng giao vận.">
+  <defs>
+    <marker id="pl-net" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#1F5FA8"/></marker>
+    <marker id="pl-navy" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+  </defs>
+
+  <!-- ① hai máy, bốn tầng -->
+  <g data-s="1">
+    <text x="320" y="44" text-anchor="middle" font-size="28" font-weight="500" fill="#051A53">Máy client</text>
+    <rect x="100" y="64" width="440" height="84" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="320" y="100" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Ứng dụng</text>
+    <text x="320" y="132" text-anchor="middle" font-size="22" fill="#373D4E">chương trình client</text>
+    <rect x="100" y="160" width="440" height="84" rx="4" fill="#FFFFFF" stroke="#5B6478" stroke-width="2"/>
+    <text x="320" y="196" text-anchor="middle" font-size="26" font-weight="500" fill="#373D4E">Giao vận</text>
+    <text x="320" y="228" text-anchor="middle" font-size="22" fill="#5B6478">TCP, UDP</text>
+    <rect x="100" y="256" width="440" height="84" rx="4" fill="#FFFFFF" stroke="#5B6478" stroke-width="2"/>
+    <text x="320" y="292" text-anchor="middle" font-size="26" font-weight="500" fill="#373D4E">Mạng</text>
+    <text x="320" y="324" text-anchor="middle" font-size="22" fill="#5B6478">IP</text>
+    <rect x="100" y="352" width="440" height="84" rx="4" fill="#FFFFFF" stroke="#5B6478" stroke-width="2"/>
+    <text x="320" y="388" text-anchor="middle" font-size="26" font-weight="500" fill="#373D4E">Liên kết</text>
+    <text x="320" y="420" text-anchor="middle" font-size="22" fill="#5B6478">Ethernet, Wi-Fi</text>
+
+    <text x="1440" y="44" text-anchor="middle" font-size="28" font-weight="500" fill="#051A53">Máy server</text>
+    <rect id="pl-sv-app" x="1220" y="64" width="440" height="84" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1440" y="100" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Ứng dụng</text>
+    <text x="1440" y="132" text-anchor="middle" font-size="22" fill="#373D4E">dịch vụ tra cứu</text>
+    <rect x="1220" y="160" width="440" height="84" rx="4" fill="#FFFFFF" stroke="#5B6478" stroke-width="2"/>
+    <text x="1440" y="196" text-anchor="middle" font-size="26" font-weight="500" fill="#373D4E">Giao vận</text>
+    <text x="1440" y="228" text-anchor="middle" font-size="22" fill="#5B6478">TCP, UDP</text>
+    <rect x="1220" y="256" width="440" height="84" rx="4" fill="#FFFFFF" stroke="#5B6478" stroke-width="2"/>
+    <text x="1440" y="292" text-anchor="middle" font-size="26" font-weight="500" fill="#373D4E">Mạng</text>
+    <text x="1440" y="324" text-anchor="middle" font-size="22" fill="#5B6478">IP</text>
+    <rect x="1220" y="352" width="440" height="84" rx="4" fill="#FFFFFF" stroke="#5B6478" stroke-width="2"/>
+    <text x="1440" y="388" text-anchor="middle" font-size="26" font-weight="500" fill="#373D4E">Liên kết</text>
+    <text x="1440" y="420" text-anchor="middle" font-size="22" fill="#5B6478">Ethernet, Wi-Fi</text>
+  </g>
+
+  <!-- ② đường đi của dữ liệu: xuống các tầng, qua mạng, lên các tầng -->
+  <g data-s="2">
+    <path d="M100,106 H64 V500 H1696 V106 H1680" fill="none" stroke="#1F5FA8" stroke-width="4" marker-end="url(#pl-net)"/>
+    <text x="880" y="540" text-anchor="middle" font-size="24" fill="#1F5FA8">dữ liệu đi xuống các tầng, qua mạng, rồi đi lên các tầng ở máy đích</text>
+  </g>
+
+  <!-- ③ địa chỉ IP chọn máy -->
+  <g data-s="3">
+    <rect x="1220" y="256" width="440" height="84" rx="4" fill="none" stroke="#051A53" stroke-width="5"/>
+    <text x="1140" y="290" text-anchor="end" font-size="24" font-weight="500" fill="#051A53" font-family="Consolas, monospace">203.0.113.10</text>
+    <text x="1140" y="322" text-anchor="end" font-size="23" fill="#051A53">địa chỉ IP: chọn máy</text>
+    <line x1="1152" y1="298" x2="1212" y2="298" stroke="#051A53" stroke-width="3" marker-end="url(#pl-navy)"/>
+  </g>
+
+  <!-- ④ port chọn chương trình -->
+  <g data-s="4">
+    <rect x="1220" y="160" width="440" height="84" rx="4" fill="none" stroke="#051A53" stroke-width="5"/>
+    <text x="1140" y="194" text-anchor="end" font-size="24" font-weight="500" fill="#051A53" font-family="Consolas, monospace">port 9199</text>
+    <text x="1140" y="226" text-anchor="end" font-size="23" fill="#051A53">chọn chương trình trên máy đó</text>
+    <line x1="1152" y1="202" x2="1212" y2="202" stroke="#051A53" stroke-width="3" marker-end="url(#pl-navy)"/>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b>Endpoint</b> = địa chỉ IP + port: đích đến của dữ liệu là một chương trình trên một máy.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Phân giải tên đổi tên miền thành danh sách địa chỉ IP</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Chương trình có tên miền lookup.example.com và port 9199; resolver của hệ điều hành tra file hosts và DNS; nhận về danh sách địa chỉ 203.0.113.10 (IPv4) và 2001:db8::10 (IPv6); chọn một địa chỉ, ghép với port thành endpoint 203.0.113.10:9199.">
+  <defs>
+    <marker id="te-navy" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="te-net" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#1F5FA8"/></marker>
+    <marker id="te-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- ① chương trình có tên miền và port -->
+  <g data-s="1">
+    <rect x="20" y="40" width="380" height="180" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="210" y="84" text-anchor="middle" font-size="28" font-weight="500" fill="#051A53">Chương trình</text>
+    <text x="210" y="138" text-anchor="middle" font-size="23" fill="#373D4E" font-family="Consolas, monospace">lookup.example.com</text>
+    <text x="210" y="182" text-anchor="middle" font-size="23" fill="#373D4E" font-family="Consolas, monospace">port 9199</text>
+  </g>
+
+  <!-- ② resolver của hệ điều hành tra file hosts, DNS -->
+  <g data-s="2">
+    <line x1="400" y1="130" x2="476" y2="130" stroke="#051A53" stroke-width="3" marker-end="url(#te-navy)"/>
+    <text x="438" y="114" text-anchor="middle" font-size="22" fill="#051A53">tên</text>
+    <rect x="480" y="40" width="380" height="180" rx="4" fill="#FFFFFF" stroke="#5B6478" stroke-width="2.5"/>
+    <text x="670" y="84" text-anchor="middle" font-size="28" font-weight="500" fill="#373D4E">Resolver</text>
+    <text x="670" y="124" text-anchor="middle" font-size="23" fill="#5B6478">của hệ điều hành</text>
+    <text x="670" y="182" text-anchor="middle" font-size="23" fill="#5B6478">tra file hosts, rồi DNS</text>
+    <line x1="670" y1="222" x2="670" y2="332" stroke="#1F5FA8" stroke-width="3" stroke-dasharray="10 7" marker-start="url(#te-net)" marker-end="url(#te-net)"/>
+    <text x="690" y="284" font-size="22" fill="#1F5FA8">truy vấn qua mạng</text>
+    <rect x="530" y="336" width="280" height="96" rx="4" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2.5"/>
+    <text x="670" y="392" text-anchor="middle" font-size="26" font-weight="500" fill="#1F5FA8">DNS server</text>
+  </g>
+
+  <!-- ③ danh sách địa chỉ -->
+  <g data-s="3">
+    <line x1="860" y1="130" x2="936" y2="130" stroke="#051A53" stroke-width="3" marker-end="url(#te-navy)"/>
+    <text x="898" y="114" text-anchor="middle" font-size="22" fill="#051A53">trả về</text>
+    <rect x="940" y="40" width="380" height="180" rx="4" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1130" y="84" text-anchor="middle" font-size="28" font-weight="500" fill="#051A53">Danh sách địa chỉ</text>
+    <text x="1130" y="138" text-anchor="middle" font-size="23" fill="#373D4E" font-family="Consolas, monospace">203.0.113.10  IPv4</text>
+    <text x="1130" y="182" text-anchor="middle" font-size="23" fill="#373D4E" font-family="Consolas, monospace">2001:db8::10  IPv6</text>
+  </g>
+
+  <!-- ④ chọn một địa chỉ, ghép với port: endpoint -->
+  <g data-s="4">
+    <line x1="1320" y1="130" x2="1396" y2="130" stroke="#2F855A" stroke-width="3" marker-end="url(#te-ok)"/>
+    <text x="1358" y="114" text-anchor="middle" font-size="22" fill="#2F855A">chọn</text>
+    <rect x="1400" y="40" width="340" height="180" rx="4" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1570" y="84" text-anchor="middle" font-size="28" font-weight="500" fill="#22603F">Endpoint</text>
+    <text x="1570" y="138" text-anchor="middle" font-size="23" fill="#22603F" font-family="Consolas, monospace">203.0.113.10:9199</text>
+    <text x="1570" y="182" text-anchor="middle" font-size="22" fill="#22603F">một địa chỉ + port</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b>Phân giải tên</b>: tên miền → danh sách địa chỉ IP (IPv4, IPv6).</p><p>Endpoint = <b>một</b> địa chỉ trong danh sách + port.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Phương thức getAllByName trả về mọi địa chỉ của một tên</h1></header><main class="bo-cuc-ma"><div class="ma-hang"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">InetAddress</span>[] addresses = <span class="hl-t">InetAddress</span>.<span class="hl-m">getAllByName</span>(<span class="hl-s">"</span><span class="hl-s">localhost</span><span class="hl-s">"</span>);
+<span class="hl-k">for</span> (<span class="hl-t">InetAddress</span> address : addresses) {
+    <span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">localhost -&gt; </span><span class="hl-s">"</span> + address.<span class="hl-m">getHostAddress</span>());
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>localhost -&gt; 127.0.0.1
+localhost -&gt; 0:0:0:0:0:0:0:1</pre></div><ul class="y-nho"><li data-s="2">Một tên, hai địa chỉ: <code>127.0.0.1</code> (IPv4) và <code>::1</code> (IPv6, Java in đầy đủ <code>0:0:0:0:0:0:0:1</code>)</li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>InetSocketAddress ghép địa chỉ với port thành endpoint</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">var</span> server = <span class="hl-k">new</span> <span class="hl-m">InetSocketAddress</span>(<span class="hl-s">"</span><span class="hl-s">localhost</span><span class="hl-s">"</span>, <span class="hl-n">9199</span>);
+<span class="hl-t">System</span>.out.<span class="hl-m">println</span>(server + <span class="hl-s">"</span><span class="hl-s">  isUnresolved() = </span><span class="hl-s">"</span> + server.<span class="hl-m">isUnresolved</span>());
+
+<span class="hl-k">var</span> unknown = <span class="hl-k">new</span> <span class="hl-m">InetSocketAddress</span>(<span class="hl-s">"</span><span class="hl-s">lookup.invalid</span><span class="hl-s">"</span>, <span class="hl-n">9199</span>);
+<span class="hl-t">System</span>.out.<span class="hl-m">println</span>(unknown + <span class="hl-s">"</span><span class="hl-s">  isUnresolved() = </span><span class="hl-s">"</span> + unknown.<span class="hl-m">isUnresolved</span>());
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>localhost/127.0.0.1:9199  isUnresolved() = false
+lookup.invalid/&lt;unresolved&gt;:9199  isUnresolved() = true</pre></div><ul class="y-nho"><li data-s="2">Tên không phân giải được <b>vẫn tạo được</b> đối tượng; <code>isUnresolved()</code> trả <code>true</code></li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>Phân giải tên thành công chưa cho biết có chương trình chờ ở port đó</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1"><code>localhost/127.0.0.1:9199</code>, <code>isUnresolved() = false</code>: tên <b>đã có địa chỉ</b></li><li data-s="2">Lúc chạy, <b>không có chương trình nào</b> chờ ở port 9199 — chỉ biết được khi thiết lập kết nối ở tầng giao vận</li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Phân giải tên lookup.example.com thành công, được địa chỉ 203.0.113.10. Điều nào chắc chắn đúng?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Đang có chương trình chờ ở port 9199 trên máy đó.</div></div><div class=""><span>B</span><div>Kết nối TCP tới máy đó đã được thiết lập.</div></div><div class=""><span>C</span><div>Tên miền này chỉ có đúng một địa chỉ.</div></div><div class="dung"><span>D</span><div>Đã có địa chỉ để tạo endpoint, nhưng chưa biết có chương trình nào chờ ở port 9199.</div></div></div><div class="giai-thich">Phân giải tên chỉ đổi tên thành địa chỉ, không liên lạc với chương trình ở đích. Chỉ khi thiết lập kết nối mới biết có chương trình chờ ở port hay không. Một tên có thể có nhiều địa chỉ.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Phân giải tên lookup.example.com thành công, được địa chỉ 203.0.113.10. Điều nào chắc chắn đúng?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Đang có chương trình chờ ở port 9199 trên máy đó.</div></div><div class=""><span>B</span><div>Kết nối TCP tới máy đó đã được thiết lập.</div></div><div class=""><span>C</span><div>Tên miền này chỉ có đúng một địa chỉ.</div></div><div class="dung"><span>D</span><div>Đã có địa chỉ để tạo endpoint, nhưng chưa biết có chương trình nào chờ ở port 9199.</div></div></div><div class="giai-thich">Phân giải tên chỉ đổi tên thành địa chỉ, không liên lạc với chương trình ở đích. Chỉ khi thiết lập kết nối mới biết có chương trình chờ ở port hay không. Một tên có thể có nhiều địa chỉ.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Phương thức getAllByName trả về hai địa chỉ cho tên của server: một địa chỉ IPv4, một địa chỉ IPv6. Client nên làm gì?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Báo lỗi, vì một tên miền chỉ được có một địa chỉ.</div></div><div class="dung"><span>B</span><div>Chọn một địa chỉ để kết nối; nếu không kết nối được thì thử địa chỉ tiếp theo.</div></div><div class=""><span>C</span><div>Gửi dữ liệu tới cả hai địa chỉ cùng lúc để chắc chắn đến nơi.</div></div><div class=""><span>D</span><div>Chỉ dùng địa chỉ IPv4, vì Java không kết nối được tới địa chỉ IPv6.</div></div></div><div class="giai-thich">Một tên có thể có nhiều địa chỉ (IPv4, IPv6, nhiều server). Mỗi endpoint chỉ gồm một địa chỉ và một port, nên client chọn một địa chỉ, không kết nối được thì thử địa chỉ tiếp theo. Java hỗ trợ cả IPv4 và IPv6.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Phương thức getAllByName trả về hai địa chỉ cho tên của server: một địa chỉ IPv4, một địa chỉ IPv6. Client nên làm gì?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Báo lỗi, vì một tên miền chỉ được có một địa chỉ.</div></div><div class="dung"><span>B</span><div>Chọn một địa chỉ để kết nối; nếu không kết nối được thì thử địa chỉ tiếp theo.</div></div><div class=""><span>C</span><div>Gửi dữ liệu tới cả hai địa chỉ cùng lúc để chắc chắn đến nơi.</div></div><div class=""><span>D</span><div>Chỉ dùng địa chỉ IPv4, vì Java không kết nối được tới địa chỉ IPv6.</div></div></div><div class="giai-thich">Một tên có thể có nhiều địa chỉ (IPv4, IPv6, nhiều server). Mỗi endpoint chỉ gồm một địa chỉ và một port, nên client chọn một địa chỉ, không kết nối được thì thử địa chỉ tiếp theo. Java hỗ trợ cả IPv4 và IPv6.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div>Đích đến là <b>endpoint</b> = địa chỉ IP (chọn máy) + port (chọn chương trình)</div></div><div class="the" data-s="2"><span class="so">2</span><div><b>Phân giải tên</b> do resolver của hệ điều hành thực hiện: tên miền → danh sách địa chỉ IPv4, IPv6</div></div><div class="the" data-s="3"><span class="so">3</span><div>Java: <code>InetAddress</code> là địa chỉ, <code>InetSocketAddress</code> là endpoint; phân giải được chưa có nghĩa có chương trình chờ ở port</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>phân lớp giao thức</span><span>địa chỉ IP</span><span>tên miền</span><span>phân giải tên</span><span>DNS</span><span>port</span><span>endpoint</span><span>InetSocketAddress</span></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>IPv6 và <span style="white-space:nowrap">dual-stack</span>: thứ tự ưu tiên địa chỉ khi kết nối</li><li>Cache DNS của JVM (networkaddress.cache.ttl)</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Viết chương trình nhận tên miền từ dòng lệnh, in mọi địa chỉ phân giải được và loại của từng địa chỉ (IPv4 hay IPv6, loopback hay không).</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Giao vận: TCP, UDP và mô hình ứng dụng mạng</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Mình bắt đầu Chương 1, tổng quan lập trình mạng. Phần đầu tiên của chương trả lời câu hỏi: một chương trình muốn gửi dữ liệu tới chương trình trên máy khác thì phải chỉ định đích đến bằng những giá trị nào.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:13</span>
+      <h3>Giới thiệu chương</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chương 1 đặt nền cho các chương sau: xác định đích đến trên mạng, chọn giao thức giao vận, rồi đọc và ghi dữ liệu qua stream của Java. Chương gồm sáu phần, chia làm ba nhóm. Nhóm định danh có một phần: địa chỉ IP, tên miền, port và endpoint. Nhóm giao vận có một phần: TCP, UDP và mô hình ứng dụng mạng. Nhóm stream gồm bốn phần. Đầu tiên là byte stream, contract của read và write, decorator và buffer. Tiếp theo là dữ liệu có kiểu với DataStream và ObjectStream. Sau đó là character stream, charset và framing message. Cuối cùng là bài toán ứng dụng, đặc tả và thử giao thức tra cứu.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide lộ trình sinh từ kế hoạch; ba nhóm hiện lần lượt, phần hiện tại được tô nổi.
+Hiện dần: bước 1 khi đọc “Nhóm định danh”; bước 2 khi đọc “Nhóm giao vận”; bước 3 khi đọc “Nhóm stream”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:58</span>
+      <h3>Slide 1. Muốn gửi dữ liệu, chương trình phải chỉ định được đích đến</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Chương trình mạng gửi dữ liệu cho **một chương trình khác**, thường chạy trên một máy khác</li><li>Ví dụ xuyên suốt học phần: client gửi một dòng chứa khóa tới **dịch vụ tra cứu**, server trả lại một dòng kết quả</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** đích đến được chỉ định bằng những giá trị nào, và Java biểu diễn các giá trị đó ra sao?</div></div>
+    <div class="kb-thoai"><p>Mọi chương trình mạng đều bắt đầu từ một việc: gửi dữ liệu cho chương trình khác, thường chạy trên máy khác. Ví dụ xuyên suốt học phần là dịch vụ tra cứu: client gửi một dòng chứa khóa, server trả lại một dòng kết quả. Trước khi gửi được dòng đầu tiên, client phải chỉ định server nằm ở đâu. Câu hỏi của phần này là: đích đến được chỉ định bằng những giá trị nào, và Java biểu diễn các giá trị đó ra sao?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hai ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Mọi chương trình mạng”; bước 2 khi đọc “Ví dụ xuyên suốt”; bước 3 khi đọc “Câu hỏi của phần này”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:24</span>
+      <h3>Slide 2. Địa chỉ IP chọn máy, port chọn chương trình trên máy đó</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Endpoint** = địa chỉ IP + port: đích đến của dữ liệu là một chương trình trên một máy.</li></ul></div></div>
+    <div class="kb-thoai"><p>Các bạn đã học ở môn Mạng máy tính: mạng được tổ chức thành các tầng, gọi là phân lớp giao thức, protocol layering. Mỗi tầng dùng dịch vụ của tầng ngay dưới nó. Chương trình của chúng ta nằm ở tầng ứng dụng và dùng dịch vụ của tầng giao vận, tức TCP hoặc UDP. Dữ liệu đi xuống các tầng ở máy gửi, qua mạng, rồi đi lên các tầng ở máy nhận. Tại đó, cần hai giá trị để dữ liệu đến đúng chỗ. Địa chỉ IP, ví dụ 203.0.113.10, xác định máy ở tầng mạng, chính xác hơn là một network interface của máy. Port là một số từ 0 đến 65535 ở tầng giao vận, xác định chương trình nào trên máy đó nhận dữ liệu. Dịch vụ tra cứu dùng port 9199. Cặp địa chỉ IP và port gọi là endpoint. Đích đến của dữ liệu là một chương trình trên một máy.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình phan-lop: bốn bước của hình, bước 5 là ô kết luận. Lướt nhanh hai chồng tầng (kiến thức đã học), dừng lâu ở hai nhãn địa chỉ IP và port.
+Hiện dần: bước 1 khi đọc “mạng được tổ chức thành các tầng”; bước 2 khi đọc “Dữ liệu đi xuống các tầng”; bước 3 khi đọc “Địa chỉ IP, ví dụ”; bước 4 khi đọc “Port là một số”; bước 5 khi đọc “Cặp địa chỉ IP và port”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:20</span>
+      <h3>Slide 3. Phân giải tên đổi tên miền thành danh sách địa chỉ IP</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Phân giải tên**: tên miền → danh sách địa chỉ IP (IPv4, IPv6).</li><li>Endpoint = **một** địa chỉ trong danh sách + port.</li></ul></div></div>
+    <div class="kb-thoai"><p>Chương trình thường chỉ biết tên miền, ví dụ lookup.example.com, cùng port 9199. Việc đổi tên miền thành địa chỉ IP gọi là phân giải tên, name resolution. Chương trình Java không tự làm việc này. Resolver của hệ điều hành tra file hosts trên máy trước, không có thì gửi truy vấn qua mạng tới DNS server. DNS là hệ thống tên miền, Domain Name System. Kết quả là một danh sách, không phải một địa chỉ duy nhất. Một tên có thể có cả địa chỉ IPv4 32 bit lẫn IPv6 128 bit. Dịch vụ lớn còn có nhiều server, mỗi server một địa chỉ. Chương trình chọn một địa chỉ trong danh sách và ghép với port thành endpoint. Nếu không kết nối được tới địa chỉ đó, chương trình tự thử địa chỉ tiếp theo. Muốn vậy, chương trình phải lấy cả danh sách. Vì vậy, tên miền và port chưa phải là endpoint. Endpoint chỉ có sau bước phân giải tên.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình ten-mien-endpoint: bốn bước của hình, bước 5 là hai ô kết luận. Tên miền và địa chỉ trong hình thuộc dải dành cho tài liệu (RFC 2606, RFC 5737, RFC 3849), không trỏ tới máy thật.
+Hiện dần: bước 1 khi đọc “Chương trình thường chỉ biết tên miền”; bước 2 khi đọc “Resolver của hệ điều hành”; bước 3 khi đọc “Kết quả là một danh sách”; bước 4 khi đọc “Chương trình chọn một địa chỉ”; bước 5 khi đọc “Vì vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:22</span>
+      <h3>Slide 4. Phương thức getAllByName trả về mọi địa chỉ của một tên</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Một tên, hai địa chỉ: `127.0.0.1` (IPv4) và `::1` (IPv6, Java in đầy đủ `0:0:0:0:0:0:0:1`)</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/endpoint/ResolveDemo.java</span><pre><code>InetAddress[] addresses = InetAddress.getAllByName(&quot;localhost&quot;);
+for (InetAddress address : addresses) {
+    System.out.println(&quot;localhost -&gt; &quot; + address.getHostAddress());
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Trong Java, một địa chỉ IP là một đối tượng InetAddress. Phương thức tĩnh getAllByName nhận một tên và trả về mảng mọi địa chỉ của tên đó. Bên dưới, phương thức này gọi resolver của hệ điều hành. Đoạn mã duyệt mảng và in từng địa chỉ. Tên được dùng là localhost, tên của chính máy đang chạy chương trình. Trước khi chạy, các bạn dự đoán: localhost có mấy địa chỉ? Chạy chương trình. Kết quả có hai dòng. Địa chỉ 127.0.0.1 là địa chỉ IPv4. Địa chỉ thứ hai là địa chỉ IPv6, viết rút gọn là hai chấm hai chấm một, Java in đầy đủ tám nhóm. Một tên, hai địa chỉ, đúng như danh sách trong hình.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả chạy phía dưới. Highlight dòng getAllByName khi đọc &quot;nhận một tên&quot;. Sau câu &quot;localhost có mấy địa chỉ?&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện. Có thể thay khung kết quả bằng clip replay terminal (mở bằng java -version: clip demo đầu tiên của chương).
+Hiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Một tên, hai địa chỉ”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:18</span>
+      <h3>Slide 5. InetSocketAddress ghép địa chỉ với port thành endpoint</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Tên không phân giải được **vẫn tạo được** đối tượng; `isUnresolved()` trả `true`</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/endpoint/EndpointDemo.java</span><pre><code>var server = new InetSocketAddress(&quot;localhost&quot;, 9199);
+System.out.println(server + &quot;  isUnresolved() = &quot; + server.isUnresolved());
+
+var unknown = new InetSocketAddress(&quot;lookup.invalid&quot;, 9199);
+System.out.println(unknown + &quot;  isUnresolved() = &quot; + unknown.isUnresolved());</code></pre></div></div>
+    <div class="kb-thoai"><p>Endpoint trong Java là một đối tượng InetSocketAddress, gồm một địa chỉ và một port. Constructor của InetSocketAddress nhận tên và port, và phân giải tên ngay khi tạo đối tượng. Đoạn mã tạo hai đối tượng InetSocketAddress: localhost với port 9199, và lookup.invalid với port 9199. Đuôi invalid là tên miền dành riêng, không bao giờ phân giải được. Chạy chương trình. Dòng đầu in tên, địa chỉ 127.0.0.1 và port 9199. Phương thức isUnresolved trả false, tức tên đã được phân giải. Dòng thứ hai in chữ unresolved ở vị trí địa chỉ, và phương thức isUnresolved trả true. Đối tượng này chưa phải endpoint, vì chưa có địa chỉ. Constructor không ném ngoại lệ khi tên không phân giải được. Chương trình phải tự kiểm tra bằng phương thức isUnresolved, nếu không thì lời gọi kết nối sau này mới ném UnknownHostException.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã bên trái, kết quả chạy bên phải (hoặc trên, dưới nếu mã dài). Highlight hai dòng new InetSocketAddress lần lượt theo lời đọc; trong khung kết quả, khoanh &lt;unresolved&gt; khi đọc &quot;chữ unresolved&quot;.
+Hiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Dòng thứ hai”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:27</span>
+      <h3>Slide 6. Phân giải tên thành công chưa cho biết có chương trình chờ ở port đó</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>`localhost/127.0.0.1:9199`, `isUnresolved() = false`: tên **đã có địa chỉ**</li><li>Lúc chạy, **không có chương trình nào** chờ ở port 9199 — chỉ biết được khi thiết lập kết nối ở tầng giao vận</li></ul></div>
+    <div class="kb-thoai"><p>Quay lại dòng đầu của kết quả: endpoint localhost với port 9199 đã có địa chỉ. Điều đó chưa cho biết có chương trình nào đang chờ ở port 9199. Thực tế, lúc chạy đoạn mã, port này đang trống, nhưng endpoint vẫn tạo được bình thường. Phân giải tên chỉ đổi tên thành địa chỉ, không liên lạc với chương trình ở đích. Chỉ khi thiết lập kết nối ở tầng giao vận mới biết có chương trình chờ ở port hay không. Chương 2, về socket TCP, sẽ xử lý trường hợp port đích không có chương trình nào chờ.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hai ý hiện lần lượt. Có thể chèn dòng netstat -ano không có kết quả cho port 9199 (chụp cùng lần chạy) bên cạnh ý thứ hai.
+Hiện dần: bước 1 khi đọc “Quay lại dòng đầu”; bước 2 khi đọc “Thực tế, lúc chạy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:59</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Hai câu hỏi sau kiểm tra phân giải tên và endpoint.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Phân giải tên lookup.example.com thành công, được địa chỉ 203.0.113.10. Điều nào chắc chắn đúng?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Đang có chương trình chờ ở port 9199 trên máy đó.</li>
+      <li><b>B.</b> Kết nối TCP tới máy đó đã được thiết lập.</li>
+      <li><b>C.</b> Tên miền này chỉ có đúng một địa chỉ.</li>
+      <li><b>D.</b> Đã có địa chỉ để tạo endpoint, nhưng chưa biết có chương trình nào chờ ở port 9199.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: D</b> — <span>Phân giải tên chỉ đổi tên thành địa chỉ, không liên lạc với chương trình ở đích. Chỉ khi thiết lập kết nối mới biết có chương trình chờ ở port hay không. Một tên có thể có nhiều địa chỉ.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án đúng là D. Phân giải tên chỉ cho địa chỉ. Chỉ khi thiết lập kết nối mới biết có chương trình chờ ở port hay không.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án D được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:17</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu thứ hai về trường hợp một tên có nhiều địa chỉ.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Phương thức getAllByName trả về hai địa chỉ cho tên của server: một địa chỉ IPv4, một địa chỉ IPv6. Client nên làm gì?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Báo lỗi, vì một tên miền chỉ được có một địa chỉ.</li>
+      <li><b>B.</b> Chọn một địa chỉ để kết nối; nếu không kết nối được thì thử địa chỉ tiếp theo.</li>
+      <li><b>C.</b> Gửi dữ liệu tới cả hai địa chỉ cùng lúc để chắc chắn đến nơi.</li>
+      <li><b>D.</b> Chỉ dùng địa chỉ IPv4, vì Java không kết nối được tới địa chỉ IPv6.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: B</b> — <span>Một tên có thể có nhiều địa chỉ (IPv4, IPv6, nhiều server). Mỗi endpoint chỉ gồm một địa chỉ và một port, nên client chọn một địa chỉ, không kết nối được thì thử địa chỉ tiếp theo. Java hỗ trợ cả IPv4 và IPv6.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là B. Endpoint chỉ gồm một địa chỉ. Danh sách cho phép thử lần lượt khi một địa chỉ không kết nối được.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án B.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:35</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Đích đến là **endpoint** = địa chỉ IP (chọn máy) + port (chọn chương trình)</li><li>**Phân giải tên** do resolver của hệ điều hành thực hiện: tên miền → danh sách địa chỉ IPv4, IPv6</li><li>Java: `InetAddress` là địa chỉ, `InetSocketAddress` là endpoint; phân giải được chưa có nghĩa có chương trình chờ ở port</li></ul></div>
+    <div class="kb-thoai"><p>Trả lời câu hỏi của phần: đích đến của dữ liệu là endpoint, gồm địa chỉ IP để chọn máy và port để chọn chương trình. Tên miền phải qua phân giải tên, do resolver của hệ điều hành thực hiện, và cho ra một danh sách địa chỉ. Trong Java, InetAddress biểu diễn địa chỉ, InetSocketAddress biểu diễn endpoint. Phân giải tên thành công chưa cho biết có chương trình chờ ở port. Các từ khóa cần nhớ gồm phân lớp giao thức, địa chỉ IP, tên miền, phân giải tên, DNS, port, endpoint và InetSocketAddress.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “đích đến của dữ liệu là endpoint”; bước 2 khi đọc “Tên miền phải qua phân giải tên”; bước 3 khi đọc “Trong Java”; bước 4 khi đọc “Các từ khóa cần nhớ”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:10</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chủ đề nâng cao của phần gồm hai mục. Thứ nhất là IPv6 và dual-stack: khi một tên có cả địa chỉ IPv4 và IPv6, chương trình ưu tiên địa chỉ nào trước. Thứ hai là cache DNS của JVM, quyết định kết quả phân giải được giữ lại bao lâu. Bài tập mở rộng: viết chương trình nhận tên miền từ dòng lệnh, in mọi địa chỉ phân giải được và loại của từng địa chỉ.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Chủ đề nâng cao của phần”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-12" data-index="12">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:34</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(12)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(12, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Đã có endpoint, nhưng chưa chọn cách gửi dữ liệu tới endpoint đó. Phần tiếp theo, về TCP, UDP và mô hình ứng dụng mạng, so sánh hai dịch vụ của tầng giao vận và cách chọn giữa chúng.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V02", "tieu_de": "Định danh: địa chỉ IP, tên miền, port và endpoint", "giong": "vi-VN-NamMinhNeural", "tong": 468.18, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/9afa8ef3553e4e88.mp3", "dur": 13.27, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Mình", 1], [2.25, "bắt", 1], [2.413, "đầu", 1], [2.625, "Chương", 1], [2.888, "1,", 1], [3.388, "tổng", 1], [3.638, "quan", 1], [3.875, "lập", 1], [4.075, "trình", 1], [4.287, "mạng.", 1], [5.475, "Phần", 2], [5.725, "đầu", 2], [5.875, "tiên", 2], [6.138, "của", 2], [6.25, "chương", 2], [6.5, "trả", 2], [6.675, "lời", 2], [6.825, "câu", 2], [7.025, "hỏi:", 2], [7.588, "một", 2], [7.812, "chương", 2], [8.025, "trình", 2], [8.213, "muốn", 2], [8.4, "gửi", 2], [8.575, "dữ", 2], [8.75, "liệu", 2], [8.988, "tới", 2], [9.162, "chương", 2], [9.387, "trình", 2], [9.6, "trên", 2], [9.762, "máy", 2], [9.912, "khác", 2], [10.188, "thì", 2], [10.338, "phải", 2], [10.5, "chỉ", 2], [10.688, "định", 2], [10.887, "đích", 2], [11.075, "đến", 2], [11.325, "bằng", 2], [11.525, "những", 2], [11.75, "giá", 2], [11.925, "trị", 2], [12.137, "nào.", 2]], "cues": [], "lang": 0.6}, {"ten": "Giới thiệu chương", "loai": "mo-chuong", "slide": "CH", "dung": "Slide lộ trình sinh từ kế hoạch; ba nhóm hiện lần lượt, phần hiện tại được tô nổi.\nHiện dần: bước 1 khi đọc “Nhóm định danh”; bước 2 khi đọc “Nhóm giao vận”; bước 3 khi đọc “Nhóm stream”.", "start": 13.87, "audio": "audio/be650d350e81cf2e.mp3", "dur": 43.99, "words": [[0.1, "Chương", 0], [0.425, "1", 0], [0.562, "đặt", 0], [0.75, "nền", 0], [0.975, "cho", 0], [1.1, "các", 0], [1.262, "chương", 0], [1.462, "sau:", 0], [1.988, "xác", 0], [2.25, "định", 0], [2.438, "đích", 0], [2.612, "đến", 0], [2.862, "trên", 0], [3.05, "mạng,", 0], [3.562, "chọn", 0], [3.875, "giao", 0], [4.05, "thức", 0], [4.237, "giao", 0], [4.45, "vận,", 0], [4.963, "rồi", 0], [5.213, "đọc", 0], [5.425, "và", 0], [5.575, "ghi", 0], [5.763, "dữ", 0], [5.963, "liệu", 0], [6.175, "qua", 0], [6.375, "stream", 0], [6.7, "của", 0], [6.875, "Java.", 0], [8.188, "Chương", 1], [8.55, "gồm", 1], [8.762, "sáu", 1], [9.012, "phần,", 1], [9.512, "chia", 1], [9.838, "làm", 1], [10.1, "ba", 1], [10.338, "nhóm.", 1], [11.562, "Nhóm", 2], [11.925, "định", 2], [12.125, "danh", 2], [12.338, "có", 2], [12.425, "một", 2], [12.6, "phần:", 2], [13.1, "địa", 2], [13.35, "chỉ", 2], [13.881, "IP,", 2], [14.412, "tên", 2], [14.625, "miền,", 2], [15.125, "port", 2], [15.412, "và", 2], [15.7, "endpoint.", 2], [17.075, "Nhóm", 3], [17.45, "giao", 3], [17.675, "vận", 3], [17.9, "có", 3], [18.0, "một", 3], [18.175, "phần:", 3], [18.208, "TCP,", 3], [18.242, "UDP", 3], [18.275, "và", 3], [18.308, "mô", 3], [18.342, "hình", 3], [18.375, "ứng", 3], [18.408, "dụng", 3], [18.442, "mạng.", 3], [18.475, "Nhóm", 4], [18.508, "stream", 4], [18.542, "gồm", 4], [18.575, "bốn", 4], [18.608, "phần.", 4], [18.642, "Đầu", 5], [18.675, "tiên", 5], [18.916, "là", 5], [19.157, "byte", 5], [19.398, "stream,", 5], [19.64, "contract", 5], [19.881, "của", 5], [20.122, "read", 5], [20.363, "và", 5], [20.382, "write,", 5], [20.401, "decorator", 5], [20.421, "và", 5], [20.44, "buffer.", 5], [20.459, "Tiếp", 6], [20.478, "theo", 6], [20.497, "là", 6], [20.516, "dữ", 6], [20.535, "liệu", 6], [20.555, "có", 6], [20.574, "kiểu", 6], [20.593, "với", 6], [20.612, "DataStream", 6], [20.631, "và", 6], [20.651, "ObjectStream.", 6], [20.67, "Sau", 7], [20.689, "đó", 7], [20.708, "là", 7], [20.727, "character", 7], [20.746, "stream,", 7], [20.765, "charset", 7], [20.785, "và", 7], [20.804, "framing", 7], [20.823, "message.", 7], [20.842, "Cuối", 8], [20.861, "cùng", 8], [20.88, "là", 8], [20.9, "bài", 8], [20.919, "toán", 8], [20.938, "ứng", 8], [21.1, "dụng,", 8], [21.1, "đặc", 8], [21.1, "tả", 8], [21.1, "và", 8], [21.1, "thử", 8], [21.1, "giao", 8], [21.1, "thức", 8], [21.1, "tra", 8], [21.1, "cứu.", 8]], "cues": [11.562, 17.075, 18.475], "lang": 0.6}, {"ten": "Slide 1. Muốn gửi dữ liệu, chương trình phải chỉ định được đích đến", "loai": "slide", "slide": "S01", "dung": "Hai ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Mọi chương trình mạng”; bước 2 khi đọc “Ví dụ xuyên suốt”; bước 3 khi đọc “Câu hỏi của phần này”.", "start": 58.46, "audio": "audio/c35b571e7d5ebedf.mp3", "dur": 25.1, "words": [[0.1, "Mọi", 0], [0.463, "chương", 0], [0.713, "trình", 0], [0.9, "mạng", 0], [1.163, "đều", 0], [1.288, "bắt", 0], [1.462, "đầu", 0], [1.675, "từ", 0], [1.825, "một", 0], [2.0, "việc:", 0], [2.487, "gửi", 0], [2.737, "dữ", 0], [2.938, "liệu", 0], [3.2, "cho", 0], [3.35, "chương", 0], [3.587, "trình", 0], [3.775, "khác,", 0], [4.263, "thường", 0], [4.513, "chạy", 0], [4.775, "trên", 0], [4.975, "máy", 0], [5.138, "khác.", 0], [6.275, "Ví", 1], [6.575, "dụ", 1], [6.775, "xuyên", 1], [7.037, "suốt", 1], [7.225, "học", 1], [7.4, "phần", 1], [7.662, "là", 1], [7.787, "dịch", 1], [7.975, "vụ", 1], [8.188, "tra", 1], [8.363, "cứu:", 1], [8.938, "client", 1], [9.4, "gửi", 1], [9.562, "một", 1], [9.75, "dòng", 1], [9.988, "chứa", 1], [10.213, "khóa,", 1], [10.787, "server", 1], [11.213, "trả", 1], [11.438, "lại", 1], [11.588, "một", 1], [11.787, "dòng", 1], [12.037, "kết", 1], [12.238, "quả.", 1], [13.5, "Trước", 2], [13.75, "khi", 2], [13.912, "gửi", 2], [14.137, "được", 2], [14.3, "dòng", 2], [14.512, "đầu", 2], [14.675, "tiên,", 2], [15.238, "client", 2], [15.7, "phải", 2], [15.863, "chỉ", 2], [16.05, "định", 2], [16.262, "server", 2], [16.725, "nằm", 2], [17.012, "ở", 2], [17.1, "đâu.", 2], [18.212, "Câu", 3], [18.413, "hỏi", 3], [18.637, "của", 3], [18.775, "phần", 3], [18.962, "này", 3], [19.113, "là:", 3], [19.587, "đích", 3], [19.8, "đến", 3], [20.05, "được", 3], [20.2, "chỉ", 3], [20.363, "định", 3], [20.6, "bằng", 3], [20.788, "những", 3], [21.025, "giá", 3], [21.2, "trị", 3], [21.4, "nào,", 3], [21.875, "và", 3], [22.15, "Java", 3], [22.525, "biểu", 3], [22.725, "diễn", 3], [23.0, "các", 3], [23.175, "giá", 3], [23.35, "trị", 3], [23.562, "đó", 3], [23.788, "ra", 3], [23.913, "sao?", 3]], "cues": [0.1, 6.275, 18.212], "lang": 0.6}, {"ten": "Slide 2. Địa chỉ IP chọn máy, port chọn chương trình trên máy đó", "loai": "slide", "slide": "S02", "dung": "Hình phan-lop: bốn bước của hình, bước 5 là ô kết luận. Lướt nhanh hai chồng tầng (kiến thức đã học), dừng lâu ở hai nhãn địa chỉ IP và port.\nHiện dần: bước 1 khi đọc “mạng được tổ chức thành các tầng”; bước 2 khi đọc “Dữ liệu đi xuống các tầng”; bước 3 khi đọc “Địa chỉ IP, ví dụ”; bước 4 khi đọc “Port là một số”; bước 5 khi đọc “Cặp địa chỉ IP và port”.", "start": 84.16, "audio": "audio/1f4f34c063261788.mp3", "dur": 53.64, "words": [[0.1, "Các", 0], [0.3, "bạn", 0], [0.537, "đã", 0], [0.637, "học", 0], [0.875, "ở", 0], [0.963, "môn", 0], [1.2, "Mạng", 0], [1.413, "máy", 0], [1.55, "tính:", 0], [2.1, "mạng", 0], [2.375, "được", 0], [2.525, "tổ", 0], [2.675, "chức", 0], [2.875, "thành", 0], [3.1, "các", 0], [3.275, "tầng,", 0], [3.763, "gọi", 0], [4.062, "là", 0], [4.175, "phân", 0], [4.375, "lớp", 0], [4.575, "giao", 0], [4.775, "thức,", 0], [5.213, "protocol", 0], [5.938, "layering.", 0], [7.487, "Mỗi", 1], [7.888, "tầng", 1], [8.125, "dùng", 1], [8.338, "dịch", 1], [8.525, "vụ", 1], [8.775, "của", 1], [8.912, "tầng", 1], [9.175, "ngay", 1], [9.412, "dưới", 1], [9.6, "nó.", 1], [10.8, "Chương", 2], [11.1, "trình", 2], [11.325, "của", 2], [11.425, "chúng", 2], [11.6, "ta", 2], [11.812, "nằm", 2], [12.05, "ở", 2], [12.137, "tầng", 2], [12.425, "ứng", 2], [12.575, "dụng", 2], [12.825, "và", 2], [12.938, "dùng", 2], [13.137, "dịch", 2], [13.3, "vụ", 2], [13.525, "của", 2], [13.662, "tầng", 2], [13.875, "giao", 2], [14.062, "vận,", 2], [14.588, "tức", 2], [15.006, "TCP", 2], [15.425, "hoặc", 2], [16.312, "UDP.", 2], [17.2, "Dữ", 3], [17.475, "liệu", 3], [17.725, "đi", 3], [17.863, "xuống", 3], [18.113, "các", 3], [18.275, "tầng", 3], [18.538, "ở", 3], [18.625, "máy", 3], [18.837, "gửi,", 3], [19.425, "qua", 3], [19.65, "mạng,", 3], [20.175, "rồi", 3], [20.475, "đi", 3], [20.6, "lên", 3], [20.812, "các", 3], [20.988, "tầng", 3], [21.262, "ở", 3], [21.337, "máy", 3], [21.538, "nhận.", 3], [22.738, "Tại", 4], [23.05, "đó,", 4], [23.55, "cần", 4], [23.788, "hai", 4], [23.975, "giá", 4], [24.15, "trị", 4], [24.438, "để", 4], [24.562, "dữ", 4], [24.762, "liệu", 4], [25.012, "đến", 4], [25.225, "đúng", 4], [25.413, "chỗ.", 4], [26.675, "Địa", 5], [26.925, "chỉ", 5], [27.4, "IP,", 5], [27.875, "ví", 5], [28.1, "dụ", 5], [28.1, "203.0.113.10,", 5], [28.1, "xác", 5], [28.1, "định", 5], [28.1, "máy", 5], [28.1, "ở", 5], [28.1, "tầng", 5], [28.1, "mạng,", 5], [28.1, "chính", 5], [28.1, "xác", 5], [28.1, "hơn", 5], [28.1, "là", 5], [28.1, "một", 5], [28.1, "network", 5], [28.1, "interface", 5], [28.1, "của", 5], [28.1, "máy.", 5], [28.1, "Port", 6], [28.1, "là", 6], [28.1, "một", 6], [28.1, "số", 6], [28.1, "từ", 6], [28.1, "0", 6], [28.1, "đến", 6], [28.1, "65535", 6], [28.1, "ở", 6], [28.1, "tầng", 6], [28.1, "giao", 6], [28.1, "vận,", 6], [28.1, "xác", 6], [28.1, "định", 6], [28.1, "chương", 6], [28.1, "trình", 6], [28.1, "nào", 6], [28.1, "trên", 6], [28.1, "máy", 6], [28.1, "đó", 6], [28.1, "nhận", 6], [28.1, "dữ", 6], [28.1, "liệu.", 6], [28.1, "Dịch", 7], [28.1, "vụ", 7], [28.1, "tra", 7], [28.1, "cứu", 7], [28.1, "dùng", 7], [28.1, "port", 7], [28.1, "9199.", 7], [28.1, "Cặp", 8], [28.1, "địa", 8], [28.1, "chỉ", 8], [28.1, "IP", 8], [28.1, "và", 8], [28.1, "port", 8], [28.1, "gọi", 8], [28.1, "là", 8], [28.1, "endpoint.", 8], [28.1, "Đích", 9], [28.1, "đến", 9], [28.1, "của", 9], [28.1, "dữ", 9], [28.1, "liệu", 9], [28.1, "là", 9], [28.1, "một", 9], [28.1, "chương", 9], [28.1, "trình", 9], [28.1, "trên", 9], [28.1, "một", 9], [28.1, "máy.", 9]], "cues": [2.1, 17.2, 26.675, 28.1, 28.1], "lang": 2.6}, {"ten": "Slide 3. Phân giải tên đổi tên miền thành danh sách địa chỉ IP", "loai": "slide", "slide": "S03", "dung": "Hình ten-mien-endpoint: bốn bước của hình, bước 5 là hai ô kết luận. Tên miền và địa chỉ trong hình thuộc dải dành cho tài liệu (RFC 2606, RFC 5737, RFC 3849), không trỏ tới máy thật.\nHiện dần: bước 1 khi đọc “Chương trình thường chỉ biết tên miền”; bước 2 khi đọc “Resolver của hệ điều hành”; bước 3 khi đọc “Kết quả là một danh sách”; bước 4 khi đọc “Chương trình chọn một địa chỉ”; bước 5 khi đọc “Vì vậy”.", "start": 140.4, "audio": "audio/1ae66dd87374cdb9.mp3", "dur": 59.59, "words": [[0.1, "Chương", 0], [0.425, "trình", 0], [0.625, "thường", 0], [0.838, "chỉ", 0], [0.975, "biết", 0], [1.175, "tên", 0], [1.375, "miền,", 0], [1.825, "ví", 0], [2.05, "dụ", 0], [2.275, "lookup.example.com,", 0], [4.4, "cùng", 0], [4.662, "port", 0], [5.694, "9199.", 0], [6.725, "Việc", 1], [6.987, "đổi", 1], [7.175, "tên", 1], [7.4, "miền", 1], [7.612, "thành", 1], [7.812, "địa", 1], [8.012, "chỉ", 1], [8.3, "IP", 1], [8.588, "gọi", 1], [8.812, "là", 1], [8.925, "phân", 1], [9.15, "giải", 1], [9.35, "tên,", 1], [9.912, "name", 1], [10.275, "resolution.", 1], [11.963, "Chương", 2], [12.312, "trình", 2], [12.55, "Java", 2], [12.975, "không", 2], [13.238, "tự", 2], [13.425, "làm", 2], [13.65, "việc", 2], [13.838, "này.", 2], [14.925, "Resolver", 3], [15.575, "của", 3], [15.738, "hệ", 3], [15.938, "điều", 3], [16.1, "hành", 3], [16.325, "tra", 3], [16.5, "file", 3], [16.675, "hosts", 3], [16.95, "trên", 3], [17.125, "máy", 3], [17.288, "trước,", 3], [17.775, "không", 3], [18.012, "có", 3], [18.2, "thì", 3], [18.363, "gửi", 3], [18.575, "truy", 3], [18.762, "vấn", 3], [18.975, "qua", 3], [19.137, "mạng", 3], [19.4, "tới", 3], [19.762, "DNS", 3], [20.125, "server.", 3], [21.175, "DNS", 4], [22.225, "là", 4], [22.413, "hệ", 4], [22.575, "thống", 4], [22.812, "tên", 4], [23.025, "miền,", 4], [23.488, "Domain", 4], [23.938, "Name", 4], [24.15, "System.", 4], [25.538, "Kết", 5], [25.8, "quả", 5], [26.075, "là", 5], [26.163, "một", 5], [26.35, "danh", 5], [26.55, "sách,", 5], [26.975, "không", 5], [27.25, "phải", 5], [27.425, "một", 5], [27.613, "địa", 5], [27.812, "chỉ", 5], [28.087, "duy", 5], [28.275, "nhất.", 5], [29.375, "Một", 6], [29.762, "tên", 6], [29.962, "có", 6], [30.075, "thể", 6], [30.238, "có", 6], [30.35, "cả", 6], [30.525, "địa", 6], [30.712, "chỉ", 6], [31.25, "IPv4", 6], [31.788, "32", 6], [32.212, "bit", 6], [32.7, "lẫn", 6], [33.225, "IPv6", 6], [33.75, "128", 6], [34.812, "bit.", 6], [35.837, "Dịch", 7], [36.1, "vụ", 7], [36.337, "lớn", 7], [36.625, "còn", 7], [36.85, "có", 7], [36.975, "nhiều", 7], [37.188, "server,", 7], [37.938, "mỗi", 7], [38.188, "server", 7], [38.612, "một", 7], [38.825, "địa", 7], [39.013, "chỉ.", 7], [40.288, "Chương", 8], [40.612, "trình", 8], [40.812, "chọn", 8], [41.062, "một", 8], [41.2, "địa", 8], [41.388, "chỉ", 8], [41.663, "trong", 8], [41.862, "danh", 8], [42.05, "sách", 8], [42.275, "và", 8], [42.575, "ghép", 8], [42.825, "với", 8], [43.013, "port", 8], [43.263, "thành", 8], [43.525, "endpoint.", 8], [44.825, "Nếu", 9], [45.288, "không", 9], [45.538, "kết", 9], [45.725, "nối", 9], [45.95, "được", 9], [46.112, "tới", 9], [46.263, "địa", 9], [46.438, "chỉ", 9], [46.638, "đó,", 9], [47.15, "chương", 9], [47.45, "trình", 9], [47.675, "tự", 9], [47.837, "thử", 9], [48.038, "địa", 9], [48.25, "chỉ", 9], [48.45, "tiếp", 9], [48.65, "theo.", 9], [49.8, "Muốn", 10], [50.212, "vậy,", 10], [50.7, "chương", 10], [51.013, "trình", 10], [51.25, "phải", 10], [51.413, "lấy", 10], [51.6, "cả", 10], [51.8, "danh", 10], [52.013, "sách.", 10], [53.112, "Vì", 11], [53.362, "vậy,", 11], [53.862, "tên", 11], [54.075, "miền", 11], [54.337, "và", 11], [54.462, "port", 11], [54.712, "chưa", 11], [54.925, "phải", 11], [55.163, "là", 11], [55.325, "endpoint.", 11], [56.675, "Endpoint", 12], [57.225, "chỉ", 12], [57.413, "có", 12], [57.538, "sau", 12], [57.725, "bước", 12], [57.913, "phân", 12], [58.163, "giải", 12], [58.4, "tên.", 12]], "cues": [0.1, 14.925, 25.538, 40.288, 53.112], "lang": 2.6}, {"ten": "Slide 4. Phương thức getAllByName trả về mọi địa chỉ của một tên", "loai": "slide", "slide": "S04", "dung": "Mã phía trên, kết quả chạy phía dưới. Highlight dòng getAllByName khi đọc \"nhận một tên\". Sau câu \"localhost có mấy địa chỉ?\", dừng khoảng 2 giây trước khi khung kết quả hiện. Có thể thay khung kết quả bằng clip replay terminal (mở bằng java -version: clip demo đầu tiên của chương).\nHiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Một tên, hai địa chỉ”.", "start": 202.59, "audio": "audio/be140ef638c54212.mp3", "dur": 45.98, "words": [[0.1, "Trong", 0], [0.45, "Java,", 0], [1.137, "một", 0], [1.35, "địa", 0], [1.538, "chỉ", 0], [1.888, "IP", 0], [2.237, "là", 0], [2.337, "một", 0], [2.55, "đối", 0], [2.737, "tượng", 0], [3.075, "InetAddress.", 0], [4.688, "Phương", 1], [5.0, "thức", 1], [5.2, "tĩnh", 1], [5.438, "getAllByName", 1], [6.375, "nhận", 1], [6.625, "một", 1], [6.8, "tên", 1], [7.05, "và", 1], [7.162, "trả", 1], [7.412, "về", 1], [7.537, "mảng", 1], [7.8, "mọi", 1], [7.975, "địa", 1], [8.137, "chỉ", 1], [8.412, "của", 1], [8.537, "tên", 1], [8.738, "đó.", 1], [9.912, "Bên", 2], [10.213, "dưới,", 2], [10.75, "phương", 2], [11.025, "thức", 2], [11.213, "này", 2], [11.412, "gọi", 2], [11.662, "resolver", 2], [12.275, "của", 2], [12.45, "hệ", 2], [12.662, "điều", 2], [12.875, "hành.", 2], [13.988, "Đoạn", 3], [14.312, "mã", 3], [14.525, "duyệt", 3], [14.75, "mảng", 3], [15.062, "và", 3], [15.312, "in", 3], [15.488, "từng", 3], [15.725, "địa", 3], [15.9, "chỉ.", 3], [17.175, "Tên", 4], [17.462, "được", 4], [17.587, "dùng", 4], [17.837, "là", 4], [18.025, "localhost,", 4], [18.887, "tên", 4], [19.163, "của", 4], [19.337, "chính", 4], [19.562, "máy", 4], [19.75, "đang", 4], [19.95, "chạy", 4], [20.15, "chương", 4], [20.387, "trình.", 4], [21.488, "Trước", 5], [21.725, "khi", 5], [21.875, "chạy,", 5], [22.4, "các", 5], [22.562, "bạn", 5], [22.788, "dự", 5], [22.962, "đoán:", 5], [23.55, "localhost", 5], [24.238, "có", 5], [24.35, "mấy", 5], [24.538, "địa", 5], [24.7, "chỉ?", 5], [25.95, "Chạy", 6], [26.238, "chương", 6], [26.512, "trình.", 6], [27.663, "Kết", 7], [27.962, "quả", 7], [28.25, "có", 7], [28.4, "hai", 7], [28.6, "dòng.", 7], [29.762, "Địa", 8], [30.025, "chỉ", 8], [30.065, "127.0.0.1", 8], [30.105, "là", 8], [30.146, "địa", 8], [30.186, "chỉ", 8], [30.226, "IPv4.", 8], [30.266, "Địa", 9], [30.307, "chỉ", 9], [30.347, "thứ", 9], [30.387, "hai", 9], [30.425, "là", 9], [30.462, "địa", 9], [30.5, "chỉ", 9], [30.537, "IPv6,", 9], [30.575, "viết", 9], [30.612, "rút", 9], [30.649, "gọn", 9], [30.687, "là", 9], [30.724, "hai", 9], [30.762, "chấm", 9], [31.025, "hai", 9], [31.288, "chấm", 9], [32.038, "một,", 9], [32.078, "Java", 9], [32.118, "in", 9], [32.158, "đầy", 9], [32.198, "đủ", 9], [32.238, "tám", 9], [32.278, "nhóm.", 9], [32.318, "Một", 10], [32.358, "tên,", 10], [32.398, "hai", 10], [32.438, "địa", 10], [32.638, "chỉ,", 10], [32.638, "đúng", 10], [32.638, "như", 10], [32.638, "danh", 10], [32.638, "sách", 10], [32.638, "trong", 10], [32.638, "hình.", 10]], "cues": [19.95, 32.318], "lang": 9.6}, {"ten": "Slide 5. InetSocketAddress ghép địa chỉ với port thành endpoint", "loai": "slide", "slide": "S05", "dung": "Mã bên trái, kết quả chạy bên phải (hoặc trên, dưới nếu mã dài). Highlight hai dòng new InetSocketAddress lần lượt theo lời đọc; trong khung kết quả, khoanh <unresolved> khi đọc \"chữ unresolved\".\nHiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Dòng thứ hai”.", "start": 258.17, "audio": "audio/cc986ccb5efcd7dc.mp3", "dur": 59.42, "words": [[0.1, "Endpoint", 0], [0.588, "trong", 0], [0.887, "Java", 0], [1.325, "là", 0], [1.45, "một", 0], [1.637, "đối", 0], [1.812, "tượng", 0], [2.138, "InetSocketAddress,", 0], [3.562, "gồm", 0], [3.825, "một", 0], [3.962, "địa", 0], [4.125, "chỉ", 0], [4.45, "và", 0], [4.575, "một", 0], [4.763, "port.", 0], [5.862, "Constructor", 1], [6.6, "của", 1], [6.862, "InetSocketAddress", 1], [8.037, "nhận", 1], [8.375, "tên", 1], [8.625, "và", 1], [8.738, "port,", 1], [9.25, "và", 1], [9.463, "phân", 1], [9.675, "giải", 1], [9.9, "tên", 1], [10.1, "ngay", 1], [10.3, "khi", 1], [10.463, "tạo", 1], [10.713, "đối", 1], [10.887, "tượng.", 1], [12.075, "Đoạn", 2], [12.412, "mã", 2], [12.562, "tạo", 2], [12.8, "hai", 2], [12.975, "đối", 2], [13.125, "tượng", 2], [13.45, "InetSocketAddress:", 2], [14.875, "localhost", 2], [15.525, "với", 2], [15.738, "port", 2], [16.438, "9199,", 2], [17.137, "và", 2], [17.4, "lookup.invalid", 2], [18.5, "với", 2], [18.7, "port", 2], [19.719, "9199.", 2], [20.738, "Đuôi", 3], [21.025, "invalid", 3], [21.675, "là", 3], [21.95, "tên", 3], [22.2, "miền", 3], [22.413, "dành", 3], [22.613, "riêng,", 3], [23.1, "không", 3], [23.35, "bao", 3], [23.488, "giờ", 3], [23.688, "phân", 3], [23.913, "giải", 3], [24.137, "được.", 3], [25.212, "Chạy", 4], [25.5, "chương", 4], [25.775, "trình.", 4], [26.925, "Dòng", 5], [27.238, "đầu", 5], [27.45, "in", 5], [27.613, "tên,", 5], [28.113, "địa", 5], [28.35, "chỉ", 5], [28.369, "127.0.0.1", 5], [28.389, "và", 5], [28.408, "port", 5], [28.428, "9199.", 5], [28.447, "Phương", 6], [28.467, "thức", 6], [28.486, "isUnresolved", 6], [28.506, "trả", 6], [28.525, "false,", 6], [28.544, "tức", 6], [28.564, "tên", 6], [28.583, "đã", 6], [28.603, "được", 6], [28.622, "phân", 6], [28.642, "giải.", 6], [28.661, "Dòng", 7], [28.681, "thứ", 7], [28.7, "hai", 7], [28.725, "in", 7], [28.751, "chữ", 7], [28.776, "unresolved", 7], [28.802, "ở", 7], [28.827, "vị", 7], [28.853, "trí", 7], [28.878, "địa", 7], [28.904, "chỉ,", 7], [28.929, "và", 7], [28.954, "phương", 7], [28.98, "thức", 7], [29.005, "isUnresolved", 7], [29.031, "trả", 7], [29.056, "true.", 7], [29.082, "Đối", 8], [29.107, "tượng", 8], [29.133, "này", 8], [29.158, "chưa", 8], [29.183, "phải", 8], [29.209, "endpoint,", 8], [29.234, "vì", 8], [29.26, "chưa", 8], [29.285, "có", 8], [29.311, "địa", 8], [29.336, "chỉ.", 8], [29.362, "Constructor", 9], [29.387, "không", 9], [29.473, "ném", 9], [29.558, "ngoại", 9], [29.643, "lệ", 9], [29.729, "khi", 9], [29.814, "tên", 9], [29.9, "không", 9], [29.9, "phân", 9], [29.9, "giải", 9], [29.9, "được.", 9], [29.9, "Chương", 10], [29.9, "trình", 10], [29.9, "phải", 10], [29.9, "tự", 10], [29.9, "kiểm", 10], [29.9, "tra", 10], [29.9, "bằng", 10], [29.9, "phương", 10], [29.9, "thức", 10], [29.9, "isUnresolved,", 10], [29.9, "nếu", 10], [29.9, "không", 10], [29.9, "thì", 10], [29.9, "lời", 10], [29.9, "gọi", 10], [29.9, "kết", 10], [29.9, "nối", 10], [29.9, "sau", 10], [29.9, "này", 10], [29.9, "mới", 10], [29.9, "ném", 10], [29.9, "UnknownHostException.", 10]], "cues": [25.212, 28.661], "lang": 9.6}, {"ten": "Slide 6. Phân giải tên thành công chưa cho biết có chương trình chờ ở port đó", "loai": "slide", "slide": "S06", "dung": "Hai ý hiện lần lượt. Có thể chèn dòng netstat -ano không có kết quả cho port 9199 (chụp cùng lần chạy) bên cạnh ý thứ hai.\nHiện dần: bước 1 khi đọc “Quay lại dòng đầu”; bước 2 khi đọc “Thực tế, lúc chạy”.", "start": 327.19, "audio": "audio/0845419570a334c6.mp3", "dur": 31.49, "words": [[0.1, "Quay", 0], [0.325, "lại", 0], [0.475, "dòng", 0], [0.675, "đầu", 0], [0.863, "của", 0], [0.988, "kết", 0], [1.175, "quả:", 0], [1.8, "endpoint", 0], [2.237, "localhost", 0], [2.837, "với", 0], [3.05, "port", 0], [3.643, "9199", 0], [4.237, "đã", 0], [4.35, "có", 0], [4.475, "địa", 0], [4.638, "chỉ.", 0], [5.888, "Điều", 1], [6.112, "đó", 1], [6.35, "chưa", 1], [6.562, "cho", 1], [6.688, "biết", 1], [6.9, "có", 1], [7.013, "chương", 1], [7.225, "trình", 1], [7.425, "nào", 1], [7.625, "đang", 1], [7.825, "chờ", 1], [8.088, "ở", 1], [8.225, "port", 1], [9.268, "9199.", 1], [10.312, "Thực", 2], [10.562, "tế,", 2], [11.088, "lúc", 2], [11.3, "chạy", 2], [11.488, "đoạn", 2], [11.725, "mã,", 2], [12.275, "port", 2], [12.512, "này", 2], [12.7, "đang", 2], [12.912, "trống,", 2], [13.475, "nhưng", 2], [13.825, "endpoint", 2], [14.213, "vẫn", 2], [14.4, "tạo", 2], [14.637, "được", 2], [14.787, "bình", 2], [14.975, "thường.", 2], [16.113, "Phân", 3], [16.4, "giải", 3], [16.663, "tên", 3], [16.913, "chỉ", 3], [17.062, "đổi", 3], [17.275, "tên", 3], [17.5, "thành", 3], [17.675, "địa", 3], [17.825, "chỉ,", 3], [18.438, "không", 3], [18.688, "liên", 3], [18.875, "lạc", 3], [19.062, "với", 3], [19.163, "chương", 3], [19.413, "trình", 3], [19.65, "ở", 3], [19.738, "đích.", 3], [20.788, "Chỉ", 4], [21.0, "khi", 4], [21.15, "thiết", 4], [21.35, "lập", 4], [21.55, "kết", 4], [21.738, "nối", 4], [21.975, "ở", 4], [22.1, "tầng", 4], [22.337, "giao", 4], [22.525, "vận", 4], [22.725, "mới", 4], [22.9, "biết", 4], [23.137, "có", 4], [23.262, "chương", 4], [23.512, "trình", 4], [23.738, "chờ", 4], [23.988, "ở", 4], [24.113, "port", 4], [24.35, "hay", 4], [24.488, "không.", 4], [25.637, "Chương", 5], [25.938, "2,", 5], [26.425, "về", 5], [26.675, "socket", 5], [27.312, "TCP,", 5], [27.95, "sẽ", 5], [28.163, "xử", 5], [28.325, "lý", 5], [28.55, "trường", 5], [28.788, "hợp", 5], [28.962, "port", 5], [29.188, "đích", 5], [29.387, "không", 5], [29.663, "có", 5], [29.762, "chương", 5], [29.988, "trình", 5], [30.175, "nào", 5], [30.337, "chờ.", 5]], "cues": [0.1, 10.312], "lang": 0.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án D được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 359.28, "audio": "audio/8fd2f56f15599b18.mp3", "dur": 3.7, "words": [[0.1, "Hai", 0], [0.312, "câu", 0], [0.475, "hỏi", 0], [0.725, "sau", 0], [0.925, "kiểm", 0], [1.175, "tra", 0], [1.363, "phân", 0], [1.6, "giải", 0], [1.812, "tên", 0], [2.125, "và", 0], [2.312, "endpoint.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/15da10140f730af9.mp3", "dur2": 8.14, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.65, "đúng", 0], [0.887, "là", 0], [1.025, "D.", 0], [1.438, "Phân", 1], [1.788, "giải", 1], [2.013, "tên", 1], [2.275, "chỉ", 1], [2.487, "cho", 1], [2.612, "địa", 1], [2.775, "chỉ.", 1], [4.037, "Chỉ", 2], [4.25, "khi", 2], [4.4, "thiết", 2], [4.6, "lập", 2], [4.812, "kết", 2], [5.013, "nối", 2], [5.213, "mới", 2], [5.412, "biết", 2], [5.638, "có", 2], [5.763, "chương", 2], [6.013, "trình", 2], [6.237, "chờ", 2], [6.487, "ở", 2], [6.612, "port", 2], [6.85, "hay", 2], [6.987, "không.", 2]], "dap_an": "D", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án B.", "start": 377.72, "audio": "audio/03db683537491cc7.mp3", "dur": 3.53, "words": [[0.1, "Câu", 0], [0.287, "thứ", 0], [0.5, "hai", 0], [0.738, "về", 0], [0.863, "trường", 0], [1.125, "hợp", 0], [1.337, "một", 0], [1.538, "tên", 0], [1.775, "có", 0], [1.9, "nhiều", 0], [2.1, "địa", 0], [2.263, "chỉ.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/c7471d5d030457c5.mp3", "dur2": 7.85, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.688, "là", 0], [0.85, "B.", 0], [1.262, "Endpoint", 1], [1.762, "chỉ", 1], [1.975, "gồm", 1], [2.212, "một", 1], [2.362, "địa", 1], [2.55, "chỉ.", 1], [3.825, "Danh", 2], [4.125, "sách", 2], [4.35, "cho", 2], [4.475, "phép", 2], [4.688, "thử", 2], [4.888, "lần", 2], [5.1, "lượt", 2], [5.35, "khi", 2], [5.5, "một", 2], [5.675, "địa", 2], [5.888, "chỉ", 2], [6.125, "không", 2], [6.35, "kết", 2], [6.562, "nối", 2], [6.775, "được.", 2]], "dap_an": "B", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “đích đến của dữ liệu là endpoint”; bước 2 khi đọc “Tên miền phải qua phân giải tên”; bước 3 khi đọc “Trong Java”; bước 4 khi đọc “Các từ khóa cần nhớ”.", "start": 395.7, "audio": "audio/9b7c3065ae3a2d20.mp3", "dur": 33.84, "words": [[0.1, "Trả", 0], [0.375, "lời", 0], [0.588, "câu", 0], [0.787, "hỏi", 0], [0.988, "của", 0], [1.125, "phần:", 0], [1.625, "đích", 0], [1.825, "đến", 0], [2.112, "của", 0], [2.237, "dữ", 0], [2.425, "liệu", 0], [2.675, "là", 0], [2.888, "endpoint,", 0], [3.6, "gồm", 0], [3.875, "địa", 0], [4.05, "chỉ", 0], [4.387, "IP", 0], [4.725, "để", 0], [4.85, "chọn", 0], [5.1, "máy", 0], [5.35, "và", 0], [5.487, "port", 0], [5.75, "để", 0], [5.888, "chọn", 0], [6.188, "chương", 0], [6.425, "trình.", 0], [7.513, "Tên", 1], [7.838, "miền", 1], [8.1, "phải", 1], [8.262, "qua", 1], [8.45, "phân", 1], [8.662, "giải", 1], [8.875, "tên,", 1], [9.412, "do", 1], [9.713, "resolver", 1], [10.325, "của", 1], [10.475, "hệ", 1], [10.662, "điều", 1], [10.825, "hành", 1], [11.012, "thực", 1], [11.162, "hiện,", 1], [11.675, "và", 1], [11.925, "cho", 1], [12.113, "ra", 1], [12.25, "một", 1], [12.45, "danh", 1], [12.625, "sách", 1], [12.812, "địa", 1], [12.988, "chỉ.", 1], [14.25, "Trong", 2], [14.613, "Java,", 2], [15.338, "InetAddress", 2], [16.038, "biểu", 2], [16.288, "diễn", 2], [16.538, "địa", 2], [16.675, "chỉ,", 2], [17.312, "InetSocketAddress", 2], [18.413, "biểu", 2], [18.675, "diễn", 2], [19.0, "endpoint.", 2], [20.337, "Phân", 3], [20.625, "giải", 3], [20.913, "tên", 3], [21.15, "thành", 3], [21.363, "công", 3], [21.575, "chưa", 3], [21.788, "cho", 3], [21.938, "biết", 3], [22.175, "có", 3], [22.3, "chương", 3], [22.55, "trình", 3], [22.775, "chờ", 3], [23.05, "ở", 3], [23.188, "port.", 3], [24.312, "Các", 4], [24.512, "từ", 4], [24.675, "khóa", 4], [24.913, "cần", 4], [25.137, "nhớ", 4], [25.413, "gồm", 4], [25.663, "phân", 4], [25.875, "lớp", 4], [26.087, "giao", 4], [26.275, "thức,", 4], [26.712, "địa", 4], [26.938, "chỉ", 4], [27.45, "IP,", 4], [27.962, "tên", 4], [28.15, "miền,", 4], [28.637, "phân", 4], [28.9, "giải", 4], [29.113, "tên,", 4], [29.875, "DNS,", 4], [30.637, "port,", 4], [31.163, "endpoint", 4], [31.613, "và", 4], [31.8, "InetSocketAddress.", 4]], "cues": [1.625, 7.513, 14.25, 24.312], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Chủ đề nâng cao của phần”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 430.14, "audio": "audio/b115c06e9acabebc.mp3", "dur": 24.22, "words": [[0.1, "Chủ", 0], [0.388, "đề", 0], [0.588, "nâng", 0], [0.85, "cao", 0], [1.087, "của", 0], [1.238, "phần", 0], [1.5, "gồm", 0], [1.762, "hai", 0], [1.962, "mục.", 0], [3.05, "Thứ", 1], [3.25, "nhất", 1], [3.525, "là", 1], [4.082, "IPv6", 1], [4.638, "và", 1], [4.775, "dual-stack:", 1], [5.5, "khi", 1], [5.713, "một", 1], [5.925, "tên", 1], [6.1, "có", 1], [6.213, "cả", 1], [6.375, "địa", 1], [6.55, "chỉ", 1], [7.1, "IPv4", 1], [7.65, "và", 1], [8.281, "IPv6,", 1], [8.912, "chương", 1], [9.188, "trình", 1], [9.475, "ưu", 1], [9.562, "tiên", 1], [9.8, "địa", 1], [9.988, "chỉ", 1], [10.162, "nào", 1], [10.363, "trước.", 1], [11.488, "Thứ", 2], [11.725, "hai", 2], [12.012, "là", 2], [12.113, "cache", 2], [12.531, "DNS", 2], [12.95, "của", 2], [13.444, "JVM,", 2], [13.938, "quyết", 2], [14.15, "định", 2], [14.375, "kết", 2], [14.575, "quả", 2], [14.775, "phân", 2], [14.975, "giải", 2], [15.25, "được", 2], [15.412, "giữ", 2], [15.625, "lại", 2], [15.863, "bao", 2], [16.075, "lâu.", 2], [17.188, "Bài", 3], [17.45, "tập", 3], [17.675, "mở", 3], [17.875, "rộng:", 3], [18.387, "viết", 3], [18.637, "chương", 3], [18.863, "trình", 3], [19.038, "nhận", 3], [19.275, "tên", 3], [19.5, "miền", 3], [19.738, "từ", 3], [19.9, "dòng", 3], [20.1, "lệnh,", 3], [20.6, "in", 3], [20.812, "mọi", 3], [20.975, "địa", 3], [21.175, "chỉ", 3], [21.387, "phân", 3], [21.6, "giải", 3], [21.825, "được", 3], [22.025, "và", 3], [22.2, "loại", 3], [22.462, "của", 3], [22.6, "từng", 3], [22.8, "địa", 3], [22.95, "chỉ.", 3]], "cues": [0.1, 17.188], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 454.96, "audio": "audio/5f2bfe4b134882bf.mp3", "dur": 12.62, "words": [[0.1, "Đã", 0], [0.338, "có", 0], [0.537, "endpoint,", 0], [1.25, "nhưng", 0], [1.55, "chưa", 0], [1.775, "chọn", 0], [2.013, "cách", 0], [2.2, "gửi", 0], [2.388, "dữ", 0], [2.587, "liệu", 0], [2.825, "tới", 0], [3.075, "endpoint", 0], [3.487, "đó.", 0], [4.675, "Phần", 1], [4.95, "tiếp", 1], [5.15, "theo,", 1], [5.638, "về", 1], [5.638, "TCP,", 1], [5.638, "UDP", 1], [5.638, "và", 1], [5.638, "mô", 1], [5.638, "hình", 1], [5.638, "ứng", 1], [5.638, "dụng", 1], [5.638, "mạng,", 1], [5.638, "so", 1], [5.638, "sánh", 1], [5.638, "hai", 1], [5.638, "dịch", 1], [5.638, "vụ", 1], [5.638, "của", 1], [5.638, "tầng", 1], [5.638, "giao", 1], [5.638, "vận", 1], [5.638, "và", 1], [5.638, "cách", 1], [5.638, "chọn", 1], [5.638, "giữa", 1], [5.638, "chúng.", 1]], "cues": [], "lang": 0.6}], "video_sau": "Giao vận: TCP, UDP và mô hình ứng dụng mạng"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

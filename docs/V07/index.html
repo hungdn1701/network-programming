@@ -1,0 +1,443 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V07 — Bài toán ứng dụng: đặc tả và thử giao thức tra cứu · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-1/06-protocol-spec">Mã</a>
+<h1>V07 · Bài toán ứng dụng: đặc tả và thử giao thức tra cứu</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 1</div><div class="ten">Bài toán ứng dụng: đặc tả và thử giao thức tra cứu</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Giao thức tra cứu cần một bản đặc tả đủ chi tiết và được thử trước</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Đã có định dạng: mỗi message là <b>một dòng <span style="white-space:nowrap">UTF-8</span> kết thúc bằng LF</b></li><li data-s="2">Còn thiếu: phản hồi gồm những dạng nào, yêu cầu sai thì trả lời ra sao, <b>giới hạn</b> độ dài bao nhiêu</li><li data-s="3">Client và server thường do hai người viết: hai bên phải hiểu <b>cùng một đặc tả</b></li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> đặc tả giao thức tra cứu cần những gì, và thử đặc tả đó bằng cách nào khi chưa có chương trình?</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Đặc tả quy định yêu cầu, phản hồi, mã lỗi và giới hạn</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 560" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Đặc tả giao thức tra cứu: yêu cầu là một dòng chứa khóa, ví dụ hanoi, kết thúc bằng LF. Phản hồi là một dòng, một trong ba dạng: OK kèm giá trị, NOTFOUND, hoặc ERR kèm lý do. Quy định chung: UTF-8, mỗi dòng kết thúc bằng LF, tối đa 256 byte; dòng rỗng trả ERR empty key, dòng quá 256 byte trả ERR line too long.">
+  <defs>
+    <marker id="dt-navy" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+  </defs>
+
+  <!-- ① yêu cầu -->
+  <g data-s="1">
+    <text x="40" y="44" font-size="26" font-weight="500" fill="#051A53">Yêu cầu: một dòng chứa khóa</text>
+    <rect x="40" y="66" width="520" height="70" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="70" y="112" font-size="28" fill="#051A53" font-family="Consolas, monospace">hanoi</text>
+    <rect x="470" y="80" width="70" height="42" rx="3" fill="#FFF6DD" stroke="#8A6508" stroke-width="2"/>
+    <text x="505" y="109" text-anchor="middle" font-size="22" fill="#6B4E06" font-family="Consolas, monospace">LF</text>
+    <line x1="570" y1="101" x2="700" y2="101" stroke="#051A53" stroke-width="3" marker-end="url(#dt-navy)"/>
+    <text x="635" y="86" text-anchor="middle" font-size="22" fill="#051A53">gửi</text>
+  </g>
+
+  <!-- ② phản hồi thành công -->
+  <g data-s="2">
+    <text x="720" y="44" font-size="26" font-weight="500" fill="#051A53">Phản hồi: một dòng, một trong ba dạng</text>
+    <rect x="720" y="66" width="1000" height="56" rx="4" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="750" y="103" font-size="25" fill="#22603F" font-family="Consolas, monospace">OK Thủ đô của Việt Nam</text>
+    <text x="1700" y="103" text-anchor="end" font-size="22" fill="#22603F">có khóa: OK + giá trị</text>
+  </g>
+
+  <!-- ③ không có khóa, lỗi -->
+  <g data-s="3">
+    <rect x="720" y="134" width="1000" height="56" rx="4" fill="#FFFFFF" stroke="#5B6478" stroke-width="2.5"/>
+    <text x="750" y="171" font-size="25" fill="#373D4E" font-family="Consolas, monospace">NOTFOUND</text>
+    <text x="1700" y="171" text-anchor="end" font-size="22" fill="#5B6478">không có khóa</text>
+    <rect x="720" y="202" width="1000" height="56" rx="4" fill="#FFFFFF" stroke="#BC2626" stroke-width="2.5"/>
+    <text x="750" y="239" font-size="25" fill="#BC2626" font-family="Consolas, monospace">ERR &lt;lý do&gt;</text>
+    <text x="1700" y="239" text-anchor="end" font-size="22" fill="#BC2626">yêu cầu sai đặc tả</text>
+  </g>
+
+  <!-- ④ quy định chung -->
+  <g data-s="4">
+    <rect x="40" y="320" width="1680" height="200" rx="4" fill="#FFFFFF" stroke="#D5DAE5" stroke-width="2"/>
+    <text x="80" y="368" font-size="24" font-weight="500" fill="#051A53">Quy định chung</text>
+    <text x="80" y="416" font-size="23" fill="#373D4E">Charset UTF-8 · mỗi dòng kết thúc bằng LF (chấp nhận cả CRLF) · tối đa 256 byte mỗi dòng</text>
+    <text x="80" y="460" font-size="23" fill="#373D4E">Dòng rỗng → <tspan font-family="Consolas, monospace" fill="#BC2626">ERR empty key</tspan>; dòng quá 256 byte → <tspan font-family="Consolas, monospace" fill="#BC2626">ERR line too long</tspan></text>
+    <text x="80" y="502" font-size="23" fill="#373D4E">TCP, port 9199 · một kết nối gửi được nhiều yêu cầu, lần lượt</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b>Đặc tả giao thức</b>: định dạng yêu cầu, các dạng phản hồi, mã lỗi, giới hạn: đủ để hai bên viết độc lập.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Hai NetCat trên loopback thử được đặc tả khi chưa có chương trình</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 540" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Một máy, địa chỉ loopback 127.0.0.1. Terminal 1 chạy NetCat lắng nghe ở port 9199, người thử đóng vai server: đọc yêu cầu, gõ phản hồi theo đặc tả. Terminal 2 chạy NetCat kết nối tới 127.0.0.1:9199, người thử đóng vai client: gõ yêu cầu. Kết nối TCP qua loopback, dữ liệu không rời khỏi máy. Chưa cần viết dòng mã nào.">
+  <defs>
+    <marker id="bt-net" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#1F5FA8"/></marker>
+  </defs>
+
+  <!-- ① một máy, terminal 1 lắng nghe -->
+  <g data-s="1">
+    <rect x="20" y="20" width="1720" height="420" rx="8" fill="#F8FAFC" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="10 7"/>
+    <text x="50" y="62" font-size="24" font-weight="500" fill="#5B6478">Một máy · loopback <tspan font-family="Consolas, monospace">127.0.0.1</tspan></text>
+    <rect x="1040" y="100" width="660" height="290" rx="6" fill="#1E1E2E" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1070" y="142" font-size="22" fill="#9AA3B8">Terminal 1 · đóng vai server</text>
+    <text x="1070" y="192" font-size="23" fill="#D6DBE8" font-family="Consolas, monospace">NetCat -l 9199</text>
+    <text x="1070" y="236" font-size="22" fill="#9AA3B8" font-family="Consolas, monospace">listening on 127.0.0.1:9199</text>
+    <text x="1070" y="320" font-size="22" fill="#D6DBE8">đọc yêu cầu, gõ phản hồi</text>
+    <text x="1070" y="356" font-size="22" fill="#D6DBE8">theo đặc tả</text>
+  </g>
+
+  <!-- ② terminal 2 kết nối -->
+  <g data-s="2">
+    <rect x="60" y="100" width="660" height="290" rx="6" fill="#1E1E2E" stroke="#051A53" stroke-width="2.5"/>
+    <text x="90" y="142" font-size="22" fill="#9AA3B8">Terminal 2 · đóng vai client</text>
+    <text x="90" y="192" font-size="23" fill="#D6DBE8" font-family="Consolas, monospace">NetCat 127.0.0.1 9199</text>
+    <text x="90" y="236" font-size="22" fill="#9AA3B8" font-family="Consolas, monospace">connected to 127.0.0.1:9199</text>
+    <text x="90" y="320" font-size="22" fill="#D6DBE8">gõ yêu cầu theo đặc tả,</text>
+    <text x="90" y="356" font-size="22" fill="#D6DBE8">đọc phản hồi</text>
+  </g>
+
+  <!-- ③ các dòng đi qua loopback -->
+  <g data-s="3">
+    <line x1="728" y1="200" x2="1032" y2="200" stroke="#1F5FA8" stroke-width="3.5" marker-end="url(#bt-net)"/>
+    <text x="880" y="186" text-anchor="middle" font-size="22" fill="#1F5FA8" font-family="Consolas, monospace">hanoi</text>
+    <line x1="1032" y1="280" x2="728" y2="280" stroke="#1F5FA8" stroke-width="3.5" marker-end="url(#bt-net)"/>
+    <text x="880" y="266" text-anchor="middle" font-size="20" fill="#1F5FA8" font-family="Consolas, monospace">OK Thủ đô…</text>
+    <text x="880" y="330" text-anchor="middle" font-size="21" fill="#1F5FA8">kết nối TCP qua loopback:</text>
+    <text x="880" y="360" text-anchor="middle" font-size="21" fill="#1F5FA8">dữ liệu không rời khỏi máy</text>
+  </g>
+
+  <!-- ④ chưa cần viết mã -->
+  <g data-s="4">
+    <text x="880" y="496" text-anchor="middle" font-size="25" font-weight="500" fill="#22603F">thử đặc tả trên dữ liệu thật, khi chưa viết dòng mã nào</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b>NetCat</b>: gửi và in từng dòng qua TCP. <b>Loopback</b> <code>127.0.0.1</code>: hai đầu trên cùng một máy, dữ liệu không rời khỏi máy.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Terminal đóng vai server nhận yêu cầu và gõ phản hồi theo đặc tả</h1></header><main class="bo-cuc-ma"><div class="ma-hang"><pre class="ma"><span class="nhan">Bash</span>java -cp out netlab.tools.NetCat -l <span class="hl-n">9199</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>listening on 127.0.0.1:9199
+connection from 127.0.0.1:49958
+hanoi
+&gt; OK Thủ đô của Việt Nam
+atlantis
+&gt; NOTFOUND
+(empty line)
+&gt; ERR empty key
+xxxxxxxxxxxxxxxxxxxx… (300 bytes)
+&gt; ERR line too long
+(connection closed by peer)</pre></div><ul class="y-nho"><li data-s="2">Dòng bắt đầu bằng <code>&gt;</code>: dòng <b>gõ vào</b> và gửi đi; các dòng khác: dòng <b>nhận được</b>. NetCat in dòng rỗng thành <code>(empty line)</code></li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Terminal đóng vai client nhận đúng các phản hồi theo đặc tả</h1></header><main class="bo-cuc-ma"><div class="ma-hang"><pre class="ma"><span class="nhan">Bash</span>java -cp out netlab.tools.NetCat <span class="hl-n">127</span>.0.0.1 <span class="hl-n">9199</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>connected to 127.0.0.1:9199
+&gt; hanoi
+OK Thủ đô của Việt Nam
+&gt; atlantis
+NOTFOUND
+&gt; (empty line)
+ERR empty key
+&gt; xxxxxxxxxxxxxxxxxxxx… (300 bytes)
+ERR line too long
+(connection closed by peer)</pre></div><ul class="y-nho"><li data-s="2">Bốn trường hợp thử (có khóa, không có khóa, dòng rỗng, dòng quá dài) là <b>bộ kiểm thử</b> cho server ở Chương 2</li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>HTTP/1.1 cũng là một giao thức theo dòng</h1></header><main class="bo-cuc-ma"><div class="ma-hang"><pre class="ma"><span class="nhan">Bash</span>curl -sv -o /dev/null http://example.com <span class="hl-n">2</span>&gt;&amp;<span class="hl-n">1</span> | head -14
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>* Host example.com:80 was resolved.
+* IPv6: (none)
+* IPv4: 172.66.147.243, 104.20.23.154
+*   Trying 172.66.147.243:80...
+* Connected to example.com (172.66.147.243) port 80
+&gt; GET / HTTP/1.1
+
+&gt; Host: example.com
+
+&gt; User-Agent: curl/8.7.1
+
+&gt; Accept: */*
+
+&gt; 
+
+* Request completely sent off
+&lt; HTTP/1.1 200 OK
+
+&lt; Date: Tue, 20 Oct 2026 04:21:51 GMT
+
+&lt; Content-Type: text/html; charset=utf-8</pre></div><ul class="y-nho"><li data-s="2"><code>&gt;</code>: request curl gửi; <code>&lt;</code>: response của server; <code>*</code>: thông tin của curl</li><li data-s="3">Mỗi header là một dòng; <b>dòng trống</b> (dòng chỉ có <code>&gt;</code>) kết thúc phần header</li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S07"><header><h1>Đặc tả phải nói rõ ký tự kết thúc dòng</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">HTTP/1.1 kết thúc dòng bằng <b>CRLF</b>; giao thức tra cứu dùng <b>LF</b></li><li data-s="2">Đặc tả phải ghi rõ ký tự kết thúc dòng, và bên nhận <b>chấp nhận cả hai</b> hay chỉ một</li><li data-s="3"><code>readLine()</code> của Java chấp nhận LF, CR và CRLF; chương trình viết bằng ngôn ngữ khác có thể không như vậy</li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Một dòng gửi tới dài 300 byte, vượt giới hạn 256 byte của đặc tả. Server phản hồi thế nào?</div></div><div class="lua-chon"><div class=""><span>A</span><div>NOTFOUND, vì không có khóa nào dài như vậy.</div></div><div class=""><span>B</span><div>Cắt dòng còn 256 byte rồi tra khóa như bình thường.</div></div><div class="dung"><span>C</span><div>ERR line too long, đúng mã lỗi trong đặc tả.</div></div><div class=""><span>D</span><div>Đóng kết nối mà không trả lời.</div></div></div><div class="giai-thich">Đặc tả quy định dòng quá 256 byte trả ERR line too long. NOTFOUND chỉ dành cho khóa hợp lệ nhưng không có trong dữ liệu; tự cắt dòng hay đóng kết nối là hành vi đặc tả không quy định.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Một dòng gửi tới dài 300 byte, vượt giới hạn 256 byte của đặc tả. Server phản hồi thế nào?</div></div><div class="lua-chon"><div class=""><span>A</span><div>NOTFOUND, vì không có khóa nào dài như vậy.</div></div><div class=""><span>B</span><div>Cắt dòng còn 256 byte rồi tra khóa như bình thường.</div></div><div class="dung"><span>C</span><div>ERR line too long, đúng mã lỗi trong đặc tả.</div></div><div class=""><span>D</span><div>Đóng kết nối mà không trả lời.</div></div></div><div class="giai-thich">Đặc tả quy định dòng quá 256 byte trả ERR line too long. NOTFOUND chỉ dành cho khóa hợp lệ nhưng không có trong dữ liệu; tự cắt dòng hay đóng kết nối là hành vi đặc tả không quy định.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Theo đặc tả HTTP/1.1, mỗi dòng header trong một request kết thúc bằng gì?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Chỉ LF, giống giao thức tra cứu.</div></div><div class="dung"><span>B</span><div>CRLF: hai byte CR rồi LF.</div></div><div class=""><span>C</span><div>Dấu chấm phẩy.</div></div><div class=""><span>D</span><div>Không có ký tự kết thúc, vì mỗi header có độ dài cố định.</div></div></div><div class="giai-thich">RFC 9112 quy định mỗi dòng của HTTP/1.1 kết thúc bằng CRLF; một dòng trống (chỉ có CRLF) kết thúc phần header. curl -v không in hai ký tự này.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Theo đặc tả HTTP/1.1, mỗi dòng header trong một request kết thúc bằng gì?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Chỉ LF, giống giao thức tra cứu.</div></div><div class="dung"><span>B</span><div>CRLF: hai byte CR rồi LF.</div></div><div class=""><span>C</span><div>Dấu chấm phẩy.</div></div><div class=""><span>D</span><div>Không có ký tự kết thúc, vì mỗi header có độ dài cố định.</div></div></div><div class="giai-thich">RFC 9112 quy định mỗi dòng của HTTP/1.1 kết thúc bằng CRLF; một dòng trống (chỉ có CRLF) kết thúc phần header. curl -v không in hai ký tự này.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>Đặc tả giao thức</b>: yêu cầu, ba dạng phản hồi (OK, NOTFOUND, ERR), mã lỗi, giới hạn 256 byte, <span style="white-space:nowrap">UTF-8</span>, LF</div></div><div class="the" data-s="2"><span class="so">2</span><div>Thử bằng <b>NetCat</b> trên <b>loopback</b> khi chưa có chương trình; các trường hợp thử thành bộ kiểm thử</div></div><div class="the" data-s="3"><span class="so">3</span><div>HTTP/1.1 là giao thức theo dòng có thật, kết thúc dòng bằng <b>CRLF</b>: đặc tả phải nói rõ</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>đặc tả giao thức</span><span>NetCat</span><span>curl</span><span>loopback</span><span>CRLF</span></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>RFC: cách các giao thức Internet được đặc tả (ví dụ RFC 9112 cho HTTP/1.1)</li><li>Kiểm thử giao thức bằng bộ dữ liệu mẫu</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Bổ sung lệnh STATS vào đặc tả: cú pháp, phản hồi, mã lỗi; thử bằng NetCat.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TKC"><header><h1>Tổng kết chương 1</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>Định danh</b>: đích đến là endpoint = địa chỉ IP + port; tên miền qua phân giải tên</div></div><div class="the" data-s="2"><span class="so">2</span><div><b>Giao vận</b>: TCP cho byte stream tin cậy, UDP cho datagram; client–server hay P2P</div></div><div class="the" data-s="3"><span class="so">3</span><div><b>Stream</b>: contract của read, decorator, flush; DataStream, serialization; charset, framing</div></div><div class="the" data-s="4"><span class="so">4</span><div><b>Bài toán ứng dụng</b>: giao thức tra cứu theo dòng <span style="white-space:nowrap">UTF-8</span>, có đặc tả, đã thử bằng NetCat</div></div></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">TCP: kết nối giữa client và server</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Đây là phần cuối của Chương 1, một bài toán ứng dụng. Phần này trả lời câu hỏi: trước khi viết chương trình, đặc tả giao thức tra cứu cần những gì, và thử đặc tả đó trên dữ liệu thật bằng cách nào.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:14</span>
+      <h3>Slide 1. Giao thức tra cứu cần một bản đặc tả đủ chi tiết và được thử trước</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Đã có định dạng: mỗi message là **một dòng UTF-8 kết thúc bằng LF**</li><li>Còn thiếu: phản hồi gồm những dạng nào, yêu cầu sai thì trả lời ra sao, **giới hạn** độ dài bao nhiêu</li><li>Client và server thường do hai người viết: hai bên phải hiểu **cùng một đặc tả**</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** đặc tả giao thức tra cứu cần những gì, và thử đặc tả đó bằng cách nào khi chưa có chương trình?</div></div>
+    <div class="kb-thoai"><p>Phần trước đã chốt định dạng của giao thức tra cứu: mỗi message là một dòng UTF-8 kết thúc bằng LF. Còn thiếu nhiều chi tiết: phản hồi gồm những dạng nào, yêu cầu sai thì trả lời ra sao, một dòng dài tối đa bao nhiêu byte. Client và server thường do hai người, hai nhóm viết. Hai bên chỉ trao đổi đúng khi cùng hiểu một bản đặc tả. Câu hỏi của phần này là: đặc tả giao thức tra cứu cần những gì, và thử đặc tả đó bằng cách nào khi chưa có chương trình?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Phần trước đã chốt”; bước 2 khi đọc “Còn thiếu nhiều”; bước 3 khi đọc “Client và server thường”; bước 4 khi đọc “Câu hỏi của phần này”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:44</span>
+      <h3>Slide 2. Đặc tả quy định yêu cầu, phản hồi, mã lỗi và giới hạn</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Đặc tả giao thức**: định dạng yêu cầu, các dạng phản hồi, mã lỗi, giới hạn: đủ để hai bên viết độc lập.</li></ul></div></div>
+    <div class="kb-thoai"><p>Đặc tả giao thức, protocol specification, là văn bản quy định chính xác những gì hai bên gửi cho nhau. Yêu cầu là một dòng chứa khóa cần tra, ví dụ hanoi, kết thúc bằng LF. Phản hồi cũng là một dòng, có ba dạng. Có khóa thì trả OK, một dấu cách, rồi giá trị. Nếu không có khóa thì trả NOTFOUND. Yêu cầu sai đặc tả thì trả ERR kèm lý do. Ngoài ra, đặc tả quy định charset UTF-8, mỗi dòng tối đa 256 byte, và hai mã lỗi cụ thể: dòng rỗng trả ERR empty key, dòng dài quá giới hạn trả ERR line too long. Giao thức chạy trên TCP, port 9199, và một kết nối gửi được nhiều yêu cầu lần lượt. Một bản đặc tả đủ chi tiết như vậy cho phép hai người viết client và server độc lập mà vẫn trao đổi được với nhau.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình dac-ta: bốn bước của hình, bước 5 là ô kết luận. Bản đặc tả đầy đủ ở PROTOCOL.md trong thư mục mã của phần.
+Hiện dần: bước 1 khi đọc “Yêu cầu là một dòng”; bước 2 khi đọc “Phản hồi cũng là một dòng”; bước 3 khi đọc “Nếu không có khóa”; bước 4 khi đọc “Ngoài ra, đặc tả”; bước 5 khi đọc “Một bản đặc tả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:38</span>
+      <h3>Slide 3. Hai NetCat trên loopback thử được đặc tả khi chưa có chương trình</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**NetCat**: gửi và in từng dòng qua TCP. **Loopback** `127.0.0.1`: hai đầu trên cùng một máy, dữ liệu không rời khỏi máy.</li></ul></div></div>
+    <div class="kb-thoai"><p>Thử đặc tả không cần chờ có chương trình. NetCat là công cụ dòng lệnh đọc từng dòng từ bàn phím, gửi qua một kết nối TCP, và in ra mọi dòng nhận được. Học phần cung cấp sẵn một bản NetCat viết bằng Java, chạy trên mọi hệ điều hành. Terminal thứ nhất chạy NetCat ở chế độ lắng nghe, port 9199. Người thử đóng vai server: đọc yêu cầu, rồi gõ phản hồi theo đặc tả. Terminal thứ hai chạy NetCat kết nối tới địa chỉ 127.0.0.1, port 9199, và đóng vai client. Địa chỉ 127.0.0.1 là địa chỉ loopback, trỏ về chính máy đang chạy: dữ liệu đi qua TCP nhưng không rời khỏi máy. Mỗi dòng gõ ở terminal này hiện ra ở terminal kia. Nhờ vậy, đặc tả được thử trên dữ liệu thật trước khi viết dòng mã nào. NetCat và loopback là hai công cụ quen thuộc mỗi khi thử một giao thức mạng.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình bo-tri: bốn bước của hình, bước 5 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Terminal thứ nhất”; bước 2 khi đọc “Terminal thứ hai”; bước 3 khi đọc “Mỗi dòng gõ ở”; bước 4 khi đọc “Nhờ vậy”; bước 5 khi đọc “NetCat và loopback là”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:37</span>
+      <h3>Slide 4. Terminal đóng vai server nhận yêu cầu và gõ phản hồi theo đặc tả</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Dòng bắt đầu bằng `&gt;`: dòng **gõ vào** và gửi đi; các dòng khác: dòng **nhận được**. NetCat in dòng rỗng thành `(empty line)`</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">run.sh</span><pre><code>java -cp out netlab.tools.NetCat -l 9199</code></pre></div></div>
+    <div class="kb-thoai"><p>Đây là terminal đóng vai server. NetCat in endpoint đang lắng nghe, rồi địa chỉ và port của client khi có kết nối. Bản ghi màn hình cho thấy bốn yêu cầu nhận được và bốn phản hồi gõ theo đặc tả. Khóa hanoi có trong dữ liệu, nên trả OK cùng giá trị. Khóa atlantis không có, nên trả NOTFOUND. Dòng rỗng thì trả ERR empty key. Dòng thứ tư dài 300 byte, vượt giới hạn 256 byte, nên trả ERR line too long. Bản NetCat của học phần in dòng dài này ở dạng rút gọn kèm số byte, và in dòng rỗng thành chữ empty line trong ngoặc, để dễ nhìn. Dòng bắt đầu bằng dấu lớn hơn là dòng gõ vào và gửi đi, các dòng còn lại là dòng nhận được.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Lệnh phía trên, bản ghi màn hình phía dưới. Tô lần lượt bốn cặp dòng (yêu cầu nhận được, phản hồi gõ vào) theo lời đọc. Có thể thay khung kết quả bằng clip replay terminal, dựng từ bản ghi này.
+Hiện dần: bước 1 khi đọc “Bản ghi màn hình”; bước 2 khi đọc “Dòng bắt đầu bằng dấu lớn hơn”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:32</span>
+      <h3>Slide 5. Terminal đóng vai client nhận đúng các phản hồi theo đặc tả</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Bốn trường hợp thử (có khóa, không có khóa, dòng rỗng, dòng quá dài) là **bộ kiểm thử** cho server ở Chương 2</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">run.sh</span><pre><code>java -cp out netlab.tools.NetCat 127.0.0.1 9199</code></pre></div></div>
+    <div class="kb-thoai"><p>Ở terminal client, mỗi yêu cầu gõ vào được gửi đi, và phản hồi tương ứng hiện ra ngay sau đó. Chữ tiếng Việt trong phản hồi hiển thị đúng vì hai bên cùng dùng UTF-8. Khi người thử kết thúc nhập liệu ở client, NetCat báo cho server rằng không còn dữ liệu gửi đi, rồi hai bên đóng kết nối. Bốn trường hợp này gồm có khóa, không có khóa, dòng rỗng và dòng quá dài. Sau này, chúng trở thành bộ kiểm thử cho server ở Chương 2.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Lệnh phía trên, bản ghi màn hình phía dưới. Đặt cạnh slide 4 thu nhỏ để thấy hai terminal cùng lúc nếu đội dựng dùng bố cục hai cột.
+Hiện dần: bước 1 khi đọc “Ở terminal client”; bước 2 khi đọc “Bốn trường hợp này”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:10</span>
+      <h3>Slide 6. HTTP/1.1 cũng là một giao thức theo dòng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>`&gt;`: request curl gửi; `&lt;`: response của server; `*`: thông tin của curl</li><li>Mỗi header là một dòng; **dòng trống** (dòng chỉ có `&gt;`) kết thúc phần header</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">http-trace.sh</span><pre><code>curl -sv -o /dev/null http://example.com 2&gt;&amp;1 | head -14</code></pre></div></div>
+    <div class="kb-thoai"><p>Giao thức theo dòng có trong nhiều giao thức thật. HTTP 1.1, giao thức của web, là một ví dụ. Lệnh curl ở chế độ verbose in toàn bộ trao đổi giữa curl và server. Câu lệnh chỉ giữ 14 dòng đầu. Kết quả bắt đầu bằng phân giải tên example.com ra hai địa chỉ IPv4, rồi kết nối tới port 80. Dòng bắt đầu bằng dấu lớn hơn là yêu cầu, tức request, curl gửi đi: dòng GET, rồi từng header, mỗi header một dòng. Một dòng trống, hiện ra là dòng chỉ có dấu lớn hơn, đánh dấu hết phần header. Dòng bắt đầu bằng dấu nhỏ hơn là phản hồi, tức response, của server, mở đầu bằng HTTP 1.1 200 OK. HTTP học kỹ ở các chương sau. Ở phần này, chỉ cần thấy HTTP là một giao thức theo dòng có thật.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Lệnh phía trên, kết quả phía dưới. Tô các dòng * khi đọc &quot;phân giải tên&quot;, các dòng &gt; khi đọc &quot;request&quot;, các dòng &lt; khi đọc &quot;response&quot;. Kết quả chụp từ máy biên soạn ngày 20/10/2026; địa chỉ của example.com có thể khác khi chạy lại.
+Hiện dần: bước 1 khi đọc “Kết quả bắt đầu”; bước 2 khi đọc “Dòng bắt đầu bằng dấu lớn hơn”; bước 3 khi đọc “Một dòng trống, hiện ra”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:12</span>
+      <h3>Slide 7. Đặc tả phải nói rõ ký tự kết thúc dòng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>HTTP/1.1 kết thúc dòng bằng **CRLF**; giao thức tra cứu dùng **LF**</li><li>Đặc tả phải ghi rõ ký tự kết thúc dòng, và bên nhận **chấp nhận cả hai** hay chỉ một</li><li>`readLine()` của Java chấp nhận LF, CR và CRLF; chương trình viết bằng ngôn ngữ khác có thể không như vậy</li></ul></div>
+    <div class="kb-thoai"><p>Lưu ý của bài toán này là ký tự kết thúc dòng. Theo đặc tả HTTP 1.1, RFC 9112, mỗi dòng kết thúc bằng CRLF, gồm hai byte: CR rồi LF. Lệnh curl không in hai ký tự này ra. Giao thức tra cứu dùng LF. Nếu client gửi CRLF tới một server tự tách dòng chỉ theo LF, ký tự CR sẽ nằm lại ở cuối khóa, và khóa hanoi không còn khớp. Vì vậy, đặc tả phải ghi rõ ký tự kết thúc dòng, và bên nhận chấp nhận cả hai hay chỉ một. Giao thức tra cứu chọn chấp nhận cả hai. Phương thức readLine của Java đã nhận cả LF, CR và CRLF, nhưng chương trình tự tách dòng, hoặc viết bằng ngôn ngữ khác, phải tự bỏ ký tự CR.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt.
+Hiện dần: bước 1 khi đọc “Theo đặc tả HTTP”; bước 2 khi đọc “Vì vậy”; bước 3 khi đọc “Phương thức readLine”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:59</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Hai câu hỏi sau kiểm tra cách dùng đặc tả.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Một dòng gửi tới dài 300 byte, vượt giới hạn 256 byte của đặc tả. Server phản hồi thế nào?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> NOTFOUND, vì không có khóa nào dài như vậy.</li>
+      <li><b>B.</b> Cắt dòng còn 256 byte rồi tra khóa như bình thường.</li>
+      <li><b>C.</b> ERR line too long, đúng mã lỗi trong đặc tả.</li>
+      <li><b>D.</b> Đóng kết nối mà không trả lời.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: C</b> — <span>Đặc tả quy định dòng quá 256 byte trả ERR line too long. NOTFOUND chỉ dành cho khóa hợp lệ nhưng không có trong dữ liệu; tự cắt dòng hay đóng kết nối là hành vi đặc tả không quy định.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là C. Đặc tả đã quy định mã lỗi cho dòng quá dài, nên server trả đúng mã đó.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án C được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:15</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu thứ hai về HTTP 1.1.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Theo đặc tả HTTP/1.1, mỗi dòng header trong một request kết thúc bằng gì?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Chỉ LF, giống giao thức tra cứu.</li>
+      <li><b>B.</b> CRLF: hai byte CR rồi LF.</li>
+      <li><b>C.</b> Dấu chấm phẩy.</li>
+      <li><b>D.</b> Không có ký tự kết thúc, vì mỗi header có độ dài cố định.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: B</b> — <span>RFC 9112 quy định mỗi dòng của HTTP/1.1 kết thúc bằng CRLF; một dòng trống (chỉ có CRLF) kết thúc phần header. curl -v không in hai ký tự này.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là B. HTTP 1.1 kết thúc mỗi dòng bằng CRLF, khác với LF của giao thức tra cứu.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án B.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:33</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**Đặc tả giao thức**: yêu cầu, ba dạng phản hồi (OK, NOTFOUND, ERR), mã lỗi, giới hạn 256 byte, UTF-8, LF</li><li>Thử bằng **NetCat** trên **loopback** khi chưa có chương trình; các trường hợp thử thành bộ kiểm thử</li><li>HTTP/1.1 là giao thức theo dòng có thật, kết thúc dòng bằng **CRLF**: đặc tả phải nói rõ</li></ul></div>
+    <div class="kb-thoai"><p>Trả lời câu hỏi của phần: đặc tả giao thức tra cứu gồm định dạng yêu cầu, ba dạng phản hồi, mã lỗi, giới hạn độ dài, charset và ký tự kết thúc dòng. Đặc tả được thử bằng NetCat trên loopback khi chưa có chương trình, và các trường hợp thử trở thành bộ kiểm thử về sau. HTTP 1.1 cũng là giao thức theo dòng, nhưng dùng CRLF, nên đặc tả phải nói rõ ký tự kết thúc dòng. Các từ khóa cần nhớ gồm đặc tả giao thức, NetCat, curl, loopback và CRLF.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “đặc tả giao thức tra cứu gồm”; bước 2 khi đọc “Đặc tả được thử”; bước 3 khi đọc “HTTP 1.1 cũng là”; bước 4 khi đọc “Các từ khóa cần nhớ”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:05</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chủ đề nâng cao của phần gồm hai mục. Thứ nhất là cách các giao thức Internet được đặc tả trong RFC, ví dụ RFC 9112 cho HTTP 1.1. Thứ hai là kiểm thử giao thức bằng bộ dữ liệu mẫu. Bài tập mở rộng: bổ sung lệnh STATS vào đặc tả, gồm cú pháp, phản hồi và mã lỗi, rồi thử bằng NetCat.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Chủ đề nâng cao của phần”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-12" data-index="12">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:28</span>
+      <h3>Tổng kết chương</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(12)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(12, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**Định danh**: đích đến là endpoint = địa chỉ IP + port; tên miền qua phân giải tên</li><li>**Giao vận**: TCP cho byte stream tin cậy, UDP cho datagram; client–server hay P2P</li><li>**Stream**: contract của read, decorator, flush; DataStream, serialization; charset, framing</li><li>**Bài toán ứng dụng**: giao thức tra cứu theo dòng UTF-8, có đặc tả, đã thử bằng NetCat</li></ul></div>
+    <div class="kb-thoai"><p>Tổng kết Chương 1. Nhóm định danh trả lời đích đến là gì: endpoint, gồm địa chỉ IP và port, có được sau bước phân giải tên. Nhóm giao vận trả lời gửi bằng dịch vụ nào: TCP cho byte stream tin cậy, UDP cho datagram độc lập, cùng hai mô hình client–server và P2P. Nhóm stream trả lời đọc ghi dữ liệu thế nào: đúng contract của read, bọc stream bằng decorator và flush trước khi chờ phản hồi. Dữ liệu có kiểu đi qua DataStream, đối tượng qua serialization, văn bản qua charset và framing. Bài toán ứng dụng gom tất cả thành giao thức tra cứu: một dòng UTF-8 kết thúc bằng LF, có đặc tả và đã được thử bằng NetCat.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Infographic tổng kết chương: bốn thẻ hiện lần lượt theo lời đọc.
+Hiện dần: bước 1 khi đọc “Nhóm định danh”; bước 2 khi đọc “Nhóm giao vận”; bước 3 khi đọc “Nhóm stream”; bước 4 khi đọc “Bài toán ứng dụng gom”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-13" data-index="13">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">8:10</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(13)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(13, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Giao thức tra cứu đã có đặc tả và đã được thử, nhưng vai server vẫn do người gõ. Chương 2, lập trình socket TCP và đa luồng, mở đầu bằng nhóm TCP, với phần kết nối giữa client và server, nơi hai vai đó trở thành chương trình Java.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Tổng kết chương mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V07", "tieu_de": "Bài toán ứng dụng: đặc tả và thử giao thức tra cứu", "giong": "vi-VN-NamMinhNeural", "tong": 506.74, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/97d0c7ea94d9c36e.mp3", "dur": 13.99, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Đây", 1], [2.125, "là", 1], [2.237, "phần", 1], [2.487, "cuối", 1], [2.7, "của", 1], [2.862, "Chương", 1], [3.125, "1,", 1], [3.575, "một", 1], [3.837, "bài", 1], [4.05, "toán", 1], [4.4, "ứng", 1], [4.562, "dụng.", 1], [5.737, "Phần", 2], [6.0, "này", 2], [6.188, "trả", 2], [6.362, "lời", 2], [6.513, "câu", 2], [6.713, "hỏi:", 2], [7.263, "trước", 2], [7.45, "khi", 2], [7.6, "viết", 2], [7.787, "chương", 2], [8.012, "trình,", 2], [8.488, "đặc", 2], [8.713, "tả", 2], [8.912, "giao", 2], [9.075, "thức", 2], [9.25, "tra", 2], [9.463, "cứu", 2], [9.725, "cần", 2], [9.95, "những", 2], [10.162, "gì,", 2], [10.662, "và", 2], [10.85, "thử", 2], [11.088, "đặc", 2], [11.262, "tả", 2], [11.425, "đó", 2], [11.662, "trên", 2], [11.875, "dữ", 2], [12.025, "liệu", 2], [12.238, "thật", 2], [12.438, "bằng", 2], [12.65, "cách", 2], [12.863, "nào.", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Giao thức tra cứu cần một bản đặc tả đủ chi tiết và được thử trước", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Phần trước đã chốt”; bước 2 khi đọc “Còn thiếu nhiều”; bước 3 khi đọc “Client và server thường”; bước 4 khi đọc “Câu hỏi của phần này”.", "start": 14.59, "audio": "audio/85f54734c7a04fa8.mp3", "dur": 28.97, "words": [[0.1, "Phần", 0], [0.412, "trước", 0], [0.613, "đã", 0], [0.713, "chốt", 0], [0.9, "định", 0], [1.113, "dạng", 0], [1.375, "của", 0], [1.5, "giao", 0], [1.663, "thức", 0], [1.825, "tra", 0], [2.025, "cứu:", 0], [2.612, "mỗi", 0], [2.812, "message", 0], [3.413, "là", 0], [3.538, "một", 0], [3.725, "dòng", 0], [4.3, "UTF-8", 0], [4.875, "kết", 0], [5.088, "thúc", 0], [5.3, "bằng", 0], [6.05, "LF.", 0], [6.8, "Còn", 1], [7.075, "thiếu", 1], [7.275, "nhiều", 1], [7.487, "chi", 1], [7.688, "tiết:", 1], [8.188, "phản", 1], [8.438, "hồi", 1], [8.588, "gồm", 1], [8.812, "những", 1], [9.05, "dạng", 1], [9.275, "nào,", 1], [9.75, "yêu", 1], [10.0, "cầu", 1], [10.2, "sai", 1], [10.475, "thì", 1], [10.65, "trả", 1], [10.838, "lời", 1], [11.012, "ra", 1], [11.137, "sao,", 1], [11.688, "một", 1], [11.9, "dòng", 1], [12.15, "dài", 1], [12.35, "tối", 1], [12.6, "đa", 1], [12.775, "bao", 1], [12.975, "nhiêu", 1], [13.175, "byte.", 1], [14.312, "Client", 2], [14.812, "và", 2], [14.975, "server", 2], [15.438, "thường", 2], [15.8, "do", 2], [15.975, "hai", 2], [16.15, "người,", 2], [16.7, "hai", 2], [16.938, "nhóm", 2], [17.2, "viết.", 2], [18.262, "Hai", 3], [18.512, "bên", 3], [18.712, "chỉ", 3], [18.875, "trao", 3], [19.05, "đổi", 3], [19.275, "đúng", 3], [19.488, "khi", 3], [19.688, "cùng", 3], [19.925, "hiểu", 3], [20.113, "một", 3], [20.3, "bản", 3], [20.538, "đặc", 3], [20.7, "tả.", 3], [21.938, "Câu", 4], [22.125, "hỏi", 4], [22.35, "của", 4], [22.488, "phần", 4], [22.675, "này", 4], [22.825, "là:", 4], [23.3, "đặc", 4], [23.525, "tả", 4], [23.738, "giao", 4], [23.9, "thức", 4], [24.075, "tra", 4], [24.288, "cứu", 4], [24.55, "cần", 4], [24.775, "những", 4], [24.988, "gì,", 4], [25.488, "và", 4], [25.663, "thử", 4], [25.875, "đặc", 4], [26.05, "tả", 4], [26.2, "đó", 4], [26.45, "bằng", 4], [26.663, "cách", 4], [26.863, "nào", 4], [27.087, "khi", 4], [27.262, "chưa", 4], [27.475, "có", 4], [27.6, "chương", 4], [27.837, "trình?", 4]], "cues": [0.1, 6.8, 14.312, 21.938], "lang": 0.6}, {"ten": "Slide 2. Đặc tả quy định yêu cầu, phản hồi, mã lỗi và giới hạn", "loai": "slide", "slide": "S02", "dung": "Hình dac-ta: bốn bước của hình, bước 5 là ô kết luận. Bản đặc tả đầy đủ ở PROTOCOL.md trong thư mục mã của phần.\nHiện dần: bước 1 khi đọc “Yêu cầu là một dòng”; bước 2 khi đọc “Phản hồi cũng là một dòng”; bước 3 khi đọc “Nếu không có khóa”; bước 4 khi đọc “Ngoài ra, đặc tả”; bước 5 khi đọc “Một bản đặc tả”.", "start": 44.16, "audio": "audio/bdb723c03970343e.mp3", "dur": 51.72, "words": [[0.1, "Đặc", 0], [0.375, "tả", 0], [0.613, "giao", 0], [0.787, "thức,", 0], [1.225, "protocol", 0], [1.863, "specification,", 0], [2.862, "là", 0], [3.1, "văn", 0], [3.325, "bản", 0], [3.55, "quy", 0], [3.688, "định", 0], [3.913, "chính", 0], [4.125, "xác", 0], [4.425, "những", 0], [4.625, "gì", 0], [4.8, "hai", 0], [5.013, "bên", 0], [5.225, "gửi", 0], [5.45, "cho", 0], [5.612, "nhau.", 0], [6.763, "Yêu", 1], [7.0, "cầu", 1], [7.287, "là", 1], [7.362, "một", 1], [7.537, "dòng", 1], [7.787, "chứa", 1], [8.012, "khóa", 1], [8.275, "cần", 1], [8.512, "tra,", 1], [9.05, "ví", 1], [9.275, "dụ", 1], [9.5, "hanoi,", 1], [10.188, "kết", 1], [10.363, "thúc", 1], [10.588, "bằng", 1], [11.351, "LF.", 1], [12.113, "Phản", 2], [12.425, "hồi", 2], [12.637, "cũng", 2], [12.85, "là", 2], [12.938, "một", 2], [13.137, "dòng,", 2], [13.65, "có", 2], [13.838, "ba", 2], [14.062, "dạng.", 2], [15.338, "Có", 3], [15.525, "khóa", 3], [15.85, "thì", 3], [16.05, "trả", 3], [16.544, "OK,", 3], [17.038, "một", 3], [17.3, "dấu", 3], [17.562, "cách,", 3], [17.988, "rồi", 3], [18.3, "giá", 3], [18.538, "trị.", 3], [19.75, "Nếu", 4], [20.2, "không", 4], [20.475, "có", 4], [20.6, "khóa", 4], [20.9, "thì", 4], [21.1, "trả", 4], [21.312, "NOTFOUND.", 4], [22.688, "Yêu", 5], [22.925, "cầu", 5], [23.163, "sai", 5], [23.387, "đặc", 5], [23.562, "tả", 5], [23.875, "thì", 5], [24.062, "trả", 5], [24.35, "ERR", 5], [24.75, "kèm", 5], [25.05, "lý", 5], [25.225, "do.", 5], [26.4, "Ngoài", 6], [26.7, "ra,", 6], [27.137, "đặc", 6], [27.363, "tả", 6], [27.525, "quy", 6], [27.688, "định", 6], [27.913, "charset", 6], [28.726, "UTF-8,", 6], [29.538, "mỗi", 6], [29.75, "dòng", 6], [29.988, "tối", 6], [30.212, "đa", 6], [30.413, "256", 6], [31.325, "byte,", 6], [31.812, "và", 6], [32.062, "hai", 6], [32.275, "mã", 6], [32.45, "lỗi", 6], [32.638, "cụ", 6], [32.85, "thể:", 6], [33.45, "dòng", 6], [33.725, "rỗng", 6], [33.938, "trả", 6], [34.175, "ERR", 6], [34.587, "empty", 6], [34.9, "key,", 6], [35.45, "dòng", 6], [35.7, "dài", 6], [35.9, "quá", 6], [36.087, "giới", 6], [36.25, "hạn", 6], [36.462, "trả", 6], [36.675, "ERR", 6], [37.038, "line", 6], [37.388, "too", 6], [37.612, "long.", 6], [38.737, "Giao", 7], [39.025, "thức", 7], [39.212, "chạy", 7], [39.425, "trên", 7], [39.993, "TCP,", 7], [40.562, "port", 7], [41.269, "9199,", 7], [41.975, "và", 7], [42.138, "một", 7], [42.325, "kết", 7], [42.487, "nối", 7], [42.688, "gửi", 7], [42.938, "được", 7], [43.125, "nhiều", 7], [43.375, "yêu", 7], [43.55, "cầu", 7], [43.775, "lần", 7], [43.938, "lượt.", 7], [45.013, "Một", 8], [45.362, "bản", 8], [45.6, "đặc", 8], [45.775, "tả", 8], [45.95, "đủ", 8], [46.15, "chi", 8], [46.337, "tiết", 8], [46.6, "như", 8], [46.763, "vậy", 8], [46.962, "cho", 8], [47.112, "phép", 8], [47.35, "hai", 8], [47.562, "người", 8], [47.763, "viết", 8], [47.975, "client", 8], [48.375, "và", 8], [48.562, "server", 8], [48.975, "độc", 8], [49.15, "lập", 8], [49.475, "mà", 8], [49.663, "vẫn", 8], [49.862, "trao", 8], [50.013, "đổi", 8], [50.225, "được", 8], [50.388, "với", 8], [50.538, "nhau.", 8]], "cues": [6.763, 12.113, 19.75, 26.4, 45.013], "lang": 2.6}, {"ten": "Slide 3. Hai NetCat trên loopback thử được đặc tả khi chưa có chương trình", "loai": "slide", "slide": "S03", "dung": "Hình bo-tri: bốn bước của hình, bước 5 là ô kết luận.\nHiện dần: bước 1 khi đọc “Terminal thứ nhất”; bước 2 khi đọc “Terminal thứ hai”; bước 3 khi đọc “Mỗi dòng gõ ở”; bước 4 khi đọc “Nhờ vậy”; bước 5 khi đọc “NetCat và loopback là”.", "start": 98.48, "audio": "audio/2d02b66771a643e9.mp3", "dur": 56.45, "words": [[0.1, "Thử", 0], [0.388, "đặc", 0], [0.562, "tả", 0], [0.812, "không", 0], [1.038, "cần", 0], [1.25, "chờ", 0], [1.525, "có", 0], [1.663, "chương", 0], [1.925, "trình.", 0], [3.038, "NetCat", 1], [3.812, "là", 1], [4.0, "công", 1], [4.213, "cụ", 1], [4.375, "dòng", 1], [4.588, "lệnh", 1], [4.812, "đọc", 1], [5.0, "từng", 1], [5.2, "dòng", 1], [5.425, "từ", 1], [5.575, "bàn", 1], [5.763, "phím,", 1], [6.325, "gửi", 1], [6.562, "qua", 1], [6.737, "một", 1], [6.912, "kết", 1], [7.088, "nối", 1], [7.619, "TCP,", 1], [8.15, "và", 1], [8.45, "in", 1], [8.625, "ra", 1], [8.775, "mọi", 1], [8.975, "dòng", 1], [9.175, "nhận", 1], [9.412, "được.", 1], [10.475, "Học", 2], [10.713, "phần", 2], [10.938, "cung", 2], [11.125, "cấp", 2], [11.275, "sẵn", 2], [11.537, "một", 2], [11.7, "bản", 2], [11.925, "NetCat", 2], [12.325, "viết", 2], [12.5, "bằng", 2], [12.713, "Java,", 2], [13.412, "chạy", 2], [13.662, "trên", 2], [13.863, "mọi", 2], [14.062, "hệ", 2], [14.25, "điều", 2], [14.425, "hành.", 2], [15.525, "Terminal", 3], [16.163, "thứ", 3], [16.325, "nhất", 3], [16.538, "chạy", 3], [16.775, "NetCat", 3], [17.288, "ở", 3], [17.337, "chế", 3], [17.575, "độ", 3], [17.75, "lắng", 3], [17.962, "nghe,", 3], [18.438, "port", 3], [19.475, "9199.", 3], [20.512, "Người", 4], [20.788, "thử", 4], [21.038, "đóng", 4], [21.238, "vai", 4], [21.4, "server:", 4], [22.175, "đọc", 4], [22.475, "yêu", 4], [22.625, "cầu,", 4], [23.15, "rồi", 4], [23.462, "gõ", 4], [23.65, "phản", 4], [23.887, "hồi", 4], [24.087, "theo", 4], [24.25, "đặc", 4], [24.413, "tả.", 4], [25.675, "Terminal", 5], [26.3, "thứ", 5], [26.512, "hai", 5], [26.725, "chạy", 5], [26.95, "NetCat", 5], [27.35, "kết", 5], [27.562, "nối", 5], [27.762, "tới", 5], [27.975, "địa", 5], [28.163, "chỉ", 5], [28.204, "127.0.0.1,", 5], [28.244, "port", 5], [28.285, "9199,", 5], [28.326, "và", 5], [28.367, "đóng", 5], [28.407, "vai", 5], [28.448, "client.", 5], [28.489, "Địa", 6], [28.529, "chỉ", 6], [28.57, "127.0.0.1", 6], [28.611, "là", 6], [28.651, "địa", 6], [28.692, "chỉ", 6], [28.733, "loopback,", 6], [28.774, "trỏ", 6], [28.814, "về", 6], [28.855, "chính", 6], [28.896, "máy", 6], [28.936, "đang", 6], [28.977, "chạy:", 6], [29.018, "dữ", 6], [29.058, "liệu", 6], [29.099, "đi", 6], [29.14, "qua", 6], [29.181, "TCP", 6], [29.221, "nhưng", 6], [29.262, "không", 6], [29.283, "rời", 6], [29.304, "khỏi", 6], [29.326, "máy.", 6], [29.347, "Mỗi", 7], [29.368, "dòng", 7], [29.389, "gõ", 7], [29.411, "ở", 7], [29.432, "terminal", 7], [29.453, "này", 7], [29.474, "hiện", 7], [29.496, "ra", 7], [29.517, "ở", 7], [29.538, "terminal", 7], [29.559, "kia.", 7], [29.58, "Nhờ", 8], [29.602, "vậy,", 8], [29.623, "đặc", 8], [29.644, "tả", 8], [29.665, "được", 8], [29.687, "thử", 8], [29.708, "trên", 8], [29.729, "dữ", 8], [29.75, "liệu", 8], [29.772, "thật", 8], [29.793, "trước", 8], [29.814, "khi", 8], [29.835, "viết", 8], [29.857, "dòng", 8], [29.878, "mã", 8], [29.899, "nào.", 8], [29.92, "NetCat", 9], [29.941, "và", 9], [29.963, "loopback", 9], [29.984, "là", 9], [30.005, "hai", 9], [30.026, "công", 9], [30.048, "cụ", 9], [30.069, "quen", 9], [30.09, "thuộc", 9], [30.111, "mỗi", 9], [30.133, "khi", 9], [30.154, "thử", 9], [30.175, "một", 9], [30.175, "giao", 9], [30.175, "thức", 9], [30.175, "mạng.", 9]], "cues": [15.525, 25.675, 29.347, 29.58, 29.92], "lang": 2.6}, {"ten": "Slide 4. Terminal đóng vai server nhận yêu cầu và gõ phản hồi theo đặc tả", "loai": "slide", "slide": "S04", "dung": "Lệnh phía trên, bản ghi màn hình phía dưới. Tô lần lượt bốn cặp dòng (yêu cầu nhận được, phản hồi gõ vào) theo lời đọc. Có thể thay khung kết quả bằng clip replay terminal, dựng từ bản ghi này.\nHiện dần: bước 1 khi đọc “Bản ghi màn hình”; bước 2 khi đọc “Dòng bắt đầu bằng dấu lớn hơn”.", "start": 157.53, "audio": "audio/ae7387b91cf584a4.mp3", "dur": 45.46, "words": [[0.1, "Đây", 0], [0.388, "là", 0], [0.562, "terminal", 0], [1.212, "đóng", 0], [1.462, "vai", 0], [1.625, "server.", 0], [2.95, "NetCat", 1], [3.675, "in", 1], [3.85, "endpoint", 1], [4.3, "đang", 1], [4.537, "lắng", 1], [4.713, "nghe,", 1], [5.2, "rồi", 1], [5.412, "địa", 1], [5.575, "chỉ", 1], [5.875, "và", 1], [6.0, "port", 1], [6.25, "của", 1], [6.5, "client", 1], [6.95, "khi", 1], [7.162, "có", 1], [7.287, "kết", 1], [7.487, "nối.", 1], [8.662, "Bản", 2], [8.975, "ghi", 2], [9.125, "màn", 2], [9.338, "hình", 2], [9.55, "cho", 2], [9.688, "thấy", 2], [9.863, "bốn", 2], [10.175, "yêu", 2], [10.325, "cầu", 2], [10.55, "nhận", 2], [10.8, "được", 2], [11.037, "và", 2], [11.213, "bốn", 2], [11.463, "phản", 2], [11.713, "hồi", 2], [11.912, "gõ", 2], [12.125, "theo", 2], [12.287, "đặc", 2], [12.463, "tả.", 2], [13.713, "Khóa", 3], [14.025, "hanoi", 3], [14.438, "có", 3], [14.588, "trong", 3], [14.762, "dữ", 3], [14.925, "liệu,", 3], [15.438, "nên", 3], [15.75, "trả", 3], [16.069, "OK", 3], [16.387, "cùng", 3], [16.625, "giá", 3], [16.8, "trị.", 3], [17.975, "Khóa", 4], [18.325, "atlantis", 4], [19.125, "không", 4], [19.337, "có,", 4], [19.875, "nên", 4], [20.188, "trả", 4], [20.425, "NOTFOUND.", 4], [21.812, "Dòng", 5], [22.15, "rỗng", 5], [22.425, "thì", 5], [22.6, "trả", 5], [22.887, "ERR", 5], [23.35, "empty", 5], [23.738, "key.", 5], [24.9, "Dòng", 6], [25.2, "thứ", 6], [25.375, "tư", 6], [25.587, "dài", 6], [25.825, "300", 6], [26.225, "byte,", 6], [26.688, "vượt", 6], [26.925, "giới", 6], [27.137, "hạn", 6], [27.375, "256", 6], [28.262, "byte,", 6], [28.775, "nên", 6], [29.05, "trả", 6], [29.325, "ERR", 6], [29.663, "line", 6], [30.025, "too", 6], [30.25, "long.", 6], [31.4, "Bản", 7], [31.7, "NetCat", 7], [32.087, "của", 7], [32.188, "học", 7], [32.362, "phần", 7], [32.6, "in", 7], [32.812, "dòng", 7], [33.025, "dài", 7], [33.2, "này", 7], [33.438, "ở", 7], [33.55, "dạng", 7], [33.812, "rút", 7], [33.975, "gọn", 7], [34.237, "kèm", 7], [34.462, "số", 7], [34.663, "byte,", 7], [35.163, "và", 7], [35.4, "in", 7], [35.612, "dòng", 7], [35.85, "rỗng", 7], [36.038, "thành", 7], [36.237, "chữ", 7], [36.462, "empty", 7], [36.85, "line", 7], [37.225, "trong", 7], [37.45, "ngoặc,", 7], [37.938, "để", 7], [38.15, "dễ", 7], [38.362, "nhìn.", 7], [39.538, "Dòng", 8], [39.837, "bắt", 8], [40.0, "đầu", 8], [40.2, "bằng", 8], [40.413, "dấu", 8], [40.625, "lớn", 8], [40.875, "hơn", 8], [41.237, "là", 8], [41.4, "dòng", 8], [41.65, "gõ", 8], [41.862, "vào", 8], [42.1, "và", 8], [42.225, "gửi", 8], [42.45, "đi,", 8], [42.95, "các", 8], [43.125, "dòng", 8], [43.35, "còn", 8], [43.55, "lại", 8], [43.788, "là", 8], [43.913, "dòng", 8], [44.125, "nhận", 8], [44.375, "được.", 8]], "cues": [8.662, 39.538], "lang": 9.6}, {"ten": "Slide 5. Terminal đóng vai client nhận đúng các phản hồi theo đặc tả", "loai": "slide", "slide": "S05", "dung": "Lệnh phía trên, bản ghi màn hình phía dưới. Đặt cạnh slide 4 thu nhỏ để thấy hai terminal cùng lúc nếu đội dựng dùng bố cục hai cột.\nHiện dần: bước 1 khi đọc “Ở terminal client”; bước 2 khi đọc “Bốn trường hợp này”.", "start": 212.59, "audio": "audio/44f9b2f6a6ef5230.mp3", "dur": 28.25, "words": [[0.1, "Ở", 0], [0.325, "terminal", 0], [0.887, "client,", 0], [1.5, "mỗi", 0], [1.8, "yêu", 0], [1.962, "cầu", 0], [2.2, "gõ", 0], [2.4, "vào", 0], [2.525, "được", 0], [2.688, "gửi", 0], [2.9, "đi,", 0], [3.388, "và", 0], [3.6, "phản", 0], [3.812, "hồi", 0], [3.962, "tương", 0], [4.225, "ứng", 0], [4.388, "hiện", 0], [4.625, "ra", 0], [4.787, "ngay", 0], [4.963, "sau", 0], [5.15, "đó.", 0], [6.338, "Chữ", 1], [6.588, "tiếng", 1], [6.85, "Việt", 1], [7.05, "trong", 1], [7.225, "phản", 1], [7.45, "hồi", 1], [7.612, "hiển", 1], [7.825, "thị", 1], [7.975, "đúng", 1], [8.25, "vì", 1], [8.45, "hai", 1], [8.688, "bên", 1], [8.875, "cùng", 1], [9.1, "dùng", 1], [10.131, "UTF-8.", 1], [11.162, "Khi", 2], [11.425, "người", 2], [11.625, "thử", 2], [11.85, "kết", 2], [12.037, "thúc", 2], [12.238, "nhập", 2], [12.438, "liệu", 2], [12.688, "ở", 2], [12.787, "client,", 2], [13.4, "NetCat", 2], [13.812, "báo", 2], [14.037, "cho", 2], [14.2, "server", 2], [14.6, "rằng", 2], [14.925, "không", 2], [15.137, "còn", 2], [15.325, "dữ", 2], [15.463, "liệu", 2], [15.688, "gửi", 2], [15.9, "đi,", 2], [16.375, "rồi", 2], [16.65, "hai", 2], [16.913, "bên", 2], [17.087, "đóng", 2], [17.275, "kết", 2], [17.488, "nối.", 2], [18.675, "Bốn", 3], [18.988, "trường", 3], [19.188, "hợp", 3], [19.363, "này", 3], [19.575, "gồm", 3], [19.85, "có", 3], [20.0, "khóa,", 3], [20.6, "không", 3], [20.863, "có", 3], [20.975, "khóa,", 3], [21.587, "dòng", 3], [21.9, "rỗng", 3], [22.212, "và", 3], [22.35, "dòng", 3], [22.613, "quá", 3], [22.825, "dài.", 3], [24.0, "Sau", 4], [24.3, "này,", 4], [24.738, "chúng", 4], [24.975, "trở", 4], [25.163, "thành", 4], [25.363, "bộ", 4], [25.525, "kiểm", 4], [25.75, "thử", 4], [26.0, "cho", 4], [26.137, "server", 4], [26.65, "ở", 4], [26.788, "Chương", 4], [27.087, "2.", 4]], "cues": [0.1, 18.675], "lang": 9.6}, {"ten": "Slide 6. HTTP/1.1 cũng là một giao thức theo dòng", "loai": "slide", "slide": "S06", "dung": "Lệnh phía trên, kết quả phía dưới. Tô các dòng * khi đọc \"phân giải tên\", các dòng > khi đọc \"request\", các dòng < khi đọc \"response\". Kết quả chụp từ máy biên soạn ngày 20/10/2026; địa chỉ của example.com có thể khác khi chạy lại.\nHiện dần: bước 1 khi đọc “Kết quả bắt đầu”; bước 2 khi đọc “Dòng bắt đầu bằng dấu lớn hơn”; bước 3 khi đọc “Một dòng trống, hiện ra”.", "start": 250.44, "audio": "audio/f5df37dba68fe848.mp3", "dur": 52.08, "words": [[0.1, "Giao", 0], [0.4, "thức", 0], [0.6, "theo", 0], [0.8, "dòng", 0], [1.075, "có", 0], [1.225, "trong", 0], [1.413, "nhiều", 0], [1.65, "giao", 0], [1.85, "thức", 0], [2.025, "thật.", 0], [2.982, "HTTP", 1], [3.938, "1.1,", 1], [4.862, "giao", 1], [5.112, "thức", 1], [5.312, "của", 1], [5.5, "web,", 1], [5.95, "là", 1], [6.138, "một", 1], [6.362, "ví", 1], [6.55, "dụ.", 1], [7.725, "Lệnh", 2], [8.088, "curl", 2], [8.363, "ở", 2], [8.438, "chế", 2], [8.65, "độ", 2], [8.85, "verbose", 2], [9.275, "in", 2], [9.575, "toàn", 2], [9.838, "bộ", 2], [10.012, "trao", 2], [10.175, "đổi", 2], [10.375, "giữa", 2], [10.588, "curl", 2], [10.863, "và", 2], [10.988, "server.", 2], [12.3, "Câu", 3], [12.537, "lệnh", 3], [12.812, "chỉ", 3], [13.012, "giữ", 3], [13.213, "14", 3], [13.75, "dòng", 3], [13.95, "đầu.", 3], [15.062, "Kết", 4], [15.325, "quả", 4], [15.55, "bắt", 4], [15.725, "đầu", 4], [15.95, "bằng", 4], [16.15, "phân", 4], [16.35, "giải", 4], [16.55, "tên", 4], [16.863, "example.com", 4], [17.812, "ra", 4], [17.962, "hai", 4], [18.125, "địa", 4], [18.312, "chỉ", 4], [18.974, "IPv4,", 4], [19.637, "rồi", 4], [19.925, "kết", 4], [20.15, "nối", 4], [20.325, "tới", 4], [20.538, "port", 4], [21.357, "80.", 4], [22.175, "Dòng", 5], [22.475, "bắt", 5], [22.625, "đầu", 5], [22.825, "bằng", 5], [23.025, "dấu", 5], [23.238, "lớn", 5], [23.475, "hơn", 5], [23.712, "là", 5], [23.887, "yêu", 5], [24.05, "cầu,", 5], [24.562, "tức", 5], [24.75, "request,", 5], [25.212, "curl", 5], [25.45, "gửi", 5], [25.65, "đi:", 5], [26.15, "dòng", 5], [26.782, "GET,", 5], [27.413, "rồi", 5], [27.688, "từng", 5], [27.938, "header,", 5], [28.625, "mỗi", 5], [28.887, "header", 5], [29.312, "một", 5], [29.525, "dòng.", 5], [30.675, "Một", 6], [31.038, "dòng", 6], [31.262, "trống,", 6], [31.775, "hiện", 6], [32.038, "ra", 6], [32.175, "là", 6], [32.275, "dòng", 6], [32.562, "chỉ", 6], [32.737, "có", 6], [32.875, "dấu", 6], [33.087, "lớn", 6], [33.337, "hơn,", 6], [33.875, "đánh", 6], [34.125, "dấu", 6], [34.362, "hết", 6], [34.525, "phần", 6], [34.812, "header.", 6], [36.087, "Dòng", 7], [36.375, "bắt", 7], [36.525, "đầu", 7], [36.725, "bằng", 7], [36.925, "dấu", 7], [37.138, "nhỏ", 7], [37.375, "hơn", 7], [37.612, "là", 7], [37.712, "phản", 7], [37.962, "hồi,", 7], [38.462, "tức", 7], [38.688, "response,", 7], [39.675, "của", 7], [39.938, "server,", 7], [40.688, "mở", 7], [40.9, "đầu", 7], [41.1, "bằng", 7], [41.575, "HTTP", 7], [42.05, "1.1", 7], [42.7, "200", 7], [42.7, "OK.", 7], [42.7, "HTTP", 8], [42.7, "học", 8], [42.7, "kỹ", 8], [42.7, "ở", 8], [42.7, "các", 8], [42.7, "chương", 8], [42.7, "sau.", 8], [42.7, "Ở", 9], [42.7, "phần", 9], [42.7, "này,", 9], [42.7, "chỉ", 9], [42.7, "cần", 9], [42.7, "thấy", 9], [42.7, "HTTP", 9], [42.7, "là", 9], [42.7, "một", 9], [42.7, "giao", 9], [42.7, "thức", 9], [42.7, "theo", 9], [42.7, "dòng", 9], [42.7, "có", 9], [42.7, "thật.", 9]], "cues": [15.062, 22.175, 30.675], "lang": 9.6}, {"ten": "Slide 7. Đặc tả phải nói rõ ký tự kết thúc dòng", "loai": "slide", "slide": "S07", "dung": "Ba ý hiện lần lượt.\nHiện dần: bước 1 khi đọc “Theo đặc tả HTTP”; bước 2 khi đọc “Vì vậy”; bước 3 khi đọc “Phương thức readLine”.", "start": 312.12, "audio": "audio/1d6311ca8e9ef60a.mp3", "dur": 47.11, "words": [[0.1, "Lưu", 0], [0.4, "ý", 0], [0.613, "của", 0], [0.75, "bài", 0], [0.938, "toán", 0], [1.212, "này", 0], [1.475, "là", 0], [1.637, "ký", 0], [1.9, "tự", 0], [2.138, "kết", 0], [2.362, "thúc", 0], [2.538, "dòng.", 0], [3.688, "Theo", 1], [3.9, "đặc", 1], [4.075, "tả", 1], [4.55, "HTTP", 1], [5.025, "1.1,", 1], [5.75, "RFC", 1], [6.475, "9112,", 1], [7.862, "mỗi", 1], [8.062, "dòng", 1], [8.287, "kết", 1], [8.463, "thúc", 1], [8.662, "bằng", 1], [9.412, "CRLF,", 1], [10.162, "gồm", 1], [10.45, "hai", 1], [10.625, "byte:", 1], [11.143, "CR", 1], [11.662, "rồi", 1], [12.438, "LF.", 1], [13.213, "Lệnh", 2], [13.562, "curl", 2], [13.8, "không", 2], [14.062, "in", 2], [14.225, "hai", 2], [14.4, "ký", 2], [14.65, "tự", 2], [14.863, "này", 2], [15.05, "ra.", 2], [16.175, "Giao", 3], [16.5, "thức", 3], [16.712, "tra", 3], [16.913, "cứu", 3], [17.212, "dùng", 3], [18.012, "LF.", 3], [18.812, "Nếu", 4], [19.262, "client", 4], [19.625, "gửi", 4], [20.163, "CRLF", 4], [20.7, "tới", 4], [20.837, "một", 4], [21.0, "server", 4], [21.387, "tự", 4], [21.6, "tách", 4], [21.825, "dòng", 4], [22.087, "chỉ", 4], [22.262, "theo", 4], [22.681, "LF,", 4], [23.1, "ký", 4], [23.3, "tự", 4], [23.613, "CR", 4], [23.925, "sẽ", 4], [24.075, "nằm", 4], [24.275, "lại", 4], [24.525, "ở", 4], [24.625, "cuối", 4], [24.8, "khóa,", 4], [25.387, "và", 4], [25.613, "khóa", 4], [25.837, "hanoi", 4], [26.238, "không", 4], [26.462, "còn", 4], [26.65, "khớp.", 4], [27.75, "Vì", 5], [28.0, "vậy,", 5], [28.438, "đặc", 5], [28.663, "tả", 5], [28.887, "phải", 5], [29.062, "ghi", 5], [29.238, "rõ", 5], [29.425, "ký", 5], [29.65, "tự", 5], [29.863, "kết", 5], [30.075, "thúc", 5], [30.238, "dòng,", 5], [30.738, "và", 5], [30.95, "bên", 5], [31.137, "nhận", 5], [31.387, "chấp", 5], [31.6, "nhận", 5], [31.863, "cả", 5], [32.025, "hai", 5], [32.263, "hay", 5], [32.425, "chỉ", 5], [32.587, "một.", 5], [33.712, "Giao", 6], [34.025, "thức", 6], [34.225, "tra", 6], [34.425, "cứu", 6], [34.712, "chọn", 6], [35.0, "chấp", 6], [35.212, "nhận", 6], [35.475, "cả", 6], [35.65, "hai.", 6], [36.825, "Phương", 7], [37.138, "thức", 7], [37.337, "readLine", 7], [37.913, "của", 7], [38.087, "Java", 7], [38.513, "đã", 7], [38.625, "nhận", 7], [38.875, "cả", 7], [39.362, "LF,", 7], [39.85, "CR", 7], [40.337, "và", 7], [41.05, "CRLF,", 7], [41.763, "nhưng", 7], [42.062, "chương", 7], [42.288, "trình", 7], [42.487, "tự", 7], [42.65, "tách", 7], [42.837, "dòng,", 7], [43.362, "hoặc", 7], [43.562, "viết", 7], [43.737, "bằng", 7], [43.925, "ngôn", 7], [44.112, "ngữ", 7], [44.312, "khác,", 7], [44.8, "phải", 7], [45.013, "tự", 7], [45.2, "bỏ", 7], [45.413, "ký", 7], [45.65, "tự", 7], [45.65, "CR.", 7]], "cues": [3.688, 27.75, 36.825], "lang": 0.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án C được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 359.83, "audio": "audio/6c902ccc0a9b098e.mp3", "dur": 3.34, "words": [[0.1, "Hai", 0], [0.325, "câu", 0], [0.5, "hỏi", 0], [0.75, "sau", 0], [0.95, "kiểm", 0], [1.2, "tra", 0], [1.4, "cách", 0], [1.625, "dùng", 0], [1.875, "đặc", 0], [2.062, "tả.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/034a41d2b8f8c857.mp3", "dur2": 6.17, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.662, "là", 0], [0.775, "C.", 0], [1.175, "Đặc", 1], [1.387, "tả", 1], [1.637, "đã", 1], [1.762, "quy", 1], [1.925, "định", 1], [2.125, "mã", 1], [2.288, "lỗi", 1], [2.538, "cho", 1], [2.675, "dòng", 1], [2.9, "quá", 1], [3.1, "dài,", 1], [3.638, "nên", 1], [3.938, "server", 1], [4.35, "trả", 1], [4.588, "đúng", 1], [4.8, "mã", 1], [4.975, "đó.", 1]], "dap_an": "C", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án B.", "start": 375.94, "audio": "audio/6b4813f6ec33b739.mp3", "dur": 3.22, "words": [[0.1, "Câu", 0], [0.287, "thứ", 0], [0.5, "hai", 0], [0.738, "về", 0], [1.219, "HTTP", 0], [1.7, "1.1.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/2e657aef3af6565a.mp3", "dur2": 7.44, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.675, "là", 0], [0.787, "B.", 0], [1.288, "HTTP", 1], [1.788, "1.1", 1], [2.4, "kết", 1], [2.562, "thúc", 1], [2.75, "mỗi", 1], [2.925, "dòng", 1], [3.175, "bằng", 1], [3.875, "CRLF,", 1], [4.575, "khác", 1], [4.85, "với", 1], [5.15, "LF", 1], [5.45, "của", 1], [5.638, "giao", 1], [5.838, "thức", 1], [6.025, "tra", 1], [6.213, "cứu.", 1]], "dap_an": "B", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “đặc tả giao thức tra cứu gồm”; bước 2 khi đọc “Đặc tả được thử”; bước 3 khi đọc “HTTP 1.1 cũng là”; bước 4 khi đọc “Các từ khóa cần nhớ”.", "start": 393.2, "audio": "audio/8be4db4b2c9965a7.mp3", "dur": 31.2, "words": [[0.1, "Trả", 0], [0.375, "lời", 0], [0.6, "câu", 0], [0.8, "hỏi", 0], [1.0, "của", 0], [1.137, "phần:", 0], [1.637, "đặc", 0], [1.863, "tả", 0], [2.075, "giao", 0], [2.237, "thức", 0], [2.4, "tra", 0], [2.612, "cứu", 0], [2.913, "gồm", 0], [3.15, "định", 0], [3.35, "dạng", 0], [3.638, "yêu", 0], [3.775, "cầu,", 0], [4.287, "ba", 0], [4.525, "dạng", 0], [4.787, "phản", 0], [5.025, "hồi,", 0], [5.537, "mã", 0], [5.763, "lỗi,", 0], [6.375, "giới", 0], [6.6, "hạn", 0], [6.825, "độ", 0], [7.0, "dài,", 0], [7.5, "charset", 0], [8.113, "và", 0], [8.3, "ký", 0], [8.537, "tự", 0], [8.75, "kết", 0], [8.963, "thúc", 0], [9.125, "dòng.", 0], [10.262, "Đặc", 1], [10.525, "tả", 1], [10.738, "được", 1], [10.9, "thử", 1], [11.113, "bằng", 1], [11.35, "NetCat", 1], [11.762, "trên", 1], [12.0, "loopback", 1], [12.412, "khi", 1], [12.662, "chưa", 1], [12.9, "có", 1], [13.025, "chương", 1], [13.262, "trình,", 1], [13.725, "và", 1], [13.925, "các", 1], [14.1, "trường", 1], [14.287, "hợp", 1], [14.463, "thử", 1], [14.688, "trở", 1], [14.863, "thành", 1], [15.062, "bộ", 1], [15.225, "kiểm", 1], [15.45, "thử", 1], [15.7, "về", 1], [15.825, "sau.", 1], [16.837, "HTTP", 2], [17.85, "1.1", 2], [18.475, "cũng", 2], [18.65, "là", 2], [18.775, "giao", 2], [18.962, "thức", 2], [19.125, "theo", 2], [19.275, "dòng,", 2], [19.8, "nhưng", 2], [20.125, "dùng", 2], [20.837, "CRLF,", 2], [21.55, "nên", 2], [21.85, "đặc", 2], [22.025, "tả", 2], [22.262, "phải", 2], [22.438, "nói", 2], [22.625, "rõ", 2], [22.8, "ký", 2], [23.025, "tự", 2], [23.25, "kết", 2], [23.462, "thúc", 2], [23.625, "dòng.", 2], [24.762, "Các", 3], [24.962, "từ", 3], [25.1, "khóa", 3], [25.337, "cần", 3], [25.562, "nhớ", 3], [25.863, "gồm", 3], [26.1, "đặc", 3], [26.275, "tả", 3], [26.5, "giao", 3], [26.688, "thức,", 3], [27.137, "NetCat,", 3], [27.9, "curl,", 3], [28.438, "loopback", 3], [29.012, "và", 3], [29.012, "CRLF.", 3]], "cues": [1.637, 10.262, 16.837, 24.762], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Chủ đề nâng cao của phần”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 425.0, "audio": "audio/c60e04ed94681110.mp3", "dur": 22.54, "words": [[0.1, "Chủ", 0], [0.388, "đề", 0], [0.588, "nâng", 0], [0.85, "cao", 0], [1.087, "của", 0], [1.238, "phần", 0], [1.5, "gồm", 0], [1.762, "hai", 0], [1.962, "mục.", 0], [3.05, "Thứ", 1], [3.25, "nhất", 1], [3.513, "là", 1], [3.737, "cách", 1], [3.9, "các", 1], [4.062, "giao", 1], [4.225, "thức", 1], [4.45, "Internet", 1], [5.112, "được", 1], [5.3, "đặc", 1], [5.487, "tả", 1], [5.713, "trong", 1], [6.269, "RFC,", 1], [6.825, "ví", 1], [7.05, "dụ", 1], [7.469, "RFC", 1], [7.888, "9112", 1], [9.0, "cho", 1], [9.45, "HTTP", 1], [9.9, "1.1.", 1], [11.387, "Thứ", 2], [11.625, "hai", 2], [11.887, "là", 2], [11.975, "kiểm", 2], [12.225, "thử", 2], [12.438, "giao", 2], [12.613, "thức", 2], [12.825, "bằng", 2], [13.05, "bộ", 2], [13.238, "dữ", 2], [13.463, "liệu", 2], [13.662, "mẫu.", 2], [14.912, "Bài", 3], [15.162, "tập", 3], [15.375, "mở", 3], [15.562, "rộng:", 3], [16.062, "bổ", 3], [16.262, "sung", 3], [16.462, "lệnh", 3], [16.688, "STATS", 3], [17.212, "vào", 3], [17.363, "đặc", 3], [17.55, "tả,", 3], [18.163, "gồm", 3], [18.45, "cú", 3], [18.675, "pháp,", 3], [19.188, "phản", 3], [19.475, "hồi", 3], [19.675, "và", 3], [19.788, "mã", 3], [19.988, "lỗi,", 3], [20.575, "rồi", 3], [20.825, "thử", 3], [21.062, "bằng", 3], [21.288, "NetCat.", 3]], "cues": [0.1, 14.912], "lang": 0.6}, {"ten": "Tổng kết chương", "loai": "ket-chuong", "slide": "TKC", "dung": "Infographic tổng kết chương: bốn thẻ hiện lần lượt theo lời đọc.\nHiện dần: bước 1 khi đọc “Nhóm định danh”; bước 2 khi đọc “Nhóm giao vận”; bước 3 khi đọc “Nhóm stream”; bước 4 khi đọc “Bài toán ứng dụng gom”.", "start": 448.14, "audio": "audio/24b96c486a862876.mp3", "dur": 41.66, "words": [[0.1, "Tổng", 0], [0.388, "kết", 0], [0.625, "Chương", 0], [0.887, "1.", 0], [1.962, "Nhóm", 1], [2.325, "định", 1], [2.513, "danh", 1], [2.712, "trả", 1], [2.9, "lời", 1], [3.05, "đích", 1], [3.25, "đến", 1], [3.487, "là", 1], [3.612, "gì:", 1], [4.175, "endpoint,", 1], [4.938, "gồm", 1], [5.225, "địa", 1], [5.4, "chỉ", 1], [5.75, "IP", 1], [6.1, "và", 1], [6.237, "port,", 1], [6.737, "có", 1], [6.888, "được", 1], [7.037, "sau", 1], [7.237, "bước", 1], [7.412, "phân", 1], [7.638, "giải", 1], [7.862, "tên.", 1], [9.037, "Nhóm", 2], [9.412, "giao", 2], [9.6, "vận", 2], [9.812, "trả", 2], [9.963, "lời", 2], [10.15, "gửi", 2], [10.363, "bằng", 2], [10.575, "dịch", 2], [10.738, "vụ", 2], [10.938, "nào:", 2], [11.5, "TCP", 2], [12.062, "cho", 2], [12.213, "byte", 2], [12.425, "stream", 2], [12.713, "tin", 2], [12.912, "cậy,", 2], [13.456, "UDP", 2], [14.0, "cho", 2], [14.162, "datagram", 2], [14.85, "độc", 2], [15.025, "lập,", 2], [15.463, "cùng", 2], [15.725, "hai", 2], [15.887, "mô", 2], [16.062, "hình", 2], [16.262, "client–server", 2], [17.188, "và", 2], [18.069, "P2P.", 2], [18.95, "Nhóm", 3], [19.3, "stream", 3], [19.587, "trả", 3], [19.775, "lời", 3], [19.938, "đọc", 3], [20.125, "ghi", 3], [20.288, "dữ", 3], [20.462, "liệu", 3], [20.688, "thế", 3], [20.825, "nào:", 3], [21.325, "đúng", 3], [21.55, "contract", 3], [21.988, "của", 3], [22.137, "read,", 3], [22.587, "bọc", 3], [22.788, "stream", 3], [23.163, "bằng", 3], [23.375, "decorator", 3], [24.075, "và", 3], [24.225, "flush", 3], [24.613, "trước", 3], [24.825, "khi", 3], [25.0, "chờ", 3], [25.25, "phản", 3], [25.5, "hồi.", 3], [26.625, "Dữ", 4], [26.875, "liệu", 4], [27.113, "có", 4], [27.25, "kiểu", 4], [27.462, "đi", 4], [27.587, "qua", 4], [27.825, "DataStream,", 4], [28.75, "đối", 4], [28.988, "tượng", 4], [29.262, "qua", 4], [29.462, "serialization,", 4], [30.5, "văn", 4], [30.75, "bản", 4], [30.988, "qua", 4], [31.175, "charset", 4], [31.663, "và", 4], [31.875, "framing.", 4], [33.312, "Bài", 5], [33.575, "toán", 5], [33.875, "ứng", 5], [34.025, "dụng", 5], [34.288, "gom", 5], [34.5, "tất", 5], [34.688, "cả", 5], [34.825, "thành", 5], [35.05, "giao", 5], [35.225, "thức", 5], [35.4, "tra", 5], [35.587, "cứu:", 5], [36.163, "một", 5], [36.375, "dòng", 5], [36.968, "UTF-8", 5], [37.562, "kết", 5], [37.775, "thúc", 5], [37.975, "bằng", 5], [38.419, "LF,", 5], [38.862, "có", 5], [39.0, "đặc", 5], [39.188, "tả", 5], [39.513, "và", 5], [39.688, "đã", 5], [39.788, "được", 5], [39.95, "thử", 5], [40.163, "bằng", 5], [40.413, "NetCat.", 5]], "cues": [1.962, 9.037, 18.95, 33.312], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Tổng kết chương mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 490.4, "audio": "audio/add9903d3371e16c.mp3", "dur": 15.74, "words": [[0.1, "Giao", 0], [0.4, "thức", 0], [0.588, "tra", 0], [0.775, "cứu", 0], [1.087, "đã", 0], [1.188, "có", 0], [1.325, "đặc", 0], [1.525, "tả", 0], [1.812, "và", 0], [1.95, "đã", 0], [2.062, "được", 0], [2.237, "thử,", 0], [2.825, "nhưng", 0], [3.125, "vai", 0], [3.3, "server", 0], [3.75, "vẫn", 0], [3.987, "do", 0], [4.138, "người", 0], [4.35, "gõ.", 0], [5.6, "Chương", 1], [5.912, "2,", 1], [6.388, "lập", 1], [6.612, "trình", 1], [6.8, "socket", 1], [7.306, "TCP", 1], [7.812, "và", 1], [7.95, "đa", 1], [8.15, "luồng,", 1], [8.65, "mở", 1], [8.875, "đầu", 1], [9.075, "bằng", 1], [9.287, "nhóm", 1], [9.863, "TCP,", 1], [10.438, "với", 1], [10.65, "phần", 1], [10.887, "kết", 1], [11.1, "nối", 1], [11.287, "giữa", 1], [11.5, "client", 1], [11.9, "và", 1], [12.037, "server,", 1], [12.8, "nơi", 1], [13.062, "hai", 1], [13.25, "vai", 1], [13.387, "đó", 1], [13.613, "trở", 1], [13.775, "thành", 1], [14.0, "chương", 1], [14.238, "trình", 1], [14.45, "Java.", 1]], "cues": [], "lang": 0.6}], "video_sau": "TCP: kết nối giữa client và server"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

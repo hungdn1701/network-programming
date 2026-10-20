@@ -1,0 +1,10 @@
+connected to 127.0.0.1:9199
+> hanoi
+OK Thủ đô của Việt Nam
+> atlantis
+NOTFOUND
+> (empty line)
+ERR empty key
+> xxxxxxxxxxxxxxxxxxxx… (300 bytes)
+ERR line too long
+(connection closed by peer)

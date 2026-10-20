@@ -1,0 +1,2 @@
+localhost/127.0.0.1:9199  isUnresolved() = false
+lookup.invalid/<unresolved>:9199  isUnresolved() = true

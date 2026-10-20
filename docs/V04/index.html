@@ -1,0 +1,472 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V04 — Stream: byte stream, contract của read/write, decorator và buffer · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-1/03-byte-stream">Mã</a>
+<h1>V04 · Stream: byte stream, contract của read/write, decorator và buffer</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 1</div><div class="ten">Stream: byte stream, contract của read/write, decorator và buffer</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Đọc sai contract của read gây thiếu dữ liệu, lặp dữ liệu hoặc chờ không kết thúc</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Dữ liệu qua mạng đến chương trình Java dưới dạng <b>byte stream</b>: dãy byte đến dần theo thời gian</li><li data-s="2">Đọc sai contract của <code>read()</code>: <b>thiếu dữ liệu</b>, <b>lặp dữ liệu</b> hoặc <b>chờ không kết thúc</b></li></ul><div class="khung" data-s="3"><b>Câu hỏi của phần:</b> đọc và ghi byte stream thế nào cho đúng?</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Dữ liệu qua mạng luôn đi qua byte stream, các họ stream khác bọc lên trên</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Bốn họ stream trong Java: byte stream (InputStream, OutputStream) ở dưới cùng; character stream (Reader, Writer), DataStream (DataInputStream, DataOutputStream) và ObjectStream (ObjectInputStream, ObjectOutputStream) đều bọc byte stream.">
+  <defs>
+    <marker id="bh-navy" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+  </defs>
+
+  <!-- ① byte stream: nền của mọi họ -->
+  <g data-s="1">
+    <rect x="160" y="360" width="1440" height="130" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="3"/>
+    <text x="880" y="408" text-anchor="middle" font-size="30" font-weight="500" fill="#051A53">Byte stream: dãy byte</text>
+    <text x="880" y="452" text-anchor="middle" font-size="24" fill="#373D4E" font-family="Consolas, monospace">InputStream, OutputStream</text>
+    <text x="1580" y="476" text-anchor="end" font-size="21" fill="#5B6478">phần này</text>
+  </g>
+
+  <!-- ② ba họ bọc byte stream -->
+  <g data-s="2">
+    <rect x="160" y="40" width="440" height="190" rx="6" fill="#FFFFFF" stroke="#5B6478" stroke-width="2.5"/>
+    <text x="380" y="88" text-anchor="middle" font-size="28" font-weight="500" fill="#373D4E">Character stream</text>
+    <text x="380" y="130" text-anchor="middle" font-size="23" fill="#373D4E" font-family="Consolas, monospace">Reader, Writer</text>
+    <text x="380" y="172" text-anchor="middle" font-size="23" fill="#5B6478">ký tự theo charset</text>
+    <text x="380" y="210" text-anchor="middle" font-size="21" fill="#5B6478">phần về charset</text>
+
+    <rect x="660" y="40" width="440" height="190" rx="6" fill="#FFFFFF" stroke="#5B6478" stroke-width="2.5"/>
+    <text x="880" y="88" text-anchor="middle" font-size="28" font-weight="500" fill="#373D4E">DataStream</text>
+    <text x="880" y="130" text-anchor="middle" font-size="22" fill="#373D4E" font-family="Consolas, monospace">DataInput/OutputStream</text>
+    <text x="880" y="172" text-anchor="middle" font-size="23" fill="#5B6478">int, double, chuỗi</text>
+    <text x="880" y="210" text-anchor="middle" font-size="21" fill="#5B6478">phần sau</text>
+
+    <rect x="1160" y="40" width="440" height="190" rx="6" fill="#FFFFFF" stroke="#5B6478" stroke-width="2.5"/>
+    <text x="1380" y="88" text-anchor="middle" font-size="28" font-weight="500" fill="#373D4E">ObjectStream</text>
+    <text x="1380" y="130" text-anchor="middle" font-size="22" fill="#373D4E" font-family="Consolas, monospace">ObjectInput/OutputStream</text>
+    <text x="1380" y="172" text-anchor="middle" font-size="23" fill="#5B6478">đối tượng</text>
+    <text x="1380" y="210" text-anchor="middle" font-size="21" fill="#5B6478">phần sau</text>
+
+    <line x1="380" y1="234" x2="380" y2="352" stroke="#051A53" stroke-width="3" marker-end="url(#bh-navy)"/>
+    <line x1="880" y1="234" x2="880" y2="352" stroke="#051A53" stroke-width="3" marker-end="url(#bh-navy)"/>
+    <line x1="1380" y1="234" x2="1380" y2="352" stroke="#051A53" stroke-width="3" marker-end="url(#bh-navy)"/>
+    <text x="396" y="300" font-size="22" fill="#051A53">bọc</text>
+    <text x="896" y="300" font-size="22" fill="#051A53">bọc</text>
+    <text x="1396" y="300" font-size="22" fill="#051A53">bọc</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="3"><p>Dữ liệu qua mạng luôn là <b>byte</b>: các họ stream khác đều <b>bọc byte stream</b>.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Mỗi lần gọi, read trả từ 1 đến độ dài mảng, hoặc trừ một khi hết dữ liệu</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 600" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Mảng buf 4096 byte; 10 000 byte đến thành nhiều đợt. Lần 1 read trả 1460, lần 2 trả 2920, lần 3 trả 512, lần 4 trả 1460, lần 5 trả 3648, lần 6 trả -1 vì hết dữ liệu. Khi chưa có byte nào và chưa hết dữ liệu, read bị chặn.">
+  <!-- tiêu đề cột: thang của mảng buf -->
+  <g data-s="1">
+    <text x="420" y="40" font-size="23" fill="#5B6478">mảng <tspan font-family="Consolas, monospace">buf</tspan>: 4096 byte; dữ liệu cần đọc: 10 000 byte, đến thành nhiều đợt</text>
+    <text x="400" y="104" text-anchor="end" font-size="23" fill="#051A53" font-family="Consolas, monospace">lần 1: read(buf)</text>
+    <rect x="420" y="74" width="1000" height="44" fill="#FFFFFF" stroke="#9AA3B8" stroke-width="2"/>
+    <rect x="420" y="74" width="356" height="44" fill="#FFF6DD" stroke="#8A6508" stroke-width="2"/>
+    <text x="1440" y="106" font-size="26" font-weight="500" fill="#051A53" font-family="Consolas, monospace">→ 1460</text>
+  </g>
+
+  <!-- ② mỗi lần trả một số byte khác nhau -->
+  <g data-s="2" font-family="Consolas, monospace">
+    <text x="400" y="174" text-anchor="end" font-size="23" fill="#051A53">lần 2: read(buf)</text>
+    <rect x="420" y="144" width="1000" height="44" fill="#FFFFFF" stroke="#9AA3B8" stroke-width="2"/>
+    <rect x="420" y="144" width="713" height="44" fill="#FFF6DD" stroke="#8A6508" stroke-width="2"/>
+    <text x="1440" y="176" font-size="26" font-weight="500" fill="#051A53">→ 2920</text>
+    <text x="400" y="244" text-anchor="end" font-size="23" fill="#051A53">lần 3: read(buf)</text>
+    <rect x="420" y="214" width="1000" height="44" fill="#FFFFFF" stroke="#9AA3B8" stroke-width="2"/>
+    <rect x="420" y="214" width="125" height="44" fill="#FFF6DD" stroke="#8A6508" stroke-width="2"/>
+    <text x="1440" y="246" font-size="26" font-weight="500" fill="#051A53">→ 512</text>
+    <text x="400" y="314" text-anchor="end" font-size="23" fill="#051A53">lần 4: read(buf)</text>
+    <rect x="420" y="284" width="1000" height="44" fill="#FFFFFF" stroke="#9AA3B8" stroke-width="2"/>
+    <rect x="420" y="284" width="356" height="44" fill="#FFF6DD" stroke="#8A6508" stroke-width="2"/>
+    <text x="1440" y="316" font-size="26" font-weight="500" fill="#051A53">→ 1460</text>
+    <text x="400" y="384" text-anchor="end" font-size="23" fill="#051A53">lần 5: read(buf)</text>
+    <rect x="420" y="354" width="1000" height="44" fill="#FFFFFF" stroke="#9AA3B8" stroke-width="2"/>
+    <rect x="420" y="354" width="891" height="44" fill="#FFF6DD" stroke="#8A6508" stroke-width="2"/>
+    <text x="1440" y="386" font-size="26" font-weight="500" fill="#051A53">→ 3648</text>
+  </g>
+
+  <!-- ③ hết dữ liệu: -1 -->
+  <g data-s="3">
+    <text x="400" y="454" text-anchor="end" font-size="23" fill="#22603F" font-family="Consolas, monospace">lần 6: read(buf)</text>
+    <text x="420" y="454" font-size="26" font-weight="500" fill="#22603F" font-family="Consolas, monospace">→ -1</text>
+    <text x="520" y="454" font-size="23" fill="#22603F">hết dữ liệu: đầu kia đã đóng; tổng 10 000 byte</text>
+  </g>
+
+  <!-- ④ chưa có byte nào: bị chặn -->
+  <g data-s="4">
+    <rect x="420" y="500" width="1000" height="64" rx="4" fill="#FFF6DD" stroke="#8A6508" stroke-width="2"/>
+    <text x="920" y="541" text-anchor="middle" font-size="23" fill="#6B4E06">chưa có byte nào và chưa hết dữ liệu: read() bị chặn, chờ dữ liệu đến</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><code>read(buf)</code> trả <b>1 đến buf.length</b> byte, hoặc <b>−1</b> khi hết dữ liệu. Số byte đọc được là <b>giá trị trả về</b>.</p><p>Muốn đọc đủ dữ liệu: <b>gọi read lặp lại</b> đến khi đủ hoặc gặp −1.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>BufferedOutputStream bọc OutputStream và giữ byte trong buffer đến khi flush</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 540" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Chương trình gọi write trên BufferedOutputStream; BufferedOutputStream bọc OutputStream của socket. write đưa 6 byte vào buffer, stream bên dưới chưa nhận byte nào. flush đẩy 6 byte xuống stream bên dưới, ra mạng. close gồm flush và đóng stream bên dưới; với socket là đóng kết nối.">
+  <defs>
+    <marker id="dc-navy" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="dc-net" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#1F5FA8"/></marker>
+  </defs>
+
+  <!-- ① chuỗi decorator: BufferedOutputStream bọc OutputStream -->
+  <g data-s="1">
+    <rect x="20" y="120" width="260" height="120" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="150" y="190" text-anchor="middle" font-size="28" font-weight="500" fill="#051A53">Chương trình</text>
+    <rect x="420" y="60" width="760" height="240" rx="6" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="800" y="100" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53" font-family="Consolas, monospace">BufferedOutputStream</text>
+    <rect x="460" y="130" width="420" height="90" rx="4" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="670" y="250" text-anchor="middle" font-size="22" fill="#6B4E06">buffer 8192 byte</text>
+    <rect x="1320" y="120" width="320" height="120" rx="4" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1480" y="170" text-anchor="middle" font-size="24" font-weight="500" fill="#051A53" font-family="Consolas, monospace">OutputStream</text>
+    <text x="1480" y="208" text-anchor="middle" font-size="22" fill="#373D4E">của socket</text>
+    <line x1="1180" y1="146" x2="1312" y2="146" stroke="#051A53" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#dc-navy)"/>
+    <text x="1246" y="130" text-anchor="middle" font-size="22" fill="#051A53">bọc</text>
+  </g>
+
+  <!-- ② write: byte vào buffer, chưa xuống dưới -->
+  <g data-s="2">
+    <line x1="280" y1="175" x2="452" y2="175" stroke="#051A53" stroke-width="3" marker-end="url(#dc-navy)"/>
+    <text x="366" y="160" text-anchor="middle" font-size="22" fill="#051A53" font-family="Consolas, monospace">write()</text>
+    <rect x="480" y="150" width="210" height="50" rx="3" fill="#FFFFFF" stroke="#8A6508" stroke-width="2"/>
+    <text x="585" y="184" text-anchor="middle" font-size="24" fill="#6B4E06" font-family="Consolas, monospace">hanoi\n</text>
+    <text x="800" y="356" text-anchor="middle" font-size="23" fill="#6B4E06">6 byte nằm trong buffer; stream bên dưới: 0 byte</text>
+  </g>
+
+  <!-- ③ flush: đẩy xuống, ra mạng -->
+  <g data-s="3">
+    <line x1="884" y1="204" x2="1312" y2="204" stroke="#1F5FA8" stroke-width="3.5" marker-end="url(#dc-net)"/>
+    <text x="1030" y="250" text-anchor="middle" font-size="22" fill="#1F5FA8" font-family="Consolas, monospace">flush(): 6 byte</text>
+    <line x1="1640" y1="180" x2="1730" y2="180" stroke="#1F5FA8" stroke-width="3.5" marker-end="url(#dc-net)"/>
+    <text x="1690" y="150" text-anchor="middle" font-size="22" fill="#1F5FA8">mạng</text>
+  </g>
+
+  <!-- ④ close = flush + đóng stream bên dưới -->
+  <g data-s="4">
+    <rect x="420" y="420" width="1220" height="80" rx="4" fill="#FFFFFF" stroke="#BC2626" stroke-width="2.5"/>
+    <text x="1030" y="470" text-anchor="middle" font-size="24" fill="#BC2626"><tspan font-family="Consolas, monospace">close()</tspan> = flush() + đóng stream bên dưới; với socket: đóng kết nối</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b>Decorator</b>: một stream bọc stream khác để thêm chức năng; cách gọi <code>write()</code> không đổi.</p><p>Byte chỉ xuống stream bên dưới khi buffer đầy hoặc khi gọi <b><code>flush()</code></b>.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Gọi read một lần chỉ nhận được phần dữ liệu đã đến</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">byte</span>[] buf = <span class="hl-k">new</span> <span class="hl-k">byte</span>[<span class="hl-n">4096</span>];
+<span class="hl-k">try</span> (<span class="hl-t">InputStream</span> in = <span class="hl-k">new</span> <span class="hl-m">ChunkedInputStream</span>(<span class="hl-n">10_000</span>)) {  <span class="hl-c">// giả lập: dữ liệu đến thành nhiều đợt</span>
+    <span class="hl-k">int</span> n = in.<span class="hl-m">read</span>(buf);  <span class="hl-c">// SAI: chỉ gọi read một lần</span>
+    <span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">read() -&gt; </span><span class="hl-s">"</span> + n + <span class="hl-s">"</span><span class="hl-s"> of 10000 bytes</span><span class="hl-s">"</span>);
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>read() -&gt; 1460 of 10000 bytes</pre></div><ul class="y-nho"><li data-s="2">Thiếu <b>8540</b> byte: phần còn lại chưa đến lúc gọi <code>read()</code>, và chương trình không báo lỗi</li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>Gọi read lặp lại đến khi gặp trừ một thì nhận đủ dữ liệu</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">byte</span>[] buf = <span class="hl-k">new</span> <span class="hl-k">byte</span>[<span class="hl-n">4096</span>];
+<span class="hl-k">int</span> total = <span class="hl-n">0</span>;
+<span class="hl-k">try</span> (<span class="hl-t">InputStream</span> in = <span class="hl-k">new</span> <span class="hl-m">ChunkedInputStream</span>(<span class="hl-n">10_000</span>)) {  <span class="hl-c">// giả lập: dữ liệu đến thành nhiều đợt</span>
+    <span class="hl-k">int</span> n;
+    <span class="hl-k">while</span> ((n = in.<span class="hl-m">read</span>(buf)) != -<span class="hl-n">1</span>) {  <span class="hl-c">// -1: hết dữ liệu</span>
+        <span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">read() -&gt; </span><span class="hl-s">"</span> + n);
+        total += n;  <span class="hl-c">// dùng n, không dùng buf.length</span>
+    }
+}
+<span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">total = </span><span class="hl-s">"</span> + total);
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>read() -&gt; 1460
+read() -&gt; 2920
+read() -&gt; 512
+read() -&gt; 1460
+read() -&gt; 3648
+total = 10000</pre></div><ul class="y-nho"><li data-s="2">Năm lần đọc, năm kích thước khác nhau; tổng đủ <b>10 000</b> byte</li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S07"><header><h1>Chưa flush thì dữ liệu vẫn nằm trong buffer</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">var</span> sink = <span class="hl-k">new</span> <span class="hl-m">CountingOutputStream</span>();  <span class="hl-c">// ở vị trí stream của socket</span>
+<span class="hl-k">try</span> (<span class="hl-k">var</span> out = <span class="hl-k">new</span> <span class="hl-m">BufferedOutputStream</span>(sink)) {  <span class="hl-c">// decorator: thêm buffer 8192 byte</span>
+    out.<span class="hl-m">write</span>(<span class="hl-s">"</span><span class="hl-s">hanoi</span><span class="hl-s">\</span><span class="hl-s">n</span><span class="hl-s">"</span>.<span class="hl-m">getBytes</span>(<span class="hl-t">StandardCharsets</span>.<span class="hl-t">UTF_8</span>));
+    <span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">after write(): </span><span class="hl-s">"</span> + sink.<span class="hl-m">count</span>() + <span class="hl-s">"</span><span class="hl-s"> bytes passed down</span><span class="hl-s">"</span>);
+    out.<span class="hl-m">flush</span>();
+    <span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">after flush(): </span><span class="hl-s">"</span> + sink.<span class="hl-m">count</span>() + <span class="hl-s">"</span><span class="hl-s"> bytes passed down</span><span class="hl-s">"</span>);
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>after write(): 0 bytes passed down
+after flush(): 6 bytes passed down</pre></div><ul class="y-nho"><li data-s="2">Trên kết nối mạng: quên <code>flush()</code> thì đầu kia không nhận được, <b>hai bên cùng bị chặn ở <code>read()</code></b></li><li data-s="3"><code>close()</code> có flush nhưng đóng luôn kết nối: gọi <b><code>flush()</code> trước khi chờ phản hồi</b></li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Gọi read(buf) với buf dài 1024 byte, kết quả trả về 300. Điều nào đúng?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>300 byte đầu của buf là dữ liệu mới; có thể còn dữ liệu đến sau, cần gọi read tiếp.</div></div><div class=""><span>B</span><div>Dữ liệu đã hết; lần gọi sau chắc chắn trả -1.</div></div><div class=""><span>C</span><div>Đã xảy ra lỗi mạng, cần đóng kết nối.</div></div><div class=""><span>D</span><div>buf đã chứa đủ 1024 byte dữ liệu mới, nhưng chỉ 300 byte hợp lệ.</div></div></div><div class="giai-thich">read trả số byte đọc được, từ 1 đến độ dài mảng; trả ít hơn độ dài mảng không có nghĩa là hết dữ liệu. Chỉ khi read trả -1 mới là hết dữ liệu. Phần sau vị trí 300 của buf là byte cũ.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Gọi read(buf) với buf dài 1024 byte, kết quả trả về 300. Điều nào đúng?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>300 byte đầu của buf là dữ liệu mới; có thể còn dữ liệu đến sau, cần gọi read tiếp.</div></div><div class=""><span>B</span><div>Dữ liệu đã hết; lần gọi sau chắc chắn trả -1.</div></div><div class=""><span>C</span><div>Đã xảy ra lỗi mạng, cần đóng kết nối.</div></div><div class=""><span>D</span><div>buf đã chứa đủ 1024 byte dữ liệu mới, nhưng chỉ 300 byte hợp lệ.</div></div></div><div class="giai-thich">read trả số byte đọc được, từ 1 đến độ dài mảng; trả ít hơn độ dài mảng không có nghĩa là hết dữ liệu. Chỉ khi read trả -1 mới là hết dữ liệu. Phần sau vị trí 300 của buf là byte cũ.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Client ghi một dòng yêu cầu qua BufferedOutputStream rồi gọi read để chờ phản hồi. Server không nhận được gì, hai bên cùng chờ. Nguyên nhân là gì?</div></div><div class="lua-chon"><div class=""><span>A</span><div>TCP làm mất dòng yêu cầu và không gửi lại.</div></div><div class=""><span>B</span><div>Server chưa gọi flush.</div></div><div class=""><span>C</span><div>BufferedOutputStream chỉ gửi dữ liệu khi gọi close.</div></div><div class="dung"><span>D</span><div>Client chưa gọi flush, nên dòng yêu cầu còn nằm trong buffer của client.</div></div></div><div class="giai-thich">Byte ghi qua BufferedOutputStream nằm trong buffer đến khi buffer đầy hoặc gọi flush. Client chưa flush thì server không nhận được gì. TCP gửi lại byte bị mất; close cũng đẩy dữ liệu nhưng đóng luôn kết nối.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Client ghi một dòng yêu cầu qua BufferedOutputStream rồi gọi read để chờ phản hồi. Server không nhận được gì, hai bên cùng chờ. Nguyên nhân là gì?</div></div><div class="lua-chon"><div class=""><span>A</span><div>TCP làm mất dòng yêu cầu và không gửi lại.</div></div><div class=""><span>B</span><div>Server chưa gọi flush.</div></div><div class=""><span>C</span><div>BufferedOutputStream chỉ gửi dữ liệu khi gọi close.</div></div><div class="dung"><span>D</span><div>Client chưa gọi flush, nên dòng yêu cầu còn nằm trong buffer của client.</div></div></div><div class="giai-thich">Byte ghi qua BufferedOutputStream nằm trong buffer đến khi buffer đầy hoặc gọi flush. Client chưa flush thì server không nhận được gì. TCP gửi lại byte bị mất; close cũng đẩy dữ liệu nhưng đóng luôn kết nối.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div>Dữ liệu qua mạng là <b>byte stream</b>; các họ stream khác đều bọc byte stream</div></div><div class="the" data-s="2"><span class="so">2</span><div>Contract của <code>read</code>: trả <b>1 đến buf.length</b> byte hoặc <b>−1</b>; dùng giá trị trả về, gọi lặp đến khi đủ</div></div><div class="the" data-s="3"><span class="so">3</span><div><b>Decorator</b> <code>BufferedOutputStream</code> thêm buffer: gọi <b><code>flush()</code></b> trước khi chờ phản hồi</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>byte stream</span><span>InputStream</span><span>OutputStream</span><span>contract của read</span><span>decorator</span><span>buffer</span><span>flush</span></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>readNBytes và readAllBytes: khi nào dùng, giới hạn bộ nhớ</li><li>transferTo: sao chép stream không cần vòng lặp</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Viết hàm readFully(InputStream, int n) đọc đúng n byte hoặc ném EOFException; kiểm thử với stream trả dữ liệu từng phần.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Stream: dữ liệu có kiểu với DataStream và ObjectStream</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Với TCP, dữ liệu đến chương trình Java dưới dạng byte stream. Phần này trả lời câu hỏi: đọc và ghi byte stream thế nào cho đúng, để tránh thiếu dữ liệu, lặp dữ liệu và chờ không kết thúc.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:14</span>
+      <h3>Slide 1. Đọc sai contract của read gây thiếu dữ liệu, lặp dữ liệu hoặc chờ không kết thúc</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Dữ liệu qua mạng đến chương trình Java dưới dạng **byte stream**: dãy byte đến dần theo thời gian</li><li>Đọc sai contract của `read()`: **thiếu dữ liệu**, **lặp dữ liệu** hoặc **chờ không kết thúc**</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** đọc và ghi byte stream thế nào cho đúng?</div></div>
+    <div class="kb-thoai"><p>Ở phần về TCP và UDP, các bạn đã thấy TCP truyền một byte stream: dãy byte liên tục, không có ranh giới, đến dần theo thời gian. Trong Java, chương trình đọc và ghi dãy byte đó qua các đối tượng stream. Lỗi phổ biến của chương trình mạng nằm ngay ở bước này: đọc sai contract của phương thức read, tức hiểu sai cam kết về giá trị trả về. Hậu quả là thiếu dữ liệu, lặp dữ liệu, hoặc chương trình chờ không kết thúc. Câu hỏi của phần này là: đọc và ghi byte stream thế nào cho đúng?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hai ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Ở phần về TCP và UDP”; bước 2 khi đọc “Lỗi phổ biến”; bước 3 khi đọc “Câu hỏi của phần này”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:46</span>
+      <h3>Slide 2. Dữ liệu qua mạng luôn đi qua byte stream, các họ stream khác bọc lên trên</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>Dữ liệu qua mạng luôn là **byte**: các họ stream khác đều **bọc byte stream**.</li></ul></div></div>
+    <div class="kb-thoai"><p>Java có bốn họ stream. Byte stream là họ cơ bản, gồm hai lớp trừu tượng: InputStream để đọc và OutputStream để ghi, làm việc với dữ liệu dạng byte. Khi đọc ghi qua mạng, ba họ còn lại đều bọc một byte stream bên dưới. Character stream đọc ghi ký tự theo charset, DataStream đọc ghi số và chuỗi, ObjectStream đọc ghi đối tượng. Ba họ này học ở các phần tiếp theo. Vì vậy, dù dùng họ nào, dữ liệu qua mạng cuối cùng vẫn là byte và đi qua một byte stream.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình bon-ho (infographic): hai bước của hình, bước 3 là ô kết luận. Lướt nhanh, không quá 30 giây.
+Hiện dần: bước 1 khi đọc “Byte stream là họ cơ bản”; bước 2 khi đọc “Ba họ còn lại”; bước 3 khi đọc “Vì vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:20</span>
+      <h3>Slide 3. Mỗi lần gọi, read trả từ 1 đến độ dài mảng, hoặc trừ một khi hết dữ liệu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>`read(buf)` trả **1 đến buf.length** byte, hoặc **−1** khi hết dữ liệu. Số byte đọc được là **giá trị trả về**.</li><li>Muốn đọc đủ dữ liệu: **gọi read lặp lại** đến khi đủ hoặc gặp −1.</li></ul></div></div>
+    <div class="kb-thoai"><p>Phương thức read nhận một mảng byte, gọi là buf, đọc dữ liệu vào mảng và trả về số byte đã đọc. Hình minh họa mảng 4096 byte, còn dữ liệu cần đọc là 10 nghìn byte, đến thành nhiều đợt. Lần gọi thứ nhất trả 1460. Lúc đó mới có 1460 byte đến, nên phương thức read trả ngay số byte đang có, không chờ đầy mảng. Các lần gọi sau trả 2920, 512, 1460 và 3648, mỗi lần một khác. Lần gọi thứ sáu trả trừ một: đầu kia đã đóng, không còn dữ liệu. Còn một trường hợp: chưa có byte nào đến và đầu kia chưa đóng. Khi đó lời gọi read bị chặn, chờ đến khi có dữ liệu. Đó là contract của read: mỗi lần gọi trả từ 1 đến độ dài mảng, hoặc trừ một khi hết dữ liệu. Chỉ n byte đầu của mảng là dữ liệu mới, với n là giá trị trả về.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình read-contract: bốn bước của hình, bước 5 là hai ô kết luận.
+Hiện dần: bước 1 khi đọc “Lần gọi thứ nhất”; bước 2 khi đọc “Các lần gọi sau”; bước 3 khi đọc “Lần gọi thứ sáu”; bước 4 khi đọc “Còn một trường hợp”; bước 5 khi đọc “Đó là contract”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:19</span>
+      <h3>Slide 4. BufferedOutputStream bọc OutputStream và giữ byte trong buffer đến khi flush</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Decorator**: một stream bọc stream khác để thêm chức năng; cách gọi `write()` không đổi.</li><li>Byte chỉ xuống stream bên dưới khi buffer đầy hoặc khi gọi **`flush()`**.</li></ul></div></div>
+    <div class="kb-thoai"><p>Ở chiều ghi, mỗi lần ghi trực tiếp xuống stream của socket là một lời gọi xuống hệ điều hành. Ghi từng ít byte một thì chi phí lớn. Java giải quyết bằng một stream bọc stream khác, gọi là decorator. BufferedOutputStream bọc OutputStream của socket và thêm một buffer, tức vùng nhớ đệm, mặc định 8192 byte. Chương trình gọi write như bình thường, nhưng 6 byte của dòng hanoi chỉ nằm trong buffer. Stream bên dưới chưa nhận byte nào. Lời gọi flush đẩy toàn bộ byte trong buffer xuống stream bên dưới, rồi ra mạng. Buffer đầy cũng tự đẩy xuống. Lời gọi close gồm flush và đóng stream bên dưới. Với stream của socket, đóng stream sẽ ngắt luôn kết nối. Cách bọc này gặp ở nhiều nơi: BufferedInputStream thêm buffer cho chiều đọc, DataOutputStream bọc để ghi giá trị có kiểu. Character stream cũng bọc byte stream, qua một lớp chuyển byte thành ký tự.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình decorator: bốn bước của hình, bước 5 là hai ô kết luận.
+Hiện dần: bước 1 khi đọc “Ở chiều ghi”; bước 2 khi đọc “Chương trình gọi write”; bước 3 khi đọc “Lời gọi flush”; bước 4 khi đọc “Lời gọi close”; bước 5 khi đọc “Cách bọc này”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:21</span>
+      <h3>Slide 5. Gọi read một lần chỉ nhận được phần dữ liệu đã đến</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Thiếu **8540** byte: phần còn lại chưa đến lúc gọi `read()`, và chương trình không báo lỗi</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/stream/ReadOnce.java</span><pre><code>byte[] buf = new byte[4096];
+try (InputStream in = new ChunkedInputStream(10_000)) {  // giả lập: dữ liệu đến thành nhiều đợt
+    int n = in.read(buf);  // SAI: chỉ gọi read một lần
+    System.out.println(&quot;read() -&gt; &quot; + n + &quot; of 10000 bytes&quot;);
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Đoạn mã đọc từ một stream giả lập. ChunkedInputStream trả 10 nghìn byte thành nhiều đợt, giống dữ liệu đến qua mạng. Khối try-with-resources tự đóng stream khi ra khỏi khối. Đoạn mã chỉ gọi read một lần, rồi coi như đã đọc hết. Trước khi chạy, các bạn dự đoán: phương thức read trả về bao nhiêu? Chạy chương trình. Phương thức read trả 1460 trên tổng số 10 nghìn byte. Thiếu 8540 byte, vì lúc gọi, phần còn lại chưa đến. Chương trình không báo lỗi, chỉ lặng lẽ xử lý thiếu dữ liệu.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả chạy phía dưới. Highlight dòng in.read(buf) khi đọc &quot;chỉ gọi read một lần&quot;. Sau câu &quot;read trả về bao nhiêu?&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện.
+Hiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Thiếu 8540 byte”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:06</span>
+      <h3>Slide 6. Gọi read lặp lại đến khi gặp trừ một thì nhận đủ dữ liệu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Năm lần đọc, năm kích thước khác nhau; tổng đủ **10 000** byte</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/stream/ReadLoop.java</span><pre><code>byte[] buf = new byte[4096];
+int total = 0;
+try (InputStream in = new ChunkedInputStream(10_000)) {  // giả lập: dữ liệu đến thành nhiều đợt
+    int n;
+    while ((n = in.read(buf)) != -1) {  // -1: hết dữ liệu
+        System.out.println(&quot;read() -&gt; &quot; + n);
+        total += n;  // dùng n, không dùng buf.length
+    }
+}
+System.out.println(&quot;total = &quot; + total);</code></pre></div></div>
+    <div class="kb-thoai"><p>Phiên bản đúng gọi read trong vòng lặp, đến khi phương thức này trả trừ một. Sau mỗi lần đọc, chỉ n byte đầu của mảng là dữ liệu mới, nên chương trình phải dùng n. Nếu dùng buf.length, phần cuối còn byte cũ của lần đọc trước, và đó là dữ liệu lặp. Chạy chương trình. Năm lần đọc trả năm kích thước khác nhau: 1460, 2920, 512, 1460 và 3648. Tổng đủ 10 nghìn byte. Qua mạng thật, số byte mỗi lần đọc phụ thuộc lúc dữ liệu đến, và không đoán trước được.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã bên trái, kết quả chạy bên phải (hoặc trên, dưới nếu mã dài). Highlight dòng while khi đọc &quot;trong vòng lặp&quot;, dòng total += n khi đọc &quot;phải dùng n&quot;.
+Hiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Năm lần đọc”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:50</span>
+      <h3>Slide 7. Chưa flush thì dữ liệu vẫn nằm trong buffer</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Trên kết nối mạng: quên `flush()` thì đầu kia không nhận được, **hai bên cùng bị chặn ở `read()`**</li><li>`close()` có flush nhưng đóng luôn kết nối: gọi **`flush()` trước khi chờ phản hồi**</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/stream/FlushDemo.java</span><pre><code>var sink = new CountingOutputStream();  // ở vị trí stream của socket
+try (var out = new BufferedOutputStream(sink)) {  // decorator: thêm buffer 8192 byte
+    out.write(&quot;hanoi\n&quot;.getBytes(StandardCharsets.UTF_8));
+    System.out.println(&quot;after write(): &quot; + sink.count() + &quot; bytes passed down&quot;);
+    out.flush();
+    System.out.println(&quot;after flush(): &quot; + sink.count() + &quot; bytes passed down&quot;);
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Lỗi thường gặp khi dùng BufferedOutputStream là quên flush. Đoạn mã ghi dòng hanoi qua BufferedOutputStream. Bên dưới là một stream chỉ đếm số byte nhận được, đứng ở vị trí stream của socket. Chạy chương trình. Sau lời gọi write, stream bên dưới nhận 0 byte. Sau lời gọi flush, stream bên dưới mới nhận đủ 6 byte. Trên kết nối mạng, client gửi yêu cầu mà quên flush thì server không nhận được gì. Server chờ yêu cầu ở lời gọi read, client chờ phản hồi cũng ở lời gọi read. Hai bên cùng bị chặn và không bên nào báo lỗi. Lời gọi close có flush, nhưng đóng stream của socket sẽ ngắt luôn kết nối, nên không dùng close thay cho flush khi hai bên còn trao đổi. Khối try-with-resources cũng gọi close khi ra khỏi khối, nên với socket, khối này phải bao cả phần đọc phản hồi. Ghi xong một yêu cầu thì gọi flush, rồi mới chuyển sang chờ phản hồi.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả chạy phía dưới. Highlight dòng out.write rồi dòng out.flush() theo lời đọc; trong khung kết quả, tô số 0 và số 6.
+Hiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Trên kết nối”; bước 3 khi đọc “Lời gọi close có”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:56</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Hai câu hỏi sau kiểm tra contract của read và vai trò của flush.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Gọi read(buf) với buf dài 1024 byte, kết quả trả về 300. Điều nào đúng?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> 300 byte đầu của buf là dữ liệu mới; có thể còn dữ liệu đến sau, cần gọi read tiếp.</li>
+      <li><b>B.</b> Dữ liệu đã hết; lần gọi sau chắc chắn trả -1.</li>
+      <li><b>C.</b> Đã xảy ra lỗi mạng, cần đóng kết nối.</li>
+      <li><b>D.</b> buf đã chứa đủ 1024 byte dữ liệu mới, nhưng chỉ 300 byte hợp lệ.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: A</b> — <span>read trả số byte đọc được, từ 1 đến độ dài mảng; trả ít hơn độ dài mảng không có nghĩa là hết dữ liệu. Chỉ khi read trả -1 mới là hết dữ liệu. Phần sau vị trí 300 của buf là byte cũ.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là A. Trả ít hơn độ dài mảng chỉ có nghĩa là lúc đó mới có 300 byte. Hết dữ liệu chỉ khi read trả trừ một.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án A được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:16</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu thứ hai về một lỗi thường gặp khi gửi yêu cầu.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Client ghi một dòng yêu cầu qua BufferedOutputStream rồi gọi read để chờ phản hồi. Server không nhận được gì, hai bên cùng chờ. Nguyên nhân là gì?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> TCP làm mất dòng yêu cầu và không gửi lại.</li>
+      <li><b>B.</b> Server chưa gọi flush.</li>
+      <li><b>C.</b> BufferedOutputStream chỉ gửi dữ liệu khi gọi close.</li>
+      <li><b>D.</b> Client chưa gọi flush, nên dòng yêu cầu còn nằm trong buffer của client.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: D</b> — <span>Byte ghi qua BufferedOutputStream nằm trong buffer đến khi buffer đầy hoặc gọi flush. Client chưa flush thì server không nhận được gì. TCP gửi lại byte bị mất; close cũng đẩy dữ liệu nhưng đóng luôn kết nối.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là D. Dòng yêu cầu còn nằm trong buffer của client. Client phải flush trước khi chờ phản hồi.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án D.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:33</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Dữ liệu qua mạng là **byte stream**; các họ stream khác đều bọc byte stream</li><li>Contract của `read`: trả **1 đến buf.length** byte hoặc **−1**; dùng giá trị trả về, gọi lặp đến khi đủ</li><li>**Decorator** `BufferedOutputStream` thêm buffer: gọi **`flush()`** trước khi chờ phản hồi</li></ul></div>
+    <div class="kb-thoai"><p>Trả lời câu hỏi của phần: dữ liệu qua mạng là byte stream, và các họ stream khác đều bọc byte stream. Contract của read: mỗi lần gọi trả từ 1 đến độ dài mảng, hoặc trừ một khi hết dữ liệu. Chương trình dùng giá trị trả về và gọi read lặp lại đến khi đủ. Ở chiều ghi, decorator BufferedOutputStream thêm buffer, nên phải gọi flush trước khi chờ phản hồi. Các từ khóa cần nhớ gồm byte stream, InputStream, OutputStream, contract của read, decorator, buffer và flush.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “dữ liệu qua mạng là byte stream”; bước 2 khi đọc “Contract của read”; bước 3 khi đọc “Ở chiều ghi”; bước 4 khi đọc “Các từ khóa cần nhớ”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:06</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chủ đề nâng cao của phần gồm hai mục. Thứ nhất là hai phương thức readNBytes và readAllBytes: khi nào nên dùng, và giới hạn bộ nhớ của chúng. Thứ hai là phương thức transferTo, sao chép từ stream này sang stream khác mà không cần tự viết vòng lặp. Bài tập mở rộng: viết hàm readFully nhận một InputStream và số byte n, đọc đúng n byte hoặc ném EOFException, rồi kiểm thử với stream trả dữ liệu từng phần.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Chủ đề nâng cao của phần”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-12" data-index="12">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:33</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(12)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(12, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Byte stream chỉ truyền byte. Để gửi một số nguyên hay một đối tượng, hai đầu phải thống nhất cách đổi giá trị thành byte. Phần tiếp theo, về dữ liệu có kiểu với DataStream và ObjectStream, giải quyết việc này.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V04", "tieu_de": "Stream: byte stream, contract của read/write, decorator và buffer", "giong": "vi-VN-NamMinhNeural", "tong": 468.03, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/0a442a19157ac061.mp3", "dur": 14.04, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Với", 1], [2.438, "TCP,", 1], [3.025, "dữ", 1], [3.237, "liệu", 1], [3.475, "đến", 1], [3.688, "chương", 1], [3.913, "trình", 1], [4.138, "Java", 1], [4.562, "dưới", 1], [4.763, "dạng", 1], [5.05, "byte", 1], [5.213, "stream.", 1], [6.438, "Phần", 2], [6.7, "này", 2], [6.888, "trả", 2], [7.062, "lời", 2], [7.213, "câu", 2], [7.4, "hỏi:", 2], [7.963, "đọc", 2], [8.2, "và", 2], [8.363, "ghi", 2], [8.537, "byte", 2], [8.738, "stream", 2], [9.075, "thế", 2], [9.213, "nào", 2], [9.412, "cho", 2], [9.562, "đúng,", 2], [10.075, "để", 2], [10.25, "tránh", 2], [10.488, "thiếu", 2], [10.7, "dữ", 2], [10.9, "liệu,", 2], [11.425, "lặp", 2], [11.675, "dữ", 2], [11.875, "liệu", 2], [12.15, "và", 2], [12.3, "chờ", 2], [12.575, "không", 2], [12.787, "kết", 2], [12.975, "thúc.", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Đọc sai contract của read gây thiếu dữ liệu, lặp dữ liệu hoặc chờ không kết thúc", "loai": "slide", "slide": "S01", "dung": "Hai ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Ở phần về TCP và UDP”; bước 2 khi đọc “Lỗi phổ biến”; bước 3 khi đọc “Câu hỏi của phần này”.", "start": 14.64, "audio": "audio/5273b2fcf4a735dc.mp3", "dur": 30.86, "words": [[0.1, "Ở", 0], [0.275, "phần", 0], [0.525, "về", 0], [0.931, "TCP", 0], [1.337, "và", 0], [1.849, "UDP,", 0], [2.362, "các", 0], [2.55, "bạn", 0], [2.788, "đã", 0], [2.888, "thấy", 0], [3.276, "TCP", 0], [3.663, "truyền", 0], [3.9, "một", 0], [4.075, "byte", 0], [4.237, "stream:", 0], [4.838, "dãy", 0], [5.088, "byte", 0], [5.287, "liên", 0], [5.5, "tục,", 0], [5.963, "không", 0], [6.2, "có", 0], [6.312, "ranh", 0], [6.5, "giới,", 0], [7.05, "đến", 0], [7.3, "dần", 0], [7.513, "theo", 0], [7.688, "thời", 0], [7.85, "gian.", 0], [9.037, "Trong", 1], [9.387, "Java,", 1], [10.088, "chương", 1], [10.35, "trình", 1], [10.55, "đọc", 1], [10.725, "và", 1], [10.863, "ghi", 1], [11.05, "dãy", 1], [11.275, "byte", 1], [11.463, "đó", 1], [11.688, "qua", 1], [11.912, "các", 1], [12.113, "đối", 1], [12.3, "tượng", 1], [12.55, "stream.", 1], [13.762, "Lỗi", 2], [14.075, "phổ", 2], [14.3, "biến", 2], [14.575, "của", 2], [14.688, "chương", 2], [14.912, "trình", 2], [15.1, "mạng", 2], [15.363, "nằm", 2], [15.525, "ngay", 2], [15.775, "ở", 2], [15.875, "bước", 2], [16.1, "này:", 2], [16.538, "đọc", 2], [16.738, "sai", 2], [16.988, "contract", 2], [17.425, "của", 2], [17.587, "phương", 2], [17.825, "thức", 2], [18.0, "read,", 2], [18.438, "tức", 2], [18.637, "hiểu", 2], [18.85, "sai", 2], [19.062, "cam", 2], [19.3, "kết", 2], [19.575, "về", 2], [19.762, "giá", 2], [19.962, "trị", 2], [20.175, "trả", 2], [20.413, "về.", 2], [21.525, "Hậu", 3], [21.788, "quả", 3], [22.062, "là", 3], [22.188, "thiếu", 3], [22.425, "dữ", 3], [22.613, "liệu,", 3], [23.137, "lặp", 3], [23.387, "dữ", 3], [23.613, "liệu,", 3], [24.163, "hoặc", 3], [24.387, "chương", 3], [24.625, "trình", 3], [24.85, "chờ", 3], [25.087, "không", 3], [25.288, "kết", 3], [25.475, "thúc.", 3], [26.538, "Câu", 4], [26.738, "hỏi", 4], [26.962, "của", 4], [27.1, "phần", 4], [27.288, "này", 4], [27.45, "là:", 4], [27.95, "đọc", 4], [28.212, "và", 4], [28.4, "ghi", 4], [28.587, "byte", 4], [28.8, "stream", 4], [29.163, "thế", 4], [29.312, "nào", 4], [29.538, "cho", 4], [29.7, "đúng?", 4]], "cues": [0.1, 13.762, 26.538], "lang": 0.6}, {"ten": "Slide 2. Dữ liệu qua mạng luôn đi qua byte stream, các họ stream khác bọc lên trên", "loai": "slide", "slide": "S02", "dung": "Hình bon-ho (infographic): hai bước của hình, bước 3 là ô kết luận. Lướt nhanh, không quá 30 giây.\nHiện dần: bước 1 khi đọc “Byte stream là họ cơ bản”; bước 2 khi đọc “Ba họ còn lại”; bước 3 khi đọc “Vì vậy”.", "start": 46.1, "audio": "audio/dadf556ac1006d7a.mp3", "dur": 31.42, "words": [[0.1, "Java", 0], [0.625, "có", 0], [0.762, "bốn", 0], [1.012, "họ", 0], [1.2, "stream.", 0], [2.45, "Byte", 1], [2.712, "stream", 1], [3.087, "là", 1], [3.225, "họ", 1], [3.425, "cơ", 1], [3.6, "bản,", 1], [4.112, "gồm", 1], [4.4, "hai", 1], [4.612, "lớp", 1], [4.787, "trừu", 1], [5.013, "tượng:", 1], [5.588, "InputStream", 1], [6.475, "để", 1], [6.65, "đọc", 1], [6.85, "và", 1], [7.05, "OutputStream", 1], [7.888, "để", 1], [8.062, "ghi,", 1], [8.6, "làm", 1], [8.85, "việc", 1], [9.037, "với", 1], [9.15, "dữ", 1], [9.338, "liệu", 1], [9.575, "dạng", 1], [9.825, "byte.", 1], [10.938, "Khi", 2], [11.2, "đọc", 2], [11.387, "ghi", 2], [11.562, "qua", 2], [11.762, "mạng,", 2], [12.262, "ba", 2], [12.488, "họ", 2], [12.637, "còn", 2], [12.875, "lại", 2], [13.137, "đều", 2], [13.262, "bọc", 2], [13.463, "một", 2], [13.637, "byte", 2], [13.838, "stream", 2], [14.162, "bên", 2], [14.35, "dưới.", 2], [15.55, "Character", 3], [16.1, "stream", 3], [16.5, "đọc", 3], [16.7, "ghi", 3], [16.85, "ký", 3], [17.1, "tự", 3], [17.312, "theo", 3], [17.512, "charset,", 3], [18.212, "DataStream", 3], [19.0, "đọc", 3], [19.188, "ghi", 3], [19.337, "số", 3], [19.65, "và", 3], [19.775, "chuỗi,", 3], [20.4, "ObjectStream", 3], [21.05, "đọc", 3], [21.238, "ghi", 3], [21.438, "đối", 3], [21.637, "tượng.", 3], [22.837, "Ba", 4], [23.1, "họ", 4], [23.288, "này", 4], [23.512, "học", 4], [23.775, "ở", 4], [23.837, "các", 4], [24.0, "phần", 4], [24.262, "tiếp", 4], [24.475, "theo.", 4], [25.637, "Vì", 5], [25.887, "vậy,", 5], [26.288, "dù", 5], [26.5, "dùng", 5], [26.712, "họ", 5], [26.9, "nào,", 5], [27.375, "dữ", 5], [27.575, "liệu", 5], [27.8, "qua", 5], [27.988, "mạng", 5], [28.238, "cuối", 5], [28.4, "cùng", 5], [28.675, "vẫn", 5], [28.875, "là", 5], [28.988, "byte", 5], [29.288, "và", 5], [29.45, "đi", 5], [29.6, "qua", 5], [29.825, "một", 5], [30.012, "byte", 5], [30.175, "stream.", 5]], "cues": [2.45, 12.262, 25.637], "lang": 2.6}, {"ten": "Slide 3. Mỗi lần gọi, read trả từ 1 đến độ dài mảng, hoặc trừ một khi hết dữ liệu", "loai": "slide", "slide": "S03", "dung": "Hình read-contract: bốn bước của hình, bước 5 là hai ô kết luận.\nHiện dần: bước 1 khi đọc “Lần gọi thứ nhất”; bước 2 khi đọc “Các lần gọi sau”; bước 3 khi đọc “Lần gọi thứ sáu”; bước 4 khi đọc “Còn một trường hợp”; bước 5 khi đọc “Đó là contract”.", "start": 80.12, "audio": "audio/cb4ab82836b06417.mp3", "dur": 56.78, "words": [[0.1, "Phương", 0], [0.438, "thức", 0], [0.637, "read", 0], [0.85, "nhận", 0], [1.1, "một", 0], [1.288, "mảng", 0], [1.525, "byte,", 0], [2.025, "gọi", 0], [2.325, "là", 0], [2.45, "buf,", 0], [2.975, "đọc", 0], [3.175, "dữ", 0], [3.375, "liệu", 0], [3.612, "vào", 0], [3.775, "mảng", 0], [4.088, "và", 0], [4.213, "trả", 0], [4.513, "về", 0], [4.662, "số", 0], [4.862, "byte", 0], [5.1, "đã", 0], [5.237, "đọc.", 0], [6.312, "Hình", 1], [6.537, "minh", 1], [6.737, "họa", 1], [6.938, "mảng", 1], [7.188, "4096", 1], [8.55, "byte,", 1], [9.05, "còn", 1], [9.275, "dữ", 1], [9.438, "liệu", 1], [9.65, "cần", 1], [9.875, "đọc", 1], [10.062, "là", 1], [10.225, "10", 1], [10.425, "nghìn", 1], [10.662, "byte,", 1], [11.188, "đến", 1], [11.438, "thành", 1], [11.637, "nhiều", 1], [11.863, "đợt.", 1], [12.938, "Lần", 2], [13.262, "gọi", 2], [13.475, "thứ", 2], [13.65, "nhất", 2], [13.887, "trả", 2], [14.1, "1460.", 2], [16.425, "Lúc", 3], [16.675, "đó", 3], [16.875, "mới", 3], [17.113, "có", 3], [17.212, "1460", 3], [18.4, "byte", 3], [18.587, "đến,", 3], [19.113, "nên", 3], [19.4, "phương", 3], [19.637, "thức", 3], [19.825, "read", 3], [20.025, "trả", 3], [20.262, "ngay", 3], [20.438, "số", 3], [20.637, "byte", 3], [20.825, "đang", 3], [21.012, "có,", 3], [21.525, "không", 3], [21.788, "chờ", 3], [22.0, "đầy", 3], [22.163, "mảng.", 3], [23.413, "Các", 4], [23.625, "lần", 4], [23.812, "gọi", 4], [24.012, "sau", 4], [24.2, "trả", 4], [24.413, "2920,", 4], [25.9, "512,", 4], [27.062, "1460", 4], [28.387, "và", 4], [28.512, "3648,", 4], [30.238, "mỗi", 4], [30.462, "lần", 4], [30.675, "một", 4], [30.825, "khác.", 4], [31.95, "Lần", 5], [32.263, "gọi", 5], [32.462, "thứ", 5], [32.65, "sáu", 5], [32.913, "trả", 5], [33.15, "trừ", 5], [33.35, "một:", 5], [33.825, "đầu", 5], [34.1, "kia", 5], [34.337, "đã", 5], [34.513, "đóng,", 5], [34.987, "không", 5], [35.25, "còn", 5], [35.475, "dữ", 5], [35.65, "liệu.", 5], [36.812, "Còn", 6], [37.038, "một", 6], [37.188, "trường", 6], [37.4, "hợp:", 6], [37.875, "chưa", 6], [38.163, "có", 6], [38.288, "byte", 6], [38.475, "nào", 6], [38.688, "đến", 6], [38.987, "và", 6], [39.112, "đầu", 6], [39.325, "kia", 6], [39.587, "chưa", 6], [39.85, "đóng.", 6], [41.025, "Khi", 7], [41.288, "đó", 7], [41.487, "lời", 7], [41.663, "gọi", 7], [41.9, "read", 7], [42.075, "bị", 7], [42.237, "chặn,", 7], [42.812, "chờ", 7], [43.125, "đến", 7], [43.337, "khi", 7], [43.55, "có", 7], [43.675, "dữ", 7], [43.862, "liệu.", 7], [45.038, "Đó", 8], [45.325, "là", 8], [45.438, "contract", 8], [45.9, "của", 8], [46.062, "read:", 8], [46.5, "mỗi", 8], [46.7, "lần", 8], [46.913, "gọi", 8], [47.087, "trả", 8], [47.388, "từ", 8], [47.538, "1", 8], [47.725, "đến", 8], [47.95, "độ", 8], [48.112, "dài", 8], [48.325, "mảng,", 8], [48.913, "hoặc", 8], [49.163, "trừ", 8], [49.362, "một", 8], [49.587, "khi", 8], [49.763, "hết", 8], [49.938, "dữ", 8], [50.15, "liệu.", 8], [51.312, "Chỉ", 9], [51.675, "n", 9], [52.125, "byte", 9], [52.362, "đầu", 9], [52.55, "của", 9], [52.675, "mảng", 9], [52.975, "là", 9], [53.1, "dữ", 9], [53.275, "liệu", 9], [53.475, "mới,", 9], [54.05, "với", 9], [54.3, "n", 9], [54.837, "là", 9], [55.038, "giá", 9], [55.225, "trị", 9], [55.425, "trả", 9], [55.663, "về.", 9]], "cues": [12.938, 23.413, 31.95, 36.812, 45.038], "lang": 2.6}, {"ten": "Slide 4. BufferedOutputStream bọc OutputStream và giữ byte trong buffer đến khi flush", "loai": "slide", "slide": "S04", "dung": "Hình decorator: bốn bước của hình, bước 5 là hai ô kết luận.\nHiện dần: bước 1 khi đọc “Ở chiều ghi”; bước 2 khi đọc “Chương trình gọi write”; bước 3 khi đọc “Lời gọi flush”; bước 4 khi đọc “Lời gọi close”; bước 5 khi đọc “Cách bọc này”.", "start": 139.5, "audio": "audio/db2d625dbf16feec.mp3", "dur": 59.06, "words": [[0.1, "Ở", 0], [0.338, "chiều", 0], [0.6, "ghi,", 0], [1.1, "mỗi", 0], [1.275, "lần", 0], [1.5, "ghi", 0], [1.663, "trực", 0], [1.875, "tiếp", 0], [2.025, "xuống", 0], [2.25, "stream", 0], [2.562, "của", 0], [2.725, "socket", 0], [3.525, "là", 0], [3.688, "một", 0], [3.888, "lời", 0], [4.1, "gọi", 0], [4.325, "xuống", 0], [4.562, "hệ", 0], [4.75, "điều", 0], [4.925, "hành.", 0], [6.025, "Ghi", 1], [6.3, "từng", 1], [6.625, "ít", 1], [6.775, "byte", 1], [6.975, "một", 1], [7.225, "thì", 1], [7.438, "chi", 1], [7.688, "phí", 1], [7.9, "lớn.", 1], [9.1, "Java", 2], [9.575, "giải", 2], [9.762, "quyết", 2], [10.0, "bằng", 2], [10.188, "một", 2], [10.35, "stream", 2], [10.662, "bọc", 2], [10.838, "stream", 2], [11.1, "khác,", 2], [11.6, "gọi", 2], [11.9, "là", 2], [12.1, "decorator.", 2], [13.738, "BufferedOutputStream", 3], [14.988, "bọc", 3], [15.25, "OutputStream", 3], [15.875, "của", 3], [16.087, "socket", 3], [16.538, "và", 3], [16.725, "thêm", 3], [16.962, "một", 3], [17.137, "buffer,", 3], [17.863, "tức", 3], [18.038, "vùng", 3], [18.262, "nhớ", 3], [18.512, "đệm,", 3], [19.038, "mặc", 3], [19.238, "định", 3], [19.475, "8192", 3], [20.738, "byte.", 3], [21.85, "Chương", 4], [22.15, "trình", 4], [22.375, "gọi", 4], [22.562, "write", 4], [23.025, "như", 4], [23.212, "bình", 4], [23.413, "thường,", 4], [23.925, "nhưng", 4], [24.212, "6", 4], [24.475, "byte", 4], [24.675, "của", 4], [24.812, "dòng", 4], [25.038, "hanoi", 4], [25.438, "chỉ", 4], [25.613, "nằm", 4], [25.863, "trong", 4], [26.075, "buffer.", 4], [27.4, "Stream", 5], [27.913, "bên", 5], [28.125, "dưới", 5], [28.363, "chưa", 5], [28.6, "nhận", 5], [28.887, "byte", 5], [29.087, "nào.", 5], [30.2, "Lời", 6], [30.5, "gọi", 6], [30.738, "flush", 6], [31.087, "đẩy", 6], [31.25, "toàn", 6], [31.512, "bộ", 6], [31.688, "byte", 6], [31.925, "trong", 6], [32.163, "buffer", 6], [32.587, "xuống", 6], [32.862, "stream", 6], [33.15, "bên", 6], [33.35, "dưới,", 6], [33.913, "rồi", 6], [34.212, "ra", 6], [34.375, "mạng.", 6], [35.587, "Buffer", 7], [36.125, "đầy", 7], [36.35, "cũng", 7], [36.575, "tự", 7], [36.775, "đẩy", 7], [36.987, "xuống.", 7], [38.225, "Lời", 8], [38.538, "gọi", 8], [38.788, "close", 8], [39.125, "gồm", 8], [39.45, "flush", 8], [39.825, "và", 8], [40.025, "đóng", 8], [40.25, "stream", 8], [40.562, "bên", 8], [40.75, "dưới.", 8], [41.95, "Với", 9], [42.225, "stream", 9], [42.538, "của", 9], [42.737, "socket,", 9], [43.462, "đóng", 9], [43.712, "stream", 9], [44.112, "sẽ", 9], [44.3, "ngắt", 9], [44.538, "luôn", 9], [44.788, "kết", 9], [45.025, "nối.", 9], [46.212, "Cách", 10], [46.413, "bọc", 10], [46.6, "này", 10], [46.8, "gặp", 10], [47.0, "ở", 10], [47.112, "nhiều", 10], [47.337, "nơi:", 10], [47.85, "BufferedInputStream", 10], [49.013, "thêm", 10], [49.275, "buffer", 10], [49.7, "cho", 10], [49.875, "chiều", 10], [50.125, "đọc,", 10], [50.6, "DataOutputStream", 10], [51.737, "bọc", 10], [51.95, "để", 10], [52.1, "ghi", 10], [52.275, "giá", 10], [52.513, "trị", 10], [52.75, "có", 10], [52.888, "kiểu.", 10], [54.15, "Character", 11], [54.725, "stream", 11], [55.163, "cũng", 11], [55.4, "bọc", 11], [55.562, "byte", 11], [55.75, "stream,", 11], [56.35, "qua", 11], [56.587, "một", 11], [56.8, "lớp", 11], [57.0, "chuyển", 11], [57.275, "byte", 11], [57.462, "thành", 11], [57.675, "ký", 11], [57.875, "tự.", 11]], "cues": [0.1, 21.85, 30.2, 38.225, 46.212], "lang": 2.6}, {"ten": "Slide 5. Gọi read một lần chỉ nhận được phần dữ liệu đã đến", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, kết quả chạy phía dưới. Highlight dòng in.read(buf) khi đọc \"chỉ gọi read một lần\". Sau câu \"read trả về bao nhiêu?\", dừng khoảng 2 giây trước khi khung kết quả hiện.\nHiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Thiếu 8540 byte”.", "start": 201.16, "audio": "audio/6ddf3afb8d4fa563.mp3", "dur": 35.76, "words": [[0.1, "Đoạn", 0], [0.438, "mã", 0], [0.688, "đọc", 0], [0.912, "từ", 0], [1.1, "một", 0], [1.312, "stream", 0], [1.65, "giả", 0], [1.875, "lập.", 0], [2.962, "ChunkedInputStream", 1], [4.4, "trả", 1], [4.625, "10", 1], [4.775, "nghìn", 1], [5.037, "byte", 1], [5.237, "thành", 1], [5.425, "nhiều", 1], [5.65, "đợt,", 1], [6.112, "giống", 1], [6.388, "dữ", 1], [6.562, "liệu", 1], [6.812, "đến", 1], [7.037, "qua", 1], [7.225, "mạng.", 1], [8.425, "Khối", 2], [8.738, "try-with-resources", 2], [9.475, "tự", 2], [9.688, "đóng", 2], [9.9, "stream", 2], [10.225, "khi", 2], [10.4, "ra", 2], [10.537, "khỏi", 2], [10.762, "khối.", 2], [12.0, "Đoạn", 3], [12.325, "mã", 3], [12.537, "chỉ", 3], [12.738, "gọi", 3], [12.938, "read", 3], [13.15, "một", 3], [13.325, "lần,", 3], [13.8, "rồi", 3], [14.113, "coi", 3], [14.35, "như", 3], [14.55, "đã", 3], [14.688, "đọc", 3], [14.863, "hết.", 3], [15.938, "Trước", 4], [16.175, "khi", 4], [16.325, "chạy,", 4], [16.85, "các", 4], [17.012, "bạn", 4], [17.238, "dự", 4], [17.413, "đoán:", 4], [17.913, "phương", 4], [18.238, "thức", 4], [18.438, "read", 4], [18.625, "trả", 4], [18.9, "về", 4], [19.038, "bao", 4], [19.238, "nhiêu?", 4], [20.387, "Chạy", 5], [20.675, "chương", 5], [20.95, "trình.", 5], [22.1, "Phương", 6], [22.4, "thức", 6], [22.6, "read", 6], [22.8, "trả", 6], [23.0, "1460", 6], [24.337, "trên", 6], [24.55, "tổng", 6], [24.788, "số", 6], [25.012, "10", 6], [25.2, "nghìn", 6], [25.425, "byte.", 6], [26.562, "Thiếu", 7], [26.788, "8540", 7], [28.038, "byte,", 7], [28.55, "vì", 7], [28.775, "lúc", 7], [28.962, "gọi,", 7], [29.488, "phần", 7], [29.762, "còn", 7], [29.988, "lại", 7], [30.212, "chưa", 7], [30.438, "đến.", 7], [31.613, "Chương", 8], [31.913, "trình", 8], [32.138, "không", 8], [32.35, "báo", 8], [32.513, "lỗi,", 8], [33.075, "chỉ", 8], [33.275, "lặng", 8], [33.525, "lẽ", 8], [33.75, "xử", 8], [33.938, "lý", 8], [34.138, "thiếu", 8], [34.375, "dữ", 8], [34.575, "liệu.", 8]], "cues": [20.387, 26.562], "lang": 9.6}, {"ten": "Slide 6. Gọi read lặp lại đến khi gặp trừ một thì nhận đủ dữ liệu", "loai": "slide", "slide": "S06", "dung": "Mã bên trái, kết quả chạy bên phải (hoặc trên, dưới nếu mã dài). Highlight dòng while khi đọc \"trong vòng lặp\", dòng total += n khi đọc \"phải dùng n\".\nHiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Năm lần đọc”.", "start": 246.52, "audio": "audio/78ed7eccae934530.mp3", "dur": 34.87, "words": [[0.1, "Phiên", 0], [0.412, "bản", 0], [0.637, "đúng", 0], [0.863, "gọi", 0], [1.087, "read", 0], [1.312, "trong", 0], [1.525, "vòng", 0], [1.725, "lặp,", 0], [2.188, "đến", 0], [2.425, "khi", 0], [2.65, "phương", 0], [2.875, "thức", 0], [3.062, "này", 0], [3.275, "trả", 0], [3.525, "trừ", 0], [3.712, "một.", 0], [4.8, "Sau", 1], [5.088, "mỗi", 1], [5.263, "lần", 1], [5.45, "đọc,", 1], [5.825, "chỉ", 1], [6.062, "n", 1], [6.513, "byte", 1], [6.725, "đầu", 1], [6.9, "của", 1], [7.025, "mảng", 1], [7.312, "là", 1], [7.438, "dữ", 1], [7.612, "liệu", 1], [7.812, "mới,", 1], [8.4, "nên", 1], [8.7, "chương", 1], [8.925, "trình", 1], [9.125, "phải", 1], [9.262, "dùng", 1], [9.512, "n.", 1], [9.875, "Nếu", 2], [10.15, "dùng", 2], [10.4, "buf.length,", 2], [11.25, "phần", 2], [11.525, "cuối", 2], [11.7, "còn", 2], [11.912, "byte", 2], [12.075, "cũ", 2], [12.325, "của", 2], [12.438, "lần", 2], [12.625, "đọc", 2], [12.8, "trước,", 2], [13.262, "và", 2], [13.475, "đó", 2], [13.662, "là", 2], [13.775, "dữ", 2], [13.975, "liệu", 2], [14.213, "lặp.", 2], [15.25, "Chạy", 3], [15.537, "chương", 3], [15.812, "trình.", 3], [16.962, "Năm", 4], [17.387, "lần", 4], [17.587, "đọc", 4], [17.75, "trả", 4], [17.95, "năm", 4], [18.15, "kích", 4], [18.35, "thước", 4], [18.525, "khác", 4], [18.725, "nhau:", 4], [19.238, "1460,", 4], [20.825, "2920,", 4], [22.3, "512,", 4], [23.438, "1460", 4], [24.738, "và", 4], [24.863, "3648.", 4], [27.275, "Tổng", 5], [27.562, "đủ", 5], [27.775, "10", 5], [27.975, "nghìn", 5], [28.25, "byte.", 5], [29.425, "Qua", 6], [29.637, "mạng", 6], [29.875, "thật,", 6], [30.288, "số", 6], [30.512, "byte", 6], [30.725, "mỗi", 6], [30.95, "lần", 6], [31.137, "đọc", 6], [31.288, "phụ", 6], [31.5, "thuộc", 6], [31.725, "lúc", 6], [31.9, "dữ", 6], [32.1, "liệu", 6], [32.337, "đến,", 6], [32.837, "và", 6], [33.1, "không", 6], [33.362, "đoán", 6], [33.6, "trước", 6], [33.8, "được.", 6]], "cues": [15.25, 16.962], "lang": 9.6}, {"ten": "Slide 7. Chưa flush thì dữ liệu vẫn nằm trong buffer", "loai": "slide", "slide": "S07", "dung": "Mã phía trên, kết quả chạy phía dưới. Highlight dòng out.write rồi dòng out.flush() theo lời đọc; trong khung kết quả, tô số 0 và số 6.\nHiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Trên kết nối”; bước 3 khi đọc “Lời gọi close có”.", "start": 290.99, "audio": "audio/71d70b76e59e379c.mp3", "dur": 56.09, "words": [[0.1, "Lỗi", 0], [0.388, "thường", 0], [0.625, "gặp", 0], [0.812, "khi", 0], [0.975, "dùng", 0], [1.2, "BufferedOutputStream", 0], [2.475, "là", 0], [2.675, "quên", 0], [2.938, "flush.", 0], [4.125, "Đoạn", 1], [4.425, "mã", 1], [4.638, "ghi", 1], [4.825, "dòng", 1], [5.05, "hanoi", 1], [5.438, "qua", 1], [5.688, "BufferedOutputStream.", 1], [7.7, "Bên", 2], [8.062, "dưới", 2], [8.25, "là", 2], [8.338, "một", 2], [8.5, "stream", 2], [8.825, "chỉ", 2], [8.988, "đếm", 2], [9.2, "số", 2], [9.438, "byte", 2], [9.625, "nhận", 2], [9.875, "được,", 2], [10.312, "đứng", 2], [10.575, "ở", 2], [10.688, "vị", 2], [10.85, "trí", 2], [11.088, "stream", 2], [11.425, "của", 2], [11.588, "socket.", 2], [12.9, "Chạy", 3], [13.188, "chương", 3], [13.463, "trình.", 3], [14.613, "Sau", 4], [14.912, "lời", 4], [15.075, "gọi", 4], [15.338, "write,", 4], [16.062, "stream", 4], [16.462, "bên", 4], [16.688, "dưới", 4], [16.875, "nhận", 4], [17.137, "0", 4], [17.375, "byte.", 4], [18.5, "Sau", 5], [18.8, "lời", 5], [18.962, "gọi", 5], [19.2, "flush,", 5], [19.762, "stream", 5], [20.15, "bên", 5], [20.35, "dưới", 5], [20.512, "mới", 5], [20.75, "nhận", 5], [21.025, "đủ", 5], [21.225, "6", 5], [21.438, "byte.", 5], [22.562, "Trên", 6], [22.887, "kết", 6], [23.087, "nối", 6], [23.275, "mạng,", 6], [23.8, "client", 6], [24.188, "gửi", 6], [24.425, "yêu", 6], [24.6, "cầu", 6], [24.85, "mà", 6], [24.975, "quên", 6], [25.238, "flush", 6], [25.6, "thì", 6], [25.8, "server", 6], [26.225, "không", 6], [26.425, "nhận", 6], [26.663, "được", 6], [26.812, "gì.", 6], [27.938, "Server", 7], [28.438, "chờ", 7], [28.712, "yêu", 7], [28.887, "cầu", 7], [29.137, "ở", 7], [29.25, "lời", 7], [29.462, "gọi", 7], [29.688, "read,", 7], [30.15, "client", 7], [30.575, "chờ", 7], [30.775, "phản", 7], [31.012, "hồi", 7], [31.225, "cũng", 7], [31.425, "ở", 7], [31.538, "lời", 7], [31.762, "gọi", 7], [32.0, "read.", 7], [33.05, "Hai", 8], [33.3, "bên", 8], [33.538, "cùng", 8], [33.75, "bị", 8], [33.913, "chặn", 8], [34.237, "và", 8], [34.4, "không", 8], [34.625, "bên", 8], [34.788, "nào", 8], [34.975, "báo", 8], [35.175, "lỗi.", 8], [36.413, "Lời", 9], [36.712, "gọi", 9], [36.938, "close", 9], [37.288, "có", 9], [37.475, "flush,", 9], [38.087, "nhưng", 9], [38.375, "đóng", 9], [38.575, "stream", 9], [38.875, "của", 9], [39.025, "socket", 9], [39.438, "sẽ", 9], [39.612, "ngắt", 9], [39.8, "luôn", 9], [40.0, "kết", 9], [40.188, "nối,", 9], [40.75, "nên", 9], [41.05, "không", 9], [41.288, "dùng", 9], [41.5, "close", 9], [41.763, "thay", 9], [41.962, "cho", 9], [42.112, "flush", 9], [42.462, "khi", 9], [42.712, "hai", 9], [42.913, "bên", 9], [43.112, "còn", 9], [43.312, "trao", 9], [43.475, "đổi.", 9], [44.675, "Khối", 10], [45.013, "try-with-resources", 10], [45.8, "cũng", 10], [46.038, "gọi", 10], [46.237, "close", 10], [46.587, "khi", 10], [46.775, "ra", 10], [46.913, "khỏi", 10], [47.138, "khối,", 10], [47.763, "nên", 10], [48.038, "với", 10], [48.163, "socket,", 10], [48.8, "khối", 10], [49.038, "này", 10], [49.225, "phải", 10], [49.388, "bao", 10], [49.575, "cả", 10], [49.775, "phần", 10], [49.987, "đọc", 10], [50.112, "phản", 10], [50.35, "hồi.", 10], [51.487, "Ghi", 11], [51.737, "xong", 11], [51.925, "một", 11], [52.138, "yêu", 11], [52.25, "cầu", 11], [52.5, "thì", 11], [52.663, "gọi", 11], [52.9, "flush,", 11], [53.5, "rồi", 11], [53.775, "mới", 11], [53.962, "chuyển", 11], [54.212, "sang", 11], [54.487, "chờ", 11], [54.7, "phản", 11], [54.938, "hồi.", 11]], "cues": [12.9, 22.562, 36.413], "lang": 9.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án A được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 356.68, "audio": "audio/a220df0e7f239f7d.mp3", "dur": 4.34, "words": [[0.1, "Hai", 0], [0.3, "câu", 0], [0.463, "hỏi", 0], [0.7, "sau", 0], [0.887, "kiểm", 0], [1.15, "tra", 0], [1.325, "contract", 0], [1.788, "của", 0], [2.025, "read", 0], [2.25, "và", 0], [2.425, "vai", 0], [2.612, "trò", 0], [2.9, "của", 0], [3.087, "flush.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/556e11dc1d4f344f.mp3", "dur2": 8.47, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.662, "là", 0], [0.875, "A.", 0], [1.262, "Trả", 1], [1.525, "ít", 1], [1.688, "hơn", 1], [1.988, "độ", 1], [2.15, "dài", 1], [2.362, "mảng", 1], [2.65, "chỉ", 1], [2.788, "có", 1], [2.9, "nghĩa", 1], [3.15, "là", 1], [3.3, "lúc", 1], [3.487, "đó", 1], [3.675, "mới", 1], [3.913, "có", 1], [4.05, "300", 1], [4.5, "byte.", 1], [5.612, "Hết", 2], [5.85, "dữ", 2], [6.05, "liệu", 2], [6.312, "chỉ", 2], [6.513, "khi", 2], [6.7, "read", 2], [6.9, "trả", 2], [7.175, "trừ", 2], [7.362, "một.", 2]], "dap_an": "A", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án D.", "start": 376.09, "audio": "audio/d860409df23ea933.mp3", "dur": 3.55, "words": [[0.1, "Câu", 0], [0.3, "thứ", 0], [0.5, "hai", 0], [0.738, "về", 0], [0.85, "một", 0], [1.038, "lỗi", 0], [1.275, "thường", 0], [1.55, "gặp", 0], [1.75, "khi", 0], [1.962, "gửi", 0], [2.212, "yêu", 0], [2.388, "cầu.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/32840882a62e3275.mp3", "dur2": 7.49, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.65, "là", 0], [0.762, "D.", 0], [1.125, "Dòng", 1], [1.462, "yêu", 1], [1.587, "cầu", 1], [1.825, "còn", 1], [2.05, "nằm", 1], [2.237, "trong", 1], [2.45, "buffer", 1], [2.85, "của", 1], [3.075, "client.", 1], [4.388, "Client", 2], [4.85, "phải", 2], [5.112, "flush", 2], [5.475, "trước", 2], [5.662, "khi", 2], [5.838, "chờ", 2], [6.088, "phản", 2], [6.338, "hồi.", 2]], "dap_an": "D", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “dữ liệu qua mạng là byte stream”; bước 2 khi đọc “Contract của read”; bước 3 khi đọc “Ở chiều ghi”; bước 4 khi đọc “Các từ khóa cần nhớ”.", "start": 393.73, "audio": "audio/7b02b0c905859207.mp3", "dur": 31.8, "words": [[0.1, "Trả", 0], [0.375, "lời", 0], [0.588, "câu", 0], [0.787, "hỏi", 0], [0.988, "của", 0], [1.125, "phần:", 0], [1.613, "dữ", 0], [1.825, "liệu", 0], [2.05, "qua", 0], [2.263, "mạng", 0], [2.562, "là", 0], [2.7, "byte", 0], [2.9, "stream,", 0], [3.487, "và", 0], [3.75, "các", 0], [3.925, "họ", 0], [4.088, "stream", 0], [4.362, "khác", 0], [4.65, "đều", 0], [4.825, "bọc", 0], [5.025, "byte", 0], [5.2, "stream.", 0], [6.438, "Contract", 1], [6.938, "của", 1], [7.088, "read:", 1], [7.537, "mỗi", 1], [7.725, "lần", 1], [7.95, "gọi", 1], [8.125, "trả", 1], [8.425, "từ", 1], [8.588, "1", 1], [8.775, "đến", 1], [9.0, "độ", 1], [9.162, "dài", 1], [9.375, "mảng,", 1], [9.975, "hoặc", 1], [10.225, "trừ", 1], [10.425, "một", 1], [10.65, "khi", 1], [10.812, "hết", 1], [10.988, "dữ", 1], [11.188, "liệu.", 1], [12.35, "Chương", 2], [12.7, "trình", 2], [12.912, "dùng", 2], [13.113, "giá", 2], [13.287, "trị", 2], [13.475, "trả", 2], [13.7, "về", 2], [13.938, "và", 2], [14.075, "gọi", 2], [14.3, "read", 2], [14.512, "lặp", 2], [14.725, "lại", 2], [14.975, "đến", 2], [15.175, "khi", 2], [15.338, "đủ.", 2], [16.55, "Ở", 3], [16.775, "chiều", 3], [17.05, "ghi,", 3], [17.538, "decorator", 3], [18.3, "BufferedOutputStream", 3], [19.387, "thêm", 3], [19.613, "buffer,", 3], [20.363, "nên", 3], [20.663, "phải", 3], [20.887, "gọi", 3], [21.1, "flush", 3], [21.45, "trước", 3], [21.688, "khi", 3], [21.875, "chờ", 3], [22.113, "phản", 3], [22.363, "hồi.", 3], [23.488, "Các", 4], [23.7, "từ", 4], [23.875, "khóa", 4], [24.087, "cần", 4], [24.312, "nhớ", 4], [24.562, "gồm", 4], [24.837, "byte", 4], [25.012, "stream,", 4], [25.613, "InputStream,", 4], [26.65, "OutputStream,", 4], [27.637, "contract", 4], [28.125, "của", 4], [28.325, "read,", 4], [28.825, "decorator,", 4], [29.85, "buffer", 4], [30.337, "và", 4], [30.525, "flush.", 4]], "cues": [1.613, 6.438, 16.55, 23.488], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Chủ đề nâng cao của phần”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 426.13, "audio": "audio/2b1e731ee2eb40f2.mp3", "dur": 27.02, "words": [[0.1, "Chủ", 0], [0.388, "đề", 0], [0.588, "nâng", 0], [0.85, "cao", 0], [1.087, "của", 0], [1.238, "phần", 0], [1.5, "gồm", 0], [1.762, "hai", 0], [1.962, "mục.", 0], [3.05, "Thứ", 1], [3.25, "nhất", 1], [3.525, "là", 1], [3.8, "hai", 1], [4.025, "phương", 1], [4.225, "thức", 1], [4.412, "readNBytes", 1], [5.237, "và", 1], [5.4, "readAllBytes:", 1], [6.312, "khi", 1], [6.537, "nào", 1], [6.75, "nên", 1], [6.975, "dùng,", 1], [7.425, "và", 1], [7.638, "giới", 1], [7.812, "hạn", 1], [8.037, "bộ", 1], [8.225, "nhớ", 1], [8.475, "của", 1], [8.625, "chúng.", 1], [9.812, "Thứ", 2], [10.037, "hai", 2], [10.3, "là", 2], [10.4, "phương", 2], [10.625, "thức", 2], [10.812, "transferTo,", 2], [11.863, "sao", 2], [12.137, "chép", 2], [12.4, "từ", 2], [12.588, "stream", 2], [12.875, "này", 2], [13.075, "sang", 2], [13.312, "stream", 2], [13.562, "khác", 2], [13.887, "mà", 2], [14.162, "không", 2], [14.387, "cần", 2], [14.6, "tự", 2], [14.775, "viết", 2], [14.963, "vòng", 2], [15.175, "lặp.", 2], [16.188, "Bài", 3], [16.425, "tập", 3], [16.625, "mở", 3], [16.812, "rộng:", 3], [17.3, "viết", 3], [17.538, "hàm", 3], [17.775, "readFully", 3], [18.363, "nhận", 3], [18.663, "một", 3], [18.9, "InputStream", 3], [19.65, "và", 3], [19.812, "số", 3], [20.012, "byte", 3], [20.225, "n,", 3], [20.9, "đọc", 3], [21.087, "đúng", 3], [21.325, "n", 3], [21.637, "byte", 3], [21.875, "hoặc", 3], [22.05, "ném", 3], [23.019, "EOFException,", 3], [23.988, "rồi", 3], [24.225, "kiểm", 3], [24.45, "thử", 3], [24.663, "với", 3], [24.775, "stream", 3], [25.075, "trả", 3], [25.288, "dữ", 3], [25.462, "liệu", 3], [25.688, "từng", 3], [25.913, "phần.", 3]], "cues": [0.1, 16.188], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 453.75, "audio": "audio/42c4330d113744ad.mp3", "dur": 13.68, "words": [[0.1, "Byte", 0], [0.412, "stream", 0], [0.75, "chỉ", 0], [1.012, "truyền", 0], [1.25, "byte.", 0], [2.413, "Để", 1], [2.638, "gửi", 1], [2.875, "một", 1], [3.075, "số", 1], [3.288, "nguyên", 1], [3.625, "hay", 1], [3.763, "một", 1], [3.938, "đối", 1], [4.125, "tượng,", 1], [4.65, "hai", 1], [4.85, "đầu", 1], [5.075, "phải", 1], [5.237, "thống", 1], [5.438, "nhất", 1], [5.625, "cách", 1], [5.812, "đổi", 1], [6.025, "giá", 1], [6.25, "trị", 1], [6.475, "thành", 1], [6.7, "byte.", 1], [7.825, "Phần", 2], [8.1, "tiếp", 2], [8.3, "theo,", 2], [8.787, "về", 2], [8.988, "dữ", 2], [9.15, "liệu", 2], [9.375, "có", 2], [9.512, "kiểu", 2], [9.762, "với", 2], [9.912, "DataStream", 2], [10.838, "và", 2], [11.025, "ObjectStream,", 2], [11.963, "giải", 2], [12.188, "quyết", 2], [12.4, "việc", 2], [12.588, "này.", 2]], "cues": [], "lang": 0.6}], "video_sau": "Stream: dữ liệu có kiểu với DataStream và ObjectStream"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

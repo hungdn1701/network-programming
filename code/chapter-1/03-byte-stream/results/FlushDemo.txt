@@ -1,0 +1,2 @@
+after write(): 0 bytes passed down
+after flush(): 6 bytes passed down

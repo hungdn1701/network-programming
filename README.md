@@ -11,12 +11,12 @@ TS. Đặng Ngọc Hùng · 3 tín chỉ · Tiếng Việt · Java 21
 
 | | Phần | Phút | |
 |---|---|---|---|
-| 1 | Định danh: địa chỉ IP, tên miền, port và endpoint | 8′ |  |
-| 2 | Giao vận: TCP, UDP và mô hình ứng dụng mạng | 7′ |  |
-| 3 | Stream: byte stream, contract của read/write, decorator và buffer | 8′ |  |
-| 4 | Stream: dữ liệu có kiểu với DataStream và ObjectStream | 7′ |  |
-| 5 | Stream: character stream, charset và framing message | 8′ |  |
-| 6 | Bài toán ứng dụng: đặc tả và thử giao thức tra cứu | 8′ |  |
+| 1 | Định danh: địa chỉ IP, tên miền, port và endpoint | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V02/) · [slide](https://hungdn1701.github.io/network-programming/V02/slide.pdf) · [mã](code/chapter-1/01-endpoint/) |
+| 2 | Giao vận: TCP, UDP và mô hình ứng dụng mạng | 7′ | [xem trước](https://hungdn1701.github.io/network-programming/V03/) · [slide](https://hungdn1701.github.io/network-programming/V03/slide.pdf) · [mã](code/chapter-1/02-transport/) |
+| 3 | Stream: byte stream, contract của read/write, decorator và buffer | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V04/) · [slide](https://hungdn1701.github.io/network-programming/V04/slide.pdf) · [mã](code/chapter-1/03-byte-stream/) |
+| 4 | Stream: dữ liệu có kiểu với DataStream và ObjectStream | 7′ | [xem trước](https://hungdn1701.github.io/network-programming/V05/) · [slide](https://hungdn1701.github.io/network-programming/V05/slide.pdf) · [mã](code/chapter-1/04-typed-stream/) |
+| 5 | Stream: character stream, charset và framing message | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V06/) · [slide](https://hungdn1701.github.io/network-programming/V06/slide.pdf) · [mã](code/chapter-1/05-charset-framing/) |
+| 6 | Bài toán ứng dụng: đặc tả và thử giao thức tra cứu | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V07/) · [slide](https://hungdn1701.github.io/network-programming/V07/slide.pdf) · [mã](code/chapter-1/06-protocol-spec/) |
 
 ## Chương 2. Lập trình socket TCP và đa luồng
 

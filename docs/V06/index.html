@@ -1,0 +1,478 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V06 — Stream: character stream, charset và framing message · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-1/05-charset-framing">Mã</a>
+<h1>V06 · Stream: character stream, charset và framing message</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 1</div><div class="ten">Stream: character stream, charset và framing message</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Bên nhận cần biết ranh giới message và cách đổi byte thành ký tự</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Byte stream không có ranh giới: hai lần ghi có thể đến thành <b>một lần đọc</b></li><li data-s="2">Cùng một dãy byte, đọc theo <b>quy tắc khác nhau</b> ra chữ khác nhau</li></ul><div class="khung" data-s="3"><b>Câu hỏi của phần:</b> giao thức ứng dụng định nghĩa ranh giới message và cách đổi ký tự thành byte như thế nào?</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Charset quy định cách đổi ký tự thành byte, và hai đầu phải dùng cùng charset</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 560" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Chuỗi Hà Nội gồm 6 ký tự. Mã hóa UTF-8: H một byte 48, à hai byte C3 A0, dấu cách một byte 20, N một byte 4E, ộ ba byte E1 BB 99, i một byte 69; tổng 9 byte. InputStreamReader với UTF-8 ghép byte thành đúng 6 ký tự. Cùng dãy byte đọc bằng windows-1252 thành HÃ  Ná»™i, mỗi byte một ký tự.">
+  <defs>
+    <marker id="bk-navy" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="bk-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+    <marker id="bk-err" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#BC2626"/></marker>
+  </defs>
+
+  <!-- ① 6 ký tự -->
+  <g data-s="1">
+    <text x="20" y="74" font-size="23" fill="#5B6478">ký tự</text>
+    <g font-size="34" font-weight="500" fill="#051A53" text-anchor="middle">
+      <rect x="200" y="36" width="96" height="60" rx="3" fill="#EEF2FB" stroke="#051A53" stroke-width="2"/><text x="248" y="78">H</text>
+      <rect x="320" y="36" width="216" height="60" rx="3" fill="#EEF2FB" stroke="#051A53" stroke-width="2"/><text x="428" y="78">à</text>
+      <rect x="560" y="36" width="96" height="60" rx="3" fill="#EEF2FB" stroke="#051A53" stroke-width="2"/><text x="608" y="78" font-size="24" fill="#5B6478">␣</text>
+      <rect x="680" y="36" width="96" height="60" rx="3" fill="#EEF2FB" stroke="#051A53" stroke-width="2"/><text x="728" y="78">N</text>
+      <rect x="800" y="36" width="336" height="60" rx="3" fill="#EEF2FB" stroke="#051A53" stroke-width="2"/><text x="968" y="78">ộ</text>
+      <rect x="1160" y="36" width="96" height="60" rx="3" fill="#EEF2FB" stroke="#051A53" stroke-width="2"/><text x="1208" y="78">i</text>
+    </g>
+    <text x="1300" y="76" font-size="23" fill="#051A53">6 ký tự</text>
+  </g>
+
+  <!-- ② mã hóa UTF-8: 1 đến 3 byte mỗi ký tự -->
+  <g data-s="2">
+    <text x="20" y="214" font-size="23" fill="#5B6478">byte UTF-8</text>
+    <g font-family="Consolas, monospace" font-size="26" fill="#1F5FA8" text-anchor="middle">
+      <rect x="200" y="176" width="96" height="60" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="248" y="215">48</text>
+      <rect x="320" y="176" width="96" height="60" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="368" y="215">C3</text>
+      <rect x="440" y="176" width="96" height="60" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="488" y="215">A0</text>
+      <rect x="560" y="176" width="96" height="60" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="608" y="215">20</text>
+      <rect x="680" y="176" width="96" height="60" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="728" y="215">4E</text>
+      <rect x="800" y="176" width="96" height="60" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="848" y="215">E1</text>
+      <rect x="920" y="176" width="96" height="60" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="968" y="215">BB</text>
+      <rect x="1040" y="176" width="96" height="60" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="1088" y="215">99</text>
+      <rect x="1160" y="176" width="96" height="60" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="1208" y="215">69</text>
+    </g>
+    <g stroke="#9AA3B8" stroke-width="2">
+      <line x1="248" y1="100" x2="248" y2="172"/><line x1="428" y1="100" x2="428" y2="172"/><line x1="608" y1="100" x2="608" y2="172"/>
+      <line x1="728" y1="100" x2="728" y2="172"/><line x1="968" y1="100" x2="968" y2="172"/><line x1="1208" y1="100" x2="1208" y2="172"/>
+    </g>
+    <text x="1300" y="216" font-size="23" fill="#1F5FA8">9 byte</text>
+    <text x="984" y="144" font-size="21" fill="#5B6478">ộ: 3 byte</text>
+  </g>
+
+  <!-- ③ InputStreamReader + UTF-8: ghép đúng 6 ký tự -->
+  <g data-s="3">
+    <line x1="720" y1="242" x2="720" y2="318" stroke="#2F855A" stroke-width="3" marker-end="url(#bk-ok)"/>
+    <text x="740" y="288" font-size="22" fill="#22603F" font-family="Consolas, monospace">InputStreamReader, UTF-8</text>
+    <rect x="200" y="324" width="1056" height="64" rx="4" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="728" y="366" text-anchor="middle" font-size="30" font-weight="500" fill="#22603F">Hà Nội</text>
+    <text x="1300" y="364" font-size="23" fill="#22603F">ghép đúng 6 ký tự</text>
+  </g>
+
+  <!-- ④ sai charset: mỗi byte thành một ký tự -->
+  <g data-s="4">
+    <path d="M200,206 H172 V474 H192" fill="none" stroke="#BC2626" stroke-width="3" marker-end="url(#bk-err)"/>
+    <text x="20" y="536" font-size="21" fill="#BC2626">windows-1252</text>
+    <rect x="200" y="442" width="1056" height="64" rx="4" fill="#FFFFFF" stroke="#BC2626" stroke-width="2.5"/>
+    <text x="728" y="484" text-anchor="middle" font-size="30" font-weight="500" fill="#BC2626" xml:space="preserve">HÃ  Ná»™i</text>
+    <text x="1300" y="482" font-size="23" fill="#BC2626">sai charset: mỗi byte</text>
+    <text x="1300" y="512" font-size="23" fill="#BC2626">thành một ký tự</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b>Charset</b> quy định cách đổi ký tự ↔ byte; <span style="white-space:nowrap">UTF-8</span> dùng 1 đến 4 byte cho mỗi ký tự.</p><p><b>Character stream</b> (<code>Reader</code>, <code>Writer</code>) đọc ghi ký tự; <code>InputStreamReader</code>, <code>OutputStreamWriter</code> chuyển giữa byte và ký tự theo charset.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Framing đánh dấu ranh giới message bằng ký tự phân cách hoặc tiền tố độ dài</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 560" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Hai cách framing trên cùng một byte stream. Ký tự phân cách: hanoi LF sapa LF; readLine tách tại mỗi LF, được hai message hanoi và sapa. Tiền tố độ dài: 4 byte độ dài 5 rồi 5 byte hanoi, 4 byte độ dài 4 rồi 4 byte sapa; bên nhận đọc độ dài, rồi đọc đủ số byte đó.">
+  <defs>
+    <marker id="fr-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- ① ký tự phân cách: dòng byte có LF -->
+  <g data-s="1">
+    <text x="40" y="44" font-size="26" font-weight="500" fill="#051A53">Ký tự phân cách (LF)</text>
+    <g font-family="Consolas, monospace" font-size="26" text-anchor="middle">
+      <rect x="40" y="70" width="300" height="60" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="190" y="110" fill="#1F5FA8">hanoi</text>
+      <rect x="340" y="70" width="90" height="60" rx="3" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/><text x="385" y="110" fill="#6B4E06" font-weight="500">LF</text>
+      <rect x="430" y="70" width="240" height="60" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="550" y="110" fill="#1F5FA8">sapa</text>
+      <rect x="670" y="70" width="90" height="60" rx="3" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/><text x="715" y="110" fill="#6B4E06" font-weight="500">LF</text>
+    </g>
+    <text x="800" y="110" font-size="22" fill="#5B6478">một byte stream, hai message</text>
+  </g>
+
+  <!-- ② readLine tách tại LF -->
+  <g data-s="2">
+    <line x1="1110" y1="100" x2="1190" y2="100" stroke="#2F855A" stroke-width="3" marker-end="url(#fr-ok)"/>
+    <text x="1150" y="84" text-anchor="middle" font-size="20" fill="#22603F" font-family="Consolas, monospace">readLine()</text>
+    <rect x="1200" y="60" width="240" height="40" rx="3" fill="#EEF9F0" stroke="#2F855A" stroke-width="2"/>
+    <text x="1320" y="88" text-anchor="middle" font-size="22" fill="#22603F" font-family="Consolas, monospace">"hanoi"</text>
+    <rect x="1200" y="108" width="240" height="40" rx="3" fill="#EEF9F0" stroke="#2F855A" stroke-width="2"/>
+    <text x="1320" y="136" text-anchor="middle" font-size="22" fill="#22603F" font-family="Consolas, monospace">"sapa"</text>
+    <text x="40" y="186" font-size="22" fill="#051A53">dữ liệu không được chứa ký tự LF; hợp với văn bản</text>
+  </g>
+
+  <!-- ③ tiền tố độ dài -->
+  <g data-s="3">
+    <line x1="40" y1="232" x2="1720" y2="232" stroke="#D5DAE5" stroke-width="2"/>
+    <text x="40" y="290" font-size="26" font-weight="500" fill="#051A53">Tiền tố độ dài</text>
+    <g font-family="Consolas, monospace" font-size="24" text-anchor="middle">
+      <rect x="40" y="316" width="220" height="60" rx="3" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/><text x="150" y="355" fill="#6B4E06" font-weight="500">00 00 00 05</text>
+      <rect x="260" y="316" width="300" height="60" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="410" y="355" fill="#1F5FA8">hanoi</text>
+      <rect x="560" y="316" width="220" height="60" rx="3" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/><text x="670" y="355" fill="#6B4E06" font-weight="500">00 00 00 04</text>
+      <rect x="780" y="316" width="240" height="60" rx="3" fill="#FFFFFF" stroke="#1F5FA8" stroke-width="2"/><text x="900" y="355" fill="#1F5FA8">sapa</text>
+    </g>
+  </g>
+
+  <!-- ④ đọc độ dài, rồi đọc đủ N byte -->
+  <g data-s="4">
+    <line x1="1110" y1="346" x2="1190" y2="346" stroke="#2F855A" stroke-width="3" marker-end="url(#fr-ok)"/>
+    <rect x="1200" y="300" width="520" height="96" rx="3" fill="#EEF9F0" stroke="#2F855A" stroke-width="2"/>
+    <text x="1460" y="338" text-anchor="middle" font-size="22" fill="#22603F">đọc 4 byte độ dài → 5</text>
+    <text x="1460" y="374" text-anchor="middle" font-size="22" fill="#22603F">rồi đọc đủ 5 byte</text>
+    <text x="40" y="436" font-size="22" fill="#051A53">dữ liệu chứa byte nào cũng được, kể cả byte của LF; hợp với giao thức nhị phân</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b>Ký tự phân cách</b>: đơn giản, hợp với văn bản; dữ liệu không được chứa ký tự đó.</p><p><b>Tiền tố độ dài</b>: dữ liệu chứa byte nào cũng được; bên nhận đọc đủ N byte.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Cùng một dãy byte, đọc bằng hai charset cho hai kết quả</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">var</span> bytes = <span class="hl-k">new</span> <span class="hl-m">ByteArrayOutputStream</span>();  <span class="hl-c">// ở vị trí stream của socket</span>
+<span class="hl-k">try</span> (<span class="hl-k">var</span> out = <span class="hl-k">new</span> <span class="hl-m">BufferedWriter</span>(<span class="hl-k">new</span> <span class="hl-m">OutputStreamWriter</span>(bytes, <span class="hl-t">StandardCharsets</span>.<span class="hl-t">UTF_8</span>))) {
+    out.<span class="hl-m">write</span>(<span class="hl-s">"</span><span class="hl-s">Hà Nội</span><span class="hl-s">\</span><span class="hl-s">n</span><span class="hl-s">"</span>);
+}
+<span class="hl-k">byte</span>[] received = bytes.<span class="hl-m">toByteArray</span>();
+<span class="hl-t">System</span>.out.<span class="hl-m">println</span>(received.length + <span class="hl-s">"</span><span class="hl-s"> bytes: </span><span class="hl-s">"</span> + <span class="hl-t">HexFormat</span>.<span class="hl-m">ofDelimiter</span>(<span class="hl-s">"</span><span class="hl-s"> </span><span class="hl-s">"</span>).<span class="hl-m">withUpperCase</span>().<span class="hl-m">formatHex</span>(received));
+<span class="hl-k">var</span> utf8 = <span class="hl-k">new</span> <span class="hl-m">InputStreamReader</span>(<span class="hl-k">new</span> <span class="hl-m">ByteArrayInputStream</span>(received), <span class="hl-t">StandardCharsets</span>.<span class="hl-t">UTF_8</span>);
+<span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">UTF-8:        </span><span class="hl-s">"</span> + <span class="hl-k">new</span> <span class="hl-m">BufferedReader</span>(utf8).<span class="hl-m">readLine</span>());
+<span class="hl-k">var</span> cp1252 = <span class="hl-k">new</span> <span class="hl-m">InputStreamReader</span>(<span class="hl-k">new</span> <span class="hl-m">ByteArrayInputStream</span>(received), <span class="hl-t">Charset</span>.<span class="hl-m">forName</span>(<span class="hl-s">"</span><span class="hl-s">windows-1252</span><span class="hl-s">"</span>));
+<span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">windows-1252: </span><span class="hl-s">"</span> + <span class="hl-k">new</span> <span class="hl-m">BufferedReader</span>(cp1252).<span class="hl-m">readLine</span>());  <span class="hl-c">// SAI charset</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>10 bytes: 48 C3 A0 20 4E E1 BB 99 69 0A
+UTF-8:        Hà Nội
+windows-1252: HÃ  Ná»™i</pre></div><ul class="y-nho"><li data-s="2">Cùng 10 byte: <span style="white-space:nowrap">UTF-8</span> ra <b>Hà Nội</b>, <span style="white-space:nowrap">windows-1252</span> ra chữ sai, và <b>không có ngoại lệ</b></li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>readLine tách hai message liền nhau tại ký tự LF</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">var</span> bytes = <span class="hl-k">new</span> <span class="hl-m">ByteArrayOutputStream</span>();  <span class="hl-c">// hai message liền nhau trong một khối byte</span>
+<span class="hl-k">try</span> (<span class="hl-k">var</span> out = <span class="hl-k">new</span> <span class="hl-m">BufferedWriter</span>(<span class="hl-k">new</span> <span class="hl-m">OutputStreamWriter</span>(bytes, <span class="hl-t">StandardCharsets</span>.<span class="hl-t">UTF_8</span>))) {
+    out.<span class="hl-m">write</span>(<span class="hl-s">"</span><span class="hl-s">hanoi</span><span class="hl-s">\</span><span class="hl-s">n</span><span class="hl-s">"</span>);
+    out.<span class="hl-m">write</span>(<span class="hl-s">"</span><span class="hl-s">huế</span><span class="hl-s">\</span><span class="hl-s">n</span><span class="hl-s">"</span>);
+}
+<span class="hl-k">var</span> stream = <span class="hl-k">new</span> <span class="hl-m">ByteArrayInputStream</span>(bytes.<span class="hl-m">toByteArray</span>());
+<span class="hl-k">try</span> (<span class="hl-k">var</span> in = <span class="hl-k">new</span> <span class="hl-m">BufferedReader</span>(<span class="hl-k">new</span> <span class="hl-m">InputStreamReader</span>(stream, <span class="hl-t">StandardCharsets</span>.<span class="hl-t">UTF_8</span>))) {
+    <span class="hl-t">String</span> line;
+    <span class="hl-k">while</span> ((line = in.<span class="hl-m">readLine</span>()) != <span class="hl-k">null</span>) {  <span class="hl-c">// null: hết dữ liệu</span>
+        <span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">message: </span><span class="hl-s">"</span> + line);
+    }
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>message: hanoi
+message: huế</pre></div><ul class="y-nho"><li data-s="2">Hai message trong <b>cùng một khối byte</b>; <code>readLine()</code> tách đúng tại LF</li><li data-s="3"><b>Giao thức tra cứu</b>: mỗi yêu cầu, mỗi phản hồi là <b>một dòng <span style="white-space:nowrap">UTF-8</span> kết thúc bằng LF</b></li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>Tiền tố độ dài cho bên nhận biết trước phải đọc bao nhiêu byte</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">byte</span>[] data = <span class="hl-s">"</span><span class="hl-s">huế</span><span class="hl-s">"</span>.<span class="hl-m">getBytes</span>(<span class="hl-t">StandardCharsets</span>.<span class="hl-t">UTF_8</span>);
+<span class="hl-k">var</span> bytes = <span class="hl-k">new</span> <span class="hl-m">ByteArrayOutputStream</span>();  <span class="hl-c">// ở vị trí stream của socket</span>
+<span class="hl-k">try</span> (<span class="hl-k">var</span> out = <span class="hl-k">new</span> <span class="hl-m">DataOutputStream</span>(bytes)) {
+    out.<span class="hl-m">writeInt</span>(data.length);  <span class="hl-c">// tiền tố: 4 byte độ dài</span>
+    out.<span class="hl-m">write</span>(data);
+}
+<span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-t">HexFormat</span>.<span class="hl-m">ofDelimiter</span>(<span class="hl-s">"</span><span class="hl-s"> </span><span class="hl-s">"</span>).<span class="hl-m">withUpperCase</span>().<span class="hl-m">formatHex</span>(bytes.<span class="hl-m">toByteArray</span>()));
+<span class="hl-k">try</span> (<span class="hl-k">var</span> in = <span class="hl-k">new</span> <span class="hl-m">DataInputStream</span>(<span class="hl-k">new</span> <span class="hl-m">ByteArrayInputStream</span>(bytes.<span class="hl-m">toByteArray</span>()))) {
+    <span class="hl-k">byte</span>[] message = <span class="hl-k">new</span> <span class="hl-k">byte</span>[in.<span class="hl-m">readInt</span>()];
+    in.<span class="hl-m">readFully</span>(message);  <span class="hl-c">// đọc đủ số byte đã báo</span>
+    <span class="hl-t">System</span>.out.<span class="hl-m">println</span>(message.length + <span class="hl-s">"</span><span class="hl-s"> bytes: </span><span class="hl-s">"</span> + <span class="hl-k">new</span> <span class="hl-m">String</span>(message, <span class="hl-t">StandardCharsets</span>.<span class="hl-t">UTF_8</span>));
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>00 00 00 05 68 75 E1 BA BF
+5 bytes: huế</pre></div><ul class="y-nho"><li data-s="2">Độ dài tính bằng <b>byte</b>, không phải số ký tự: <code>huế</code> có 3 ký tự nhưng 5 byte</li><li data-s="3"><code>readFully()</code> đọc đủ đúng số byte đã báo; stream hết trước thì ném <code>EOFException</code></li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S07"><header><h1>Luôn chỉ định <span style="white-space:nowrap">UTF-8</span>, và tự giới hạn độ dài dòng</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Không dựa vào charset mặc định: từ Java 18 mặc định là <span style="white-space:nowrap">UTF-8</span>, nhưng đầu kia có thể là chương trình khác → <b>luôn chỉ định <span style="white-space:nowrap">UTF-8</span></b></li><li data-s="2"><code>readLine()</code> <b>không giới hạn</b> độ dài dòng: dòng rất dài làm server tốn bộ nhớ → server phải <b>tự giới hạn</b></li></ul></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Chuỗi "Hà Nội" mã hóa bằng <span style="white-space:nowrap">UTF-8</span> dài bao nhiêu byte?</div></div><div class="lua-chon"><div class=""><span>A</span><div>6 byte, vì mỗi ký tự chiếm một byte.</div></div><div class=""><span>B</span><div>12 byte, vì mỗi ký tự chiếm hai byte.</div></div><div class=""><span>C</span><div>Không xác định được, vì tùy hệ điều hành.</div></div><div class="dung"><span>D</span><div>9 byte: à chiếm 2 byte, ộ chiếm 3 byte, mỗi ký tự còn lại 1 byte.</div></div></div><div class="giai-thich"><span style="white-space:nowrap">UTF-8</span> dùng 1 byte cho ký tự ASCII, 2 byte cho à, 3 byte cho ộ: 1 + 2 + 1 + 1 + 3 + 1 = 9 byte. Khi đã chỉ định <span style="white-space:nowrap">UTF-8</span>, kết quả không phụ thuộc hệ điều hành.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Chuỗi "Hà Nội" mã hóa bằng <span style="white-space:nowrap">UTF-8</span> dài bao nhiêu byte?</div></div><div class="lua-chon"><div class=""><span>A</span><div>6 byte, vì mỗi ký tự chiếm một byte.</div></div><div class=""><span>B</span><div>12 byte, vì mỗi ký tự chiếm hai byte.</div></div><div class=""><span>C</span><div>Không xác định được, vì tùy hệ điều hành.</div></div><div class="dung"><span>D</span><div>9 byte: à chiếm 2 byte, ộ chiếm 3 byte, mỗi ký tự còn lại 1 byte.</div></div></div><div class="giai-thich"><span style="white-space:nowrap">UTF-8</span> dùng 1 byte cho ký tự ASCII, 2 byte cho à, 3 byte cho ộ: 1 + 2 + 1 + 1 + 3 + 1 = 9 byte. Khi đã chỉ định <span style="white-space:nowrap">UTF-8</span>, kết quả không phụ thuộc hệ điều hành.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Dữ liệu của một giao thức nhị phân có thể chứa byte giá trị 10, chính là byte của ký tự LF. Nên chọn cách framing nào?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Tiền tố độ dài: ghi độ dài trước, bên nhận đọc đủ số byte đó.</div></div><div class=""><span>B</span><div>Ký tự phân cách LF, vì readLine đã có sẵn.</div></div><div class=""><span>C</span><div>Không cần framing, vì TCP giữ ranh giới message.</div></div><div class=""><span>D</span><div>Mở một kết nối TCP riêng cho mỗi message là cách duy nhất.</div></div></div><div class="giai-thich">Dữ liệu có thể chứa byte của LF, nên LF không dùng làm ký tự phân cách được. Tiền tố độ dài cho phép dữ liệu chứa bất kỳ byte nào. TCP không giữ ranh giới message.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Dữ liệu của một giao thức nhị phân có thể chứa byte giá trị 10, chính là byte của ký tự LF. Nên chọn cách framing nào?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Tiền tố độ dài: ghi độ dài trước, bên nhận đọc đủ số byte đó.</div></div><div class=""><span>B</span><div>Ký tự phân cách LF, vì readLine đã có sẵn.</div></div><div class=""><span>C</span><div>Không cần framing, vì TCP giữ ranh giới message.</div></div><div class=""><span>D</span><div>Mở một kết nối TCP riêng cho mỗi message là cách duy nhất.</div></div></div><div class="giai-thich">Dữ liệu có thể chứa byte của LF, nên LF không dùng làm ký tự phân cách được. Tiền tố độ dài cho phép dữ liệu chứa bất kỳ byte nào. TCP không giữ ranh giới message.</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>Charset</b> quy định ký tự ↔ byte; <code>InputStreamReader</code>, <code>OutputStreamWriter</code> chuyển đổi theo charset chỉ định</div></div><div class="the" data-s="2"><span class="so">2</span><div><b>Framing</b>: ký tự phân cách (LF, <code>readLine()</code>) hoặc tiền tố độ dài</div></div><div class="the" data-s="3"><span class="so">3</span><div>Giao thức tra cứu là <b>giao thức theo dòng</b>: một dòng <span style="white-space:nowrap">UTF-8</span> kết thúc bằng LF; luôn chỉ định <span style="white-space:nowrap">UTF-8</span></div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>character stream</span><span>Reader</span><span>Writer</span><span>charset</span><span>UTF-8</span><span>framing</span><span>ký tự phân cách</span><span>tiền tố độ dài</span><span>giao thức theo dòng</span></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>Escape ký tự phân cách trong dữ liệu (như HTTP chunked, CSV)</li><li>Định dạng TLV (type–length–value)</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Viết lớp LineFramer đọc từng dòng với giới hạn độ dài tối đa, ném ngoại lệ khi vượt; kiểm thử với dòng tiếng Việt và dòng quá dài.</p></div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Bài toán ứng dụng: đặc tả và thử giao thức tra cứu</div></main><footer><span>Chương 1 · Tổng quan lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Phần này trả lời câu hỏi: khi đọc một byte stream, bên nhận làm sao biết một message kết thúc ở đâu, và các byte biểu diễn ký tự theo quy tắc nào.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:11</span>
+      <h3>Slide 1. Bên nhận cần biết ranh giới message và cách đổi byte thành ký tự</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Byte stream không có ranh giới: hai lần ghi có thể đến thành **một lần đọc**</li><li>Cùng một dãy byte, đọc theo **quy tắc khác nhau** ra chữ khác nhau</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** giao thức ứng dụng định nghĩa ranh giới message và cách đổi ký tự thành byte như thế nào?</div></div>
+    <div class="kb-thoai"><p>Ở phần về TCP và UDP, các bạn đã thấy TCP không giữ ranh giới giữa các lần ghi. Hai yêu cầu tra cứu có thể đến bên nhận trong cùng một lần đọc. Với văn bản còn một vấn đề nữa: cùng một dãy byte, đọc theo quy tắc khác nhau sẽ ra chữ khác nhau, nhất là với chữ tiếng Việt có dấu. Câu hỏi của phần này là: giao thức ứng dụng định nghĩa ranh giới message và cách đổi ký tự thành byte như thế nào?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hai ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Ở phần về TCP và UDP”; bước 2 khi đọc “Với văn bản”; bước 3 khi đọc “Câu hỏi của phần này”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:36</span>
+      <h3>Slide 2. Charset quy định cách đổi ký tự thành byte, và hai đầu phải dùng cùng charset</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Charset** quy định cách đổi ký tự ↔ byte; UTF-8 dùng 1 đến 4 byte cho mỗi ký tự.</li><li>**Character stream** (`Reader`, `Writer`) đọc ghi ký tự; `InputStreamReader`, `OutputStreamWriter` chuyển giữa byte và ký tự theo charset.</li></ul></div></div>
+    <div class="kb-thoai"><p>Chuỗi Hà Nội có sáu ký tự, kể cả dấu cách. Quy tắc đổi giữa ký tự và byte gọi là charset. UTF-8 là charset dùng cho hầu hết văn bản trên Internet. Với UTF-8, chữ cái không dấu chiếm một byte, chữ à chiếm hai byte, còn chữ ộ chiếm ba byte. Sáu ký tự thành chín byte. Ở bên gửi, OutputStreamWriter nhận ký tự và đổi thành byte theo charset được chỉ định. Ở bên nhận, InputStreamReader đọc byte từ byte stream bên dưới và ghép thành ký tự theo cùng charset đó. Với UTF-8, chín byte được ghép lại thành đúng sáu ký tự. Nếu bên nhận dùng charset khác, chẳng hạn windows-1252, mỗi byte bị hiểu thành một ký tự riêng, và chữ Hà Nội thành một chuỗi ký tự lạ. Như vậy, character stream gồm Reader để đọc và Writer để ghi ký tự. InputStreamReader và OutputStreamWriter là cầu nối giữa byte và ký tự. Hai đầu phải dùng cùng một charset.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình byte-ky-tu: bốn bước của hình, bước 5 là hai ô kết luận.
+Hiện dần: bước 1 khi đọc “Chuỗi Hà Nội có sáu ký tự”; bước 2 khi đọc “Với UTF-8, chữ cái”; bước 3 khi đọc “Ở bên nhận”; bước 4 khi đọc “Nếu bên nhận”; bước 5 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:39</span>
+      <h3>Slide 3. Framing đánh dấu ranh giới message bằng ký tự phân cách hoặc tiền tố độ dài</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Ký tự phân cách**: đơn giản, hợp với văn bản; dữ liệu không được chứa ký tự đó.</li><li>**Tiền tố độ dài**: dữ liệu chứa byte nào cũng được; bên nhận đọc đủ N byte.</li></ul></div></div>
+    <div class="kb-thoai"><p>Việc đánh dấu ranh giới của từng message trong byte stream gọi là framing. Có hai cách thường dùng. Cách thứ nhất là ký tự phân cách, delimiter: mỗi message kết thúc bằng một ký tự quy ước, thường là LF, tức xuống dòng. Bên nhận đọc đến LF là hết một message. Phương thức readLine của BufferedReader làm đúng việc này. Dòng trả về không kèm LF. Cách thứ hai là tiền tố độ dài, length-prefix: trước mỗi message, bên gửi ghi độ dài của message, ví dụ bằng phương thức writeInt. Bên nhận đọc 4 byte độ dài, rồi đọc lặp lại cho đến khi đủ số byte đó, đúng contract của read đã học. Hai cách có ưu điểm khác nhau. Ký tự phân cách đơn giản và hợp với văn bản, nhưng dữ liệu không được chứa ký tự đó. Tiền tố độ dài cho phép dữ liệu chứa bất kỳ byte nào, nên hợp với giao thức nhị phân.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình framing: bốn bước của hình, bước 5 là hai ô kết luận.
+Hiện dần: bước 1 khi đọc “Cách thứ nhất”; bước 2 khi đọc “Phương thức readLine”; bước 3 khi đọc “Cách thứ hai”; bước 4 khi đọc “Bên nhận đọc 4 byte”; bước 5 khi đọc “Hai cách có”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:36</span>
+      <h3>Slide 4. Cùng một dãy byte, đọc bằng hai charset cho hai kết quả</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Cùng 10 byte: UTF-8 ra **Hà Nội**, windows-1252 ra chữ sai, và **không có ngoại lệ**</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/stream/CharsetDemo.java</span><pre><code>var bytes = new ByteArrayOutputStream();  // ở vị trí stream của socket
+try (var out = new BufferedWriter(new OutputStreamWriter(bytes, StandardCharsets.UTF_8))) {
+    out.write(&quot;Hà Nội\n&quot;);
+}
+byte[] received = bytes.toByteArray();
+System.out.println(received.length + &quot; bytes: &quot; + HexFormat.ofDelimiter(&quot; &quot;).withUpperCase().formatHex(received));
+var utf8 = new InputStreamReader(new ByteArrayInputStream(received), StandardCharsets.UTF_8);
+System.out.println(&quot;UTF-8:        &quot; + new BufferedReader(utf8).readLine());
+var cp1252 = new InputStreamReader(new ByteArrayInputStream(received), Charset.forName(&quot;windows-1252&quot;));
+System.out.println(&quot;windows-1252: &quot; + new BufferedReader(cp1252).readLine());  // SAI charset</code></pre></div></div>
+    <div class="kb-thoai"><p>Đoạn mã ghi dòng Hà Nội qua một OutputStreamWriter với charset UTF-8, bọc thêm một BufferedWriter. Sau đó in các byte đã ghi, rồi đọc lại cùng dãy byte bằng hai InputStreamReader: một dùng UTF-8, một dùng windows-1252. Chạy chương trình. Dòng đầu có mười byte: chín byte của chữ Hà Nội và một byte LF ở cuối. Đọc bằng UTF-8 được đúng chữ Hà Nội. Đọc bằng windows-1252, chữ à và chữ ộ thành các ký tự lạ. Cùng mười byte, hai charset, hai kết quả. Chương trình không báo lỗi trong cả hai trường hợp.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả chạy phía dưới. Trong khung kết quả: tô 9 byte đầu (từ 48 đến 69) khi đọc &quot;chín byte của chữ Hà Nội&quot;, byte 0A khi đọc &quot;một byte LF&quot;; tô dòng windows-1252 màu đỏ khi đọc &quot;các ký tự lạ&quot;.
+Hiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Cùng mười byte”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:25</span>
+      <h3>Slide 5. readLine tách hai message liền nhau tại ký tự LF</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Hai message trong **cùng một khối byte**; `readLine()` tách đúng tại LF</li><li>**Giao thức tra cứu**: mỗi yêu cầu, mỗi phản hồi là **một dòng UTF-8 kết thúc bằng LF**</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/stream/LineFramingDemo.java</span><pre><code>var bytes = new ByteArrayOutputStream();  // hai message liền nhau trong một khối byte
+try (var out = new BufferedWriter(new OutputStreamWriter(bytes, StandardCharsets.UTF_8))) {
+    out.write(&quot;hanoi\n&quot;);
+    out.write(&quot;huế\n&quot;);
+}
+var stream = new ByteArrayInputStream(bytes.toByteArray());
+try (var in = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+    String line;
+    while ((line = in.readLine()) != null) {  // null: hết dữ liệu
+        System.out.println(&quot;message: &quot; + line);
+    }
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Đoạn mã ghi hai message, hanoi và huế, mỗi message kết thúc bằng LF. Hai message nằm liền nhau trong cùng một khối byte, giống như khi TCP gộp hai lần ghi. Bên nhận đọc bằng BufferedReader, gọi readLine trong vòng lặp cho đến khi phương thức này trả null, tức hết dữ liệu. Chạy chương trình. Hai message được tách đúng, và chữ huế có dấu vẫn đúng vì hai đầu cùng dùng UTF-8. Đây là quy ước của giao thức tra cứu, gọi là giao thức theo dòng, line-based protocol: mỗi yêu cầu và mỗi phản hồi là một dòng văn bản UTF-8, kết thúc bằng LF.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả chạy phía dưới. Highlight hai dòng out.write khi đọc &quot;mỗi message kết thúc bằng LF&quot;, dòng while khi đọc &quot;gọi readLine trong vòng lặp&quot;.
+Hiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Hai message được tách”; bước 3 khi đọc “Đây là quy ước”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:11</span>
+      <h3>Slide 6. Tiền tố độ dài cho bên nhận biết trước phải đọc bao nhiêu byte</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Độ dài tính bằng **byte**, không phải số ký tự: `huế` có 3 ký tự nhưng 5 byte</li><li>`readFully()` đọc đủ đúng số byte đã báo; stream hết trước thì ném `EOFException`</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/stream/LengthPrefixDemo.java</span><pre><code>byte[] data = &quot;huế&quot;.getBytes(StandardCharsets.UTF_8);
+var bytes = new ByteArrayOutputStream();  // ở vị trí stream của socket
+try (var out = new DataOutputStream(bytes)) {
+    out.writeInt(data.length);  // tiền tố: 4 byte độ dài
+    out.write(data);
+}
+System.out.println(HexFormat.ofDelimiter(&quot; &quot;).withUpperCase().formatHex(bytes.toByteArray()));
+try (var in = new DataInputStream(new ByteArrayInputStream(bytes.toByteArray()))) {
+    byte[] message = new byte[in.readInt()];
+    in.readFully(message);  // đọc đủ số byte đã báo
+    System.out.println(message.length + &quot; bytes: &quot; + new String(message, StandardCharsets.UTF_8));
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Cách thứ hai, tiền tố độ dài, dùng lại DataOutputStream và DataInputStream của phần trước. Bên gửi đổi chữ huế thành byte theo UTF-8, ghi độ dài bằng phương thức writeInt, rồi ghi các byte dữ liệu. Bên nhận đọc độ dài bằng phương thức readInt, tạo mảng đúng kích thước, rồi gọi readFully để đọc đủ số byte đó. Trước khi chạy, các bạn dự đoán: tiền tố độ dài là bao nhiêu? Chạy chương trình. Bốn byte đầu là độ dài, bằng 5. Độ dài tính bằng byte, không phải số ký tự: chữ huế có ba ký tự. Hai chữ h và u mỗi chữ một byte, chữ ế chiếm ba byte, tổng cộng năm byte. Phương thức readFully gọi read lặp lại đến khi đủ số byte, đúng như contract của read ở phần về byte stream. Nếu stream hết trước khi đủ, phương thức này ném EOFException.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả chạy phía dưới. Sau câu &quot;tiền tố độ dài là bao nhiêu?&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện. Trong khung kết quả, tô 4 byte đầu khi đọc &quot;Bốn byte đầu là độ dài&quot;.
+Hiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Độ dài tính bằng byte”; bước 3 khi đọc “Phương thức readFully”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:13</span>
+      <h3>Slide 7. Luôn chỉ định UTF-8, và tự giới hạn độ dài dòng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Không dựa vào charset mặc định: từ Java 18 mặc định là UTF-8, nhưng đầu kia có thể là chương trình khác → **luôn chỉ định UTF-8**</li><li>`readLine()` **không giới hạn** độ dài dòng: dòng rất dài làm server tốn bộ nhớ → server phải **tự giới hạn**</li></ul></div>
+    <div class="kb-thoai"><p>Có hai lưu ý khi dùng giao thức theo dòng. Thứ nhất, không dựa vào charset mặc định. Từ Java 18, charset mặc định là UTF-8 trên mọi hệ điều hành. Nhưng chương trình ở đầu kia có thể viết bằng ngôn ngữ khác, hoặc chạy Java cũ, với charset mặc định khác. Vì vậy, đặc tả giao thức phải ghi rõ charset. Trong mã, luôn chỉ định UTF-8 khi tạo Reader và Writer. Thứ hai, phương thức readLine không giới hạn độ dài dòng. Một client gửi dữ liệu rất dài mà không có LF sẽ khiến server giữ toàn bộ dữ liệu đó trong bộ nhớ. Server phải tự giới hạn độ dài dòng. Việc này được làm ở bài toán ứng dụng của Chương 2.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hai ý hiện lần lượt.
+Hiện dần: bước 1 khi đọc “Thứ nhất”; bước 2 khi đọc “Thứ hai”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:57</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Hai câu hỏi sau kiểm tra charset và cách chọn framing.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Chuỗi &quot;Hà Nội&quot; mã hóa bằng UTF-8 dài bao nhiêu byte?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> 6 byte, vì mỗi ký tự chiếm một byte.</li>
+      <li><b>B.</b> 12 byte, vì mỗi ký tự chiếm hai byte.</li>
+      <li><b>C.</b> Không xác định được, vì tùy hệ điều hành.</li>
+      <li><b>D.</b> 9 byte: à chiếm 2 byte, ộ chiếm 3 byte, mỗi ký tự còn lại 1 byte.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: D</b> — <span>UTF-8 dùng 1 byte cho ký tự ASCII, 2 byte cho à, 3 byte cho ộ: 1 + 2 + 1 + 1 + 3 + 1 = 9 byte. Khi đã chỉ định UTF-8, kết quả không phụ thuộc hệ điều hành.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là D. Chữ à chiếm hai byte, chữ ộ chiếm ba byte, tổng cộng chín byte.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án D được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:13</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu thứ hai về một giao thức nhị phân.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Dữ liệu của một giao thức nhị phân có thể chứa byte giá trị 10, chính là byte của ký tự LF. Nên chọn cách framing nào?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Tiền tố độ dài: ghi độ dài trước, bên nhận đọc đủ số byte đó.</li>
+      <li><b>B.</b> Ký tự phân cách LF, vì readLine đã có sẵn.</li>
+      <li><b>C.</b> Không cần framing, vì TCP giữ ranh giới message.</li>
+      <li><b>D.</b> Mở một kết nối TCP riêng cho mỗi message là cách duy nhất.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: A</b> — <span>Dữ liệu có thể chứa byte của LF, nên LF không dùng làm ký tự phân cách được. Tiền tố độ dài cho phép dữ liệu chứa bất kỳ byte nào. TCP không giữ ranh giới message.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là A. Dữ liệu có thể chứa byte của LF, nên chỉ tiền tố độ dài xác định đúng ranh giới.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án A.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:29</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**Charset** quy định ký tự ↔ byte; `InputStreamReader`, `OutputStreamWriter` chuyển đổi theo charset chỉ định</li><li>**Framing**: ký tự phân cách (LF, `readLine()`) hoặc tiền tố độ dài</li><li>Giao thức tra cứu là **giao thức theo dòng**: một dòng UTF-8 kết thúc bằng LF; luôn chỉ định UTF-8</li></ul></div>
+    <div class="kb-thoai"><p>Trả lời câu hỏi của phần: charset quy định cách đổi ký tự thành byte, và hai đầu phải dùng cùng một charset, chỉ định rõ khi tạo InputStreamReader và OutputStreamWriter. Framing đánh dấu ranh giới message, bằng ký tự phân cách như LF hoặc bằng tiền tố độ dài. Giao thức tra cứu là giao thức theo dòng: mỗi message là một dòng UTF-8 kết thúc bằng LF. Các từ khóa cần nhớ gồm character stream, Reader, Writer, charset, UTF-8, framing, ký tự phân cách, tiền tố độ dài và giao thức theo dòng.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “charset quy định cách đổi”; bước 2 khi đọc “Framing đánh dấu”; bước 3 khi đọc “Giao thức tra cứu là”; bước 4 khi đọc “Các từ khóa cần nhớ”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:03</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chủ đề nâng cao của phần gồm hai mục. Thứ nhất là cách escape ký tự phân cách khi dữ liệu có chứa nó, như trong HTTP chunked hay file CSV. Thứ hai là định dạng TLV, gồm kiểu, độ dài và giá trị. Bài tập mở rộng: viết lớp LineFramer đọc từng dòng với độ dài tối đa, ném ngoại lệ khi vượt, rồi kiểm thử với dòng tiếng Việt và dòng quá dài.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Chủ đề nâng cao của phần”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-12" data-index="12">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:29</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(12)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(12, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Đến đây, giao thức tra cứu đã có định dạng: một dòng UTF-8 kết thúc bằng LF. Phần tiếp theo, bài toán ứng dụng về đặc tả và thử giao thức tra cứu, viết đặc tả đầy đủ và thử giao thức trên dữ liệu thật, trước khi viết chương trình.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V06", "tieu_de": "Stream: character stream, charset và framing message", "giong": "vi-VN-NamMinhNeural", "tong": 464.38, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/c08145d24bd840ae.mp3", "dur": 10.51, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Phần", 1], [2.112, "này", 1], [2.3, "trả", 1], [2.475, "lời", 1], [2.625, "câu", 1], [2.812, "hỏi:", 1], [3.362, "khi", 1], [3.575, "đọc", 1], [3.75, "một", 1], [3.925, "byte", 1], [4.088, "stream,", 1], [4.662, "bên", 1], [4.862, "nhận", 1], [5.125, "làm", 1], [5.3, "sao", 1], [5.487, "biết", 1], [5.725, "một", 1], [5.9, "message", 1], [6.3, "kết", 1], [6.5, "thúc", 1], [6.713, "ở", 1], [6.85, "đâu,", 1], [7.338, "và", 1], [7.588, "các", 1], [7.763, "byte", 1], [7.912, "biểu", 1], [8.125, "diễn", 1], [8.375, "ký", 1], [8.6, "tự", 1], [8.825, "theo", 1], [8.988, "quy", 1], [9.188, "tắc", 1], [9.387, "nào.", 1]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Bên nhận cần biết ranh giới message và cách đổi byte thành ký tự", "loai": "slide", "slide": "S01", "dung": "Hai ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Ở phần về TCP và UDP”; bước 2 khi đọc “Với văn bản”; bước 3 khi đọc “Câu hỏi của phần này”.", "start": 11.11, "audio": "audio/b00167ab44957b51.mp3", "dur": 24.58, "words": [[0.1, "Ở", 0], [0.275, "phần", 0], [0.525, "về", 0], [0.913, "TCP", 0], [1.3, "và", 0], [1.8, "UDP,", 0], [2.3, "các", 0], [2.487, "bạn", 0], [2.737, "đã", 0], [2.837, "thấy", 0], [3.224, "TCP", 0], [3.612, "không", 0], [3.862, "giữ", 0], [4.025, "ranh", 0], [4.237, "giới", 0], [4.463, "giữa", 0], [4.65, "các", 0], [4.85, "lần", 0], [5.05, "ghi.", 0], [6.175, "Hai", 1], [6.463, "yêu", 1], [6.65, "cầu", 1], [6.862, "tra", 1], [7.062, "cứu", 1], [7.35, "có", 1], [7.487, "thể", 1], [7.688, "đến", 1], [7.9, "bên", 1], [8.088, "nhận", 1], [8.363, "trong", 1], [8.562, "cùng", 1], [8.762, "một", 1], [8.912, "lần", 1], [9.113, "đọc.", 1], [10.162, "Với", 2], [10.412, "văn", 2], [10.6, "bản", 2], [10.863, "còn", 2], [11.05, "một", 2], [11.2, "vấn", 2], [11.363, "đề", 2], [11.525, "nữa:", 2], [12.1, "cùng", 2], [12.3, "một", 2], [12.463, "dãy", 2], [12.662, "byte,", 2], [13.162, "đọc", 2], [13.375, "theo", 2], [13.562, "quy", 2], [13.738, "tắc", 2], [13.912, "khác", 2], [14.162, "nhau", 2], [14.375, "sẽ", 2], [14.55, "ra", 2], [14.688, "chữ", 2], [14.9, "khác", 2], [15.125, "nhau,", 2], [15.637, "nhất", 2], [15.9, "là", 2], [16.087, "với", 2], [16.225, "chữ", 2], [16.413, "tiếng", 2], [16.675, "Việt", 2], [16.837, "có", 2], [16.975, "dấu.", 2], [18.188, "Câu", 3], [18.375, "hỏi", 3], [18.6, "của", 3], [18.738, "phần", 3], [18.925, "này", 3], [19.075, "là:", 3], [19.575, "giao", 3], [19.825, "thức", 3], [20.062, "ứng", 3], [20.225, "dụng", 3], [20.462, "định", 3], [20.65, "nghĩa", 3], [20.837, "ranh", 3], [21.038, "giới", 3], [21.225, "message", 3], [21.788, "và", 3], [21.938, "cách", 3], [22.113, "đổi", 3], [22.275, "ký", 3], [22.525, "tự", 3], [22.712, "thành", 3], [22.938, "byte", 3], [23.163, "như", 3], [23.325, "thế", 3], [23.425, "nào?", 3]], "cues": [0.1, 10.162, 18.188], "lang": 0.6}, {"ten": "Slide 2. Charset quy định cách đổi ký tự thành byte, và hai đầu phải dùng cùng charset", "loai": "slide", "slide": "S02", "dung": "Hình byte-ky-tu: bốn bước của hình, bước 5 là hai ô kết luận.\nHiện dần: bước 1 khi đọc “Chuỗi Hà Nội có sáu ký tự”; bước 2 khi đọc “Với UTF-8, chữ cái”; bước 3 khi đọc “Ở bên nhận”; bước 4 khi đọc “Nếu bên nhận”; bước 5 khi đọc “Như vậy”.", "start": 36.29, "audio": "audio/ce9e194ac2f97803.mp3", "dur": 61.03, "words": [[0.1, "Chuỗi", 0], [0.412, "Hà", 0], [0.588, "Nội", 0], [0.838, "có", 0], [0.963, "sáu", 0], [1.212, "ký", 0], [1.425, "tự,", 0], [1.95, "kể", 0], [2.175, "cả", 0], [2.438, "dấu", 0], [2.663, "cách.", 0], [3.725, "Quy", 1], [3.95, "tắc", 1], [4.162, "đổi", 1], [4.388, "giữa", 1], [4.588, "ký", 1], [4.812, "tự", 1], [5.075, "và", 1], [5.213, "byte", 1], [5.438, "gọi", 1], [5.725, "là", 1], [5.9, "charset.", 1], [7.062, "UTF-8", 2], [8.225, "là", 2], [8.363, "charset", 2], [8.863, "dùng", 2], [9.175, "cho", 2], [9.325, "hầu", 2], [9.5, "hết", 2], [9.662, "văn", 2], [9.838, "bản", 2], [10.088, "trên", 2], [10.338, "Internet.", 2], [11.738, "Với", 3], [12.506, "UTF-8,", 3], [13.275, "chữ", 3], [13.512, "cái", 3], [13.787, "không", 3], [14.05, "dấu", 3], [14.25, "chiếm", 3], [14.512, "một", 3], [14.662, "byte,", 3], [15.162, "chữ", 3], [15.425, "à", 3], [15.588, "chiếm", 3], [15.863, "hai", 3], [16.012, "byte,", 3], [16.512, "còn", 3], [16.762, "chữ", 3], [17.0, "ộ", 3], [17.188, "chiếm", 3], [17.45, "ba", 3], [17.6, "byte.", 3], [18.725, "Sáu", 4], [19.025, "ký", 4], [19.312, "tự", 4], [19.55, "thành", 4], [19.825, "chín", 4], [20.062, "byte.", 4], [21.2, "Ở", 5], [21.387, "bên", 5], [21.613, "gửi,", 5], [22.175, "OutputStreamWriter", 5], [23.475, "nhận", 5], [23.775, "ký", 5], [23.975, "tự", 5], [24.238, "và", 5], [24.375, "đổi", 5], [24.55, "thành", 5], [24.775, "byte", 5], [24.962, "theo", 5], [25.15, "charset", 5], [25.6, "được", 5], [25.788, "chỉ", 5], [25.975, "định.", 5], [27.125, "Ở", 6], [27.312, "bên", 6], [27.488, "nhận,", 6], [27.988, "InputStreamReader", 6], [29.113, "đọc", 6], [29.325, "byte", 6], [29.538, "từ", 6], [29.738, "byte", 6], [29.95, "stream", 6], [30.262, "bên", 6], [30.475, "dưới", 6], [30.775, "và", 6], [30.913, "ghép", 6], [31.125, "thành", 6], [31.337, "ký", 6], [31.538, "tự", 6], [31.75, "theo", 6], [31.925, "cùng", 6], [32.163, "charset", 6], [32.538, "đó.", 6], [33.725, "Với", 7], [34.519, "UTF-8,", 7], [35.312, "chín", 7], [35.575, "byte", 7], [35.8, "được", 7], [35.975, "ghép", 7], [36.212, "lại", 7], [36.4, "thành", 7], [36.638, "đúng", 7], [36.837, "sáu", 7], [37.1, "ký", 7], [37.325, "tự.", 7], [38.5, "Nếu", 8], [38.962, "bên", 8], [39.138, "nhận", 8], [39.388, "dùng", 8], [39.587, "charset", 8], [39.962, "khác,", 8], [40.475, "chẳng", 8], [40.712, "hạn", 8], [40.95, "windows-1252,", 8], [43.138, "mỗi", 8], [43.35, "byte", 8], [43.562, "bị", 8], [43.712, "hiểu", 8], [43.875, "thành", 8], [44.075, "một", 8], [44.237, "ký", 8], [44.438, "tự", 8], [44.625, "riêng,", 8], [45.15, "và", 8], [45.362, "chữ", 8], [45.562, "Hà", 8], [45.7, "Nội", 8], [45.888, "thành", 8], [46.1, "một", 8], [46.275, "chuỗi", 8], [46.438, "ký", 8], [46.663, "tự", 8], [46.875, "lạ.", 8], [48.062, "Như", 9], [48.312, "vậy,", 9], [48.788, "character", 9], [49.288, "stream", 9], [49.675, "gồm", 9], [49.962, "Reader", 9], [50.35, "để", 9], [50.513, "đọc", 9], [50.712, "và", 9], [50.913, "Writer", 9], [51.45, "để", 9], [51.612, "ghi", 9], [51.8, "ký", 9], [52.038, "tự.", 9], [53.225, "InputStreamReader", 10], [54.388, "và", 10], [54.575, "OutputStreamWriter", 10], [55.763, "là", 10], [55.913, "cầu", 10], [56.163, "nối", 10], [56.388, "giữa", 10], [56.6, "byte", 10], [56.85, "và", 10], [56.987, "ký", 10], [57.2, "tự.", 10], [58.375, "Hai", 11], [58.612, "đầu", 11], [58.825, "phải", 11], [59.0, "dùng", 11], [59.25, "cùng", 11], [59.475, "một", 11], [59.675, "charset.", 11]], "cues": [0.1, 11.738, 27.125, 38.5, 48.062], "lang": 2.6}, {"ten": "Slide 3. Framing đánh dấu ranh giới message bằng ký tự phân cách hoặc tiền tố độ dài", "loai": "slide", "slide": "S03", "dung": "Hình framing: bốn bước của hình, bước 5 là hai ô kết luận.\nHiện dần: bước 1 khi đọc “Cách thứ nhất”; bước 2 khi đọc “Phương thức readLine”; bước 3 khi đọc “Cách thứ hai”; bước 4 khi đọc “Bên nhận đọc 4 byte”; bước 5 khi đọc “Hai cách có”.", "start": 99.92, "audio": "audio/d17c7d3232dcc2b4.mp3", "dur": 53.76, "words": [[0.1, "Việc", 0], [0.375, "đánh", 0], [0.588, "dấu", 0], [0.8, "ranh", 0], [0.988, "giới", 0], [1.212, "của", 0], [1.363, "từng", 0], [1.587, "message", 0], [2.15, "trong", 0], [2.375, "byte", 0], [2.538, "stream", 0], [3.013, "gọi", 0], [3.288, "là", 0], [3.438, "framing.", 0], [4.85, "Có", 1], [5.062, "hai", 1], [5.275, "cách", 1], [5.513, "thường", 1], [5.763, "dùng.", 1], [6.925, "Cách", 2], [7.112, "thứ", 2], [7.275, "nhất", 2], [7.525, "là", 2], [7.7, "ký", 2], [7.925, "tự", 2], [8.1, "phân", 2], [8.312, "cách,", 2], [8.762, "delimiter:", 2], [9.762, "mỗi", 2], [9.988, "message", 2], [10.375, "kết", 2], [10.588, "thúc", 2], [10.812, "bằng", 2], [10.988, "một", 2], [11.15, "ký", 2], [11.35, "tự", 2], [11.537, "quy", 2], [11.775, "ước,", 2], [12.225, "thường", 2], [12.475, "là", 2], [12.95, "LF,", 2], [13.425, "tức", 2], [13.588, "xuống", 2], [13.863, "dòng.", 2], [14.988, "Bên", 3], [15.213, "nhận", 3], [15.463, "đọc", 3], [15.637, "đến", 3], [16.044, "LF", 3], [16.45, "là", 3], [16.725, "hết", 3], [16.938, "một", 3], [17.125, "message.", 3], [18.512, "Phương", 4], [18.825, "thức", 4], [19.038, "readLine", 4], [19.625, "của", 4], [19.875, "BufferedReader", 4], [20.8, "làm", 4], [21.113, "đúng", 4], [21.312, "việc", 4], [21.488, "này.", 4], [22.562, "Dòng", 5], [22.9, "trả", 5], [23.188, "về", 5], [23.35, "không", 5], [23.6, "kèm", 5], [24.375, "LF.", 5], [25.15, "Cách", 6], [25.325, "thứ", 6], [25.512, "hai", 6], [25.762, "là", 6], [25.863, "tiền", 6], [26.137, "tố", 6], [26.337, "độ", 6], [26.512, "dài,", 6], [27.038, "length-prefix:", 6], [27.962, "trước", 6], [28.2, "mỗi", 6], [28.387, "message,", 6], [29.113, "bên", 6], [29.387, "gửi", 6], [29.613, "ghi", 6], [29.762, "độ", 6], [29.95, "dài", 6], [30.212, "của", 6], [30.35, "message,", 6], [31.087, "ví", 6], [31.312, "dụ", 6], [31.512, "bằng", 6], [31.725, "phương", 6], [31.938, "thức", 6], [32.138, "writeInt.", 6], [33.712, "Bên", 7], [33.962, "nhận", 7], [34.225, "đọc", 7], [34.388, "4", 7], [34.625, "byte", 7], [34.763, "độ", 7], [34.962, "dài,", 7], [35.462, "rồi", 7], [35.688, "đọc", 7], [35.875, "lặp", 7], [36.087, "lại", 7], [36.337, "cho", 7], [36.45, "đến", 7], [36.65, "khi", 7], [36.812, "đủ", 7], [37.0, "số", 7], [37.225, "byte", 7], [37.4, "đó,", 7], [37.925, "đúng", 7], [38.175, "contract", 7], [38.638, "của", 7], [38.812, "read", 7], [39.0, "đã", 7], [39.175, "học.", 7], [40.25, "Hai", 8], [40.513, "cách", 8], [40.712, "có", 8], [40.9, "ưu", 8], [41.05, "điểm", 8], [41.275, "khác", 8], [41.525, "nhau.", 8], [42.675, "Ký", 9], [42.95, "tự", 9], [43.163, "phân", 9], [43.4, "cách", 9], [43.562, "đơn", 9], [43.812, "giản", 9], [44.112, "và", 9], [44.237, "hợp", 9], [44.45, "với", 9], [44.575, "văn", 9], [44.763, "bản,", 9], [45.3, "nhưng", 9], [45.612, "dữ", 9], [45.788, "liệu", 9], [46.025, "không", 9], [46.225, "được", 9], [46.35, "chứa", 9], [46.575, "ký", 9], [46.825, "tự", 9], [47.025, "đó.", 9], [48.212, "Tiền", 10], [48.5, "tố", 10], [48.7, "độ", 10], [48.875, "dài", 10], [49.138, "cho", 10], [49.288, "phép", 10], [49.525, "dữ", 10], [49.7, "liệu", 10], [49.938, "chứa", 10], [50.2, "bất", 10], [50.425, "kỳ", 10], [50.6, "byte", 10], [50.812, "nào,", 10], [51.312, "nên", 10], [51.612, "hợp", 10], [51.837, "với", 10], [51.987, "giao", 10], [52.175, "thức", 10], [52.4, "nhị", 10], [52.575, "phân.", 10]], "cues": [6.925, 18.512, 25.15, 33.712, 40.25], "lang": 2.6}, {"ten": "Slide 4. Cùng một dãy byte, đọc bằng hai charset cho hai kết quả", "loai": "slide", "slide": "S04", "dung": "Mã phía trên, kết quả chạy phía dưới. Trong khung kết quả: tô 9 byte đầu (từ 48 đến 69) khi đọc \"chín byte của chữ Hà Nội\", byte 0A khi đọc \"một byte LF\"; tô dòng windows-1252 màu đỏ khi đọc \"các ký tự lạ\".\nHiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Cùng mười byte”.", "start": 156.28, "audio": "audio/f8b5bcba6c1c4041.mp3", "dur": 39.67, "words": [[0.1, "Đoạn", 0], [0.4, "mã", 0], [0.613, "ghi", 0], [0.8, "dòng", 0], [1.025, "Hà", 0], [1.163, "Nội", 0], [1.363, "qua", 0], [1.587, "một", 0], [1.863, "OutputStreamWriter", 0], [2.975, "với", 0], [3.112, "charset", 0], [3.931, "UTF-8,", 0], [4.75, "bọc", 0], [4.963, "thêm", 0], [5.162, "một", 0], [5.338, "BufferedWriter.", 0], [7.125, "Sau", 1], [7.412, "đó", 1], [7.662, "in", 1], [7.838, "các", 1], [8.025, "byte", 1], [8.175, "đã", 1], [8.35, "ghi,", 1], [8.85, "rồi", 1], [9.05, "đọc", 1], [9.213, "lại", 1], [9.375, "cùng", 1], [9.6, "dãy", 1], [9.8, "byte", 1], [10.012, "bằng", 1], [10.238, "hai", 1], [10.45, "InputStreamReader:", 1], [11.825, "một", 1], [12.05, "dùng", 1], [12.731, "UTF-8,", 1], [13.412, "một", 1], [13.625, "dùng", 1], [13.875, "windows-1252.", 1], [16.712, "Chạy", 2], [17.0, "chương", 2], [17.275, "trình.", 2], [18.425, "Dòng", 3], [18.738, "đầu", 3], [18.938, "có", 3], [19.062, "mười", 3], [19.212, "byte:", 3], [19.712, "chín", 3], [19.962, "byte", 3], [20.163, "của", 3], [20.325, "chữ", 3], [20.562, "Hà", 3], [20.762, "Nội", 3], [21.025, "và", 3], [21.15, "một", 3], [21.35, "byte", 3], [21.763, "LF", 3], [22.175, "ở", 3], [22.275, "cuối.", 3], [23.488, "Đọc", 4], [23.75, "bằng", 4], [24.35, "UTF-8", 4], [24.95, "được", 4], [25.087, "đúng", 4], [25.325, "chữ", 4], [25.562, "Hà", 4], [25.75, "Nội.", 4], [26.913, "Đọc", 5], [27.175, "bằng", 5], [27.413, "windows-1252,", 5], [29.587, "chữ", 5], [29.913, "à", 5], [30.137, "và", 5], [30.275, "chữ", 5], [30.525, "ộ", 5], [30.712, "thành", 5], [30.95, "các", 5], [31.137, "ký", 5], [31.325, "tự", 5], [31.538, "lạ.", 5], [32.725, "Cùng", 6], [33.0, "mười", 6], [33.188, "byte,", 6], [33.737, "hai", 6], [33.975, "charset,", 6], [34.7, "hai", 6], [34.95, "kết", 6], [35.188, "quả.", 6], [36.487, "Chương", 7], [36.812, "trình", 7], [37.062, "không", 7], [37.288, "báo", 7], [37.475, "lỗi", 7], [37.737, "trong", 7], [37.962, "cả", 7], [38.138, "hai", 7], [38.337, "trường", 7], [38.6, "hợp.", 7]], "cues": [16.712, 32.725], "lang": 9.6}, {"ten": "Slide 5. readLine tách hai message liền nhau tại ký tự LF", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, kết quả chạy phía dưới. Highlight hai dòng out.write khi đọc \"mỗi message kết thúc bằng LF\", dòng while khi đọc \"gọi readLine trong vòng lặp\".\nHiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Hai message được tách”; bước 3 khi đọc “Đây là quy ước”.", "start": 205.55, "audio": "audio/633f0313e6f9b745.mp3", "dur": 36.29, "words": [[0.1, "Đoạn", 0], [0.425, "mã", 0], [0.637, "ghi", 0], [0.812, "hai", 0], [1.0, "message,", 0], [1.75, "hanoi", 0], [2.2, "và", 0], [2.35, "huế,", 0], [2.95, "mỗi", 0], [3.163, "message", 0], [3.55, "kết", 0], [3.763, "thúc", 0], [3.975, "bằng", 0], [4.731, "LF.", 0], [5.487, "Hai", 1], [5.775, "message", 1], [6.237, "nằm", 1], [6.438, "liền", 1], [6.612, "nhau", 1], [6.838, "trong", 1], [7.025, "cùng", 1], [7.213, "một", 1], [7.362, "khối", 1], [7.537, "byte,", 1], [8.062, "giống", 1], [8.3, "như", 1], [8.488, "khi", 1], [8.887, "TCP", 1], [9.287, "gộp", 1], [9.525, "hai", 1], [9.75, "lần", 1], [9.95, "ghi.", 1], [11.075, "Bên", 2], [11.3, "nhận", 2], [11.537, "đọc", 2], [11.688, "bằng", 2], [11.912, "BufferedReader,", 2], [12.95, "gọi", 2], [13.213, "readLine", 2], [13.838, "trong", 2], [14.037, "vòng", 2], [14.238, "lặp", 2], [14.463, "cho", 2], [14.588, "đến", 2], [14.762, "khi", 2], [14.963, "phương", 2], [15.175, "thức", 2], [15.363, "này", 2], [15.55, "trả", 2], [15.775, "null,", 2], [16.262, "tức", 2], [16.45, "hết", 2], [16.688, "dữ", 2], [16.9, "liệu.", 2], [18.075, "Chạy", 3], [18.363, "chương", 3], [18.65, "trình.", 3], [19.8, "Hai", 4], [20.1, "message", 4], [20.538, "được", 4], [20.712, "tách", 4], [20.9, "đúng,", 4], [21.375, "và", 4], [21.575, "chữ", 4], [21.788, "huế", 4], [22.012, "có", 4], [22.15, "dấu", 4], [22.413, "vẫn", 4], [22.613, "đúng", 4], [22.863, "vì", 4], [23.0, "hai", 4], [23.188, "đầu", 4], [23.375, "cùng", 4], [23.6, "dùng", 4], [24.613, "UTF-8.", 4], [25.625, "Đây", 5], [25.9, "là", 5], [26.0, "quy", 5], [26.212, "ước", 5], [26.4, "của", 5], [26.55, "giao", 5], [26.738, "thức", 5], [26.9, "tra", 5], [27.087, "cứu,", 5], [27.65, "gọi", 5], [27.913, "là", 5], [28.05, "giao", 5], [28.25, "thức", 5], [28.4, "theo", 5], [28.575, "dòng,", 5], [29.113, "line-based", 5], [29.8, "protocol:", 5], [30.75, "mỗi", 5], [31.05, "yêu", 5], [31.212, "cầu", 5], [31.462, "và", 5], [31.562, "mỗi", 5], [31.762, "phản", 5], [32.013, "hồi", 5], [32.25, "là", 5], [32.337, "một", 5], [32.525, "dòng", 5], [32.775, "văn", 5], [32.962, "bản", 5], [33.65, "UTF-8,", 5], [34.337, "kết", 5], [34.562, "thúc", 5], [34.775, "bằng", 5], [34.775, "LF.", 5]], "cues": [18.075, 19.8, 25.625], "lang": 9.6}, {"ten": "Slide 6. Tiền tố độ dài cho bên nhận biết trước phải đọc bao nhiêu byte", "loai": "slide", "slide": "S06", "dung": "Mã phía trên, kết quả chạy phía dưới. Sau câu \"tiền tố độ dài là bao nhiêu?\", dừng khoảng 2 giây trước khi khung kết quả hiện. Trong khung kết quả, tô 4 byte đầu khi đọc \"Bốn byte đầu là độ dài\".\nHiện dần: bước 1 khi đọc “Chạy chương trình”; bước 2 khi đọc “Độ dài tính bằng byte”; bước 3 khi đọc “Phương thức readFully”.", "start": 251.44, "audio": "audio/ad79f97bf6154833.mp3", "dur": 52.2, "words": [[0.1, "Cách", 0], [0.3, "thứ", 0], [0.475, "hai,", 0], [0.988, "tiền", 0], [1.212, "tố", 0], [1.425, "độ", 0], [1.6, "dài,", 0], [2.1, "dùng", 0], [2.337, "lại", 0], [2.55, "DataOutputStream", 0], [3.75, "và", 0], [3.9, "DataInputStream", 0], [5.013, "của", 0], [5.188, "phần", 0], [5.412, "trước.", 0], [6.513, "Bên", 1], [6.825, "gửi", 1], [7.025, "đổi", 1], [7.25, "chữ", 1], [7.463, "huế", 1], [7.7, "thành", 1], [7.912, "byte", 1], [8.1, "theo", 1], [8.775, "UTF-8,", 1], [9.45, "ghi", 1], [9.662, "độ", 1], [9.838, "dài", 1], [10.062, "bằng", 1], [10.262, "phương", 1], [10.463, "thức", 1], [10.662, "writeInt,", 1], [11.6, "rồi", 1], [11.887, "ghi", 1], [12.088, "các", 1], [12.262, "byte", 1], [12.412, "dữ", 1], [12.613, "liệu.", 1], [13.775, "Bên", 2], [14.0, "nhận", 2], [14.238, "đọc", 2], [14.375, "độ", 2], [14.562, "dài", 2], [14.812, "bằng", 2], [15.025, "phương", 2], [15.238, "thức", 2], [15.412, "readInt,", 2], [16.113, "tạo", 2], [16.325, "mảng", 2], [16.587, "đúng", 2], [16.762, "kích", 2], [16.962, "thước,", 2], [17.438, "rồi", 2], [17.7, "gọi", 2], [17.938, "readFully", 2], [18.575, "để", 2], [18.725, "đọc", 2], [18.9, "đủ", 2], [19.1, "số", 2], [19.337, "byte", 2], [19.525, "đó.", 2], [20.7, "Trước", 3], [20.938, "khi", 3], [21.087, "chạy,", 3], [21.613, "các", 3], [21.775, "bạn", 3], [22.0, "dự", 3], [22.175, "đoán:", 3], [22.725, "tiền", 3], [22.988, "tố", 3], [23.2, "độ", 3], [23.375, "dài", 3], [23.688, "là", 3], [23.825, "bao", 3], [24.038, "nhiêu?", 3], [25.2, "Chạy", 4], [25.488, "chương", 4], [25.762, "trình.", 4], [26.913, "Bốn", 5], [27.25, "byte", 5], [27.425, "đầu", 5], [27.663, "là", 5], [27.812, "độ", 5], [28.038, "dài,", 5], [28.575, "bằng", 5], [28.863, "5.", 5], [29.988, "Độ", 6], [30.288, "dài", 6], [30.5, "tính", 6], [30.75, "bằng", 6], [30.938, "byte,", 6], [31.438, "không", 6], [31.688, "phải", 6], [31.863, "số", 6], [32.05, "ký", 6], [32.25, "tự:", 6], [32.788, "chữ", 6], [33.038, "huế", 6], [33.35, "có", 6], [33.475, "ba", 6], [33.675, "ký", 6], [33.9, "tự.", 6], [35.075, "Hai", 7], [35.337, "chữ", 7], [35.587, "h", 7], [35.825, "và", 7], [36.05, "u", 7], [36.212, "mỗi", 7], [36.5, "chữ", 7], [36.725, "một", 7], [36.925, "byte,", 7], [37.413, "chữ", 7], [37.65, "ế", 7], [37.825, "chiếm", 7], [38.112, "ba", 7], [38.263, "byte,", 7], [38.763, "tổng", 7], [39.0, "cộng", 7], [39.263, "năm", 7], [39.462, "byte.", 7], [40.6, "Phương", 8], [40.913, "thức", 8], [41.125, "readFully", 8], [41.737, "gọi", 8], [41.975, "read", 8], [42.2, "lặp", 8], [42.413, "lại", 8], [42.6, "đến", 8], [42.8, "khi", 8], [42.962, "đủ", 8], [43.15, "số", 8], [43.325, "byte,", 8], [43.837, "đúng", 8], [44.062, "như", 8], [44.25, "contract", 8], [44.7, "của", 8], [44.862, "read", 8], [45.125, "ở", 8], [45.237, "phần", 8], [45.5, "về", 8], [45.625, "byte", 8], [45.812, "stream.", 8], [47.025, "Nếu", 9], [47.487, "stream", 9], [47.812, "hết", 9], [47.987, "trước", 9], [48.163, "khi", 9], [48.312, "đủ,", 9], [48.85, "phương", 9], [49.125, "thức", 9], [49.325, "này", 9], [49.525, "ném", 9], [49.525, "EOFException.", 9]], "cues": [25.2, 29.988, 40.6], "lang": 9.6}, {"ten": "Slide 7. Luôn chỉ định UTF-8, và tự giới hạn độ dài dòng", "loai": "slide", "slide": "S07", "dung": "Hai ý hiện lần lượt.\nHiện dần: bước 1 khi đọc “Thứ nhất”; bước 2 khi đọc “Thứ hai”.", "start": 313.24, "audio": "audio/69364e1fef99ac19.mp3", "dur": 43.56, "words": [[0.1, "Có", 0], [0.287, "hai", 0], [0.5, "lưu", 0], [0.7, "ý", 0], [0.938, "khi", 0], [1.125, "dùng", 0], [1.363, "giao", 0], [1.55, "thức", 0], [1.75, "theo", 0], [1.925, "dòng.", 0], [3.087, "Thứ", 1], [3.337, "nhất,", 1], [3.763, "không", 1], [4.037, "dựa", 1], [4.263, "vào", 1], [4.475, "charset", 1], [4.975, "mặc", 1], [5.162, "định.", 1], [6.325, "Từ", 2], [6.6, "Java", 2], [6.975, "18,", 2], [7.737, "charset", 2], [8.3, "mặc", 2], [8.475, "định", 2], [8.725, "là", 2], [9.268, "UTF-8", 2], [9.812, "trên", 2], [10.0, "mọi", 2], [10.213, "hệ", 2], [10.4, "điều", 2], [10.575, "hành.", 2], [11.675, "Nhưng", 3], [11.975, "chương", 3], [12.213, "trình", 3], [12.45, "ở", 3], [12.537, "đầu", 3], [12.713, "kia", 3], [12.963, "có", 3], [13.075, "thể", 3], [13.225, "viết", 3], [13.438, "bằng", 3], [13.625, "ngôn", 3], [13.812, "ngữ", 3], [14.012, "khác,", 3], [14.525, "hoặc", 3], [14.75, "chạy", 3], [14.988, "Java", 3], [15.325, "cũ,", 3], [15.938, "với", 3], [16.163, "charset", 3], [16.75, "mặc", 3], [16.913, "định", 3], [17.1, "khác.", 3], [18.225, "Vì", 4], [18.475, "vậy,", 4], [18.913, "đặc", 4], [19.137, "tả", 4], [19.363, "giao", 4], [19.538, "thức", 4], [19.725, "phải", 4], [19.938, "ghi", 4], [20.15, "rõ", 4], [20.387, "charset.", 4], [21.7, "Trong", 5], [22.025, "mã,", 5], [22.562, "luôn", 5], [22.85, "chỉ", 5], [23.0, "định", 5], [23.562, "UTF-8", 5], [24.125, "khi", 5], [24.337, "tạo", 5], [24.613, "Reader", 5], [25.0, "và", 5], [25.188, "Writer.", 5], [26.575, "Thứ", 6], [26.788, "hai,", 6], [27.275, "phương", 6], [27.562, "thức", 6], [27.762, "readLine", 6], [28.4, "không", 6], [28.663, "giới", 6], [28.85, "hạn", 6], [29.075, "độ", 6], [29.25, "dài", 6], [29.462, "dòng.", 6], [30.587, "Một", 7], [30.975, "client", 7], [31.35, "gửi", 7], [31.538, "dữ", 7], [31.725, "liệu", 7], [31.938, "rất", 7], [32.112, "dài", 7], [32.413, "mà", 7], [32.575, "không", 7], [32.788, "có", 7], [33.05, "LF", 7], [33.312, "sẽ", 7], [33.5, "khiến", 7], [33.725, "server", 7], [34.138, "giữ", 7], [34.337, "toàn", 7], [34.6, "bộ", 7], [34.788, "dữ", 7], [34.95, "liệu", 7], [35.163, "đó", 7], [35.4, "trong", 7], [35.587, "bộ", 7], [35.763, "nhớ.", 7], [36.987, "Server", 8], [37.513, "phải", 8], [37.7, "tự", 8], [37.888, "giới", 8], [38.138, "hạn", 8], [38.4, "độ", 8], [38.587, "dài", 8], [38.825, "dòng.", 8], [39.975, "Việc", 9], [40.263, "này", 9], [40.487, "được", 9], [40.663, "làm", 9], [40.962, "ở", 9], [41.038, "bài", 9], [41.225, "toán", 9], [41.562, "ứng", 9], [41.725, "dụng", 9], [41.962, "của", 9], [42.125, "Chương", 9], [42.375, "2.", 9]], "cues": [3.087, 26.575], "lang": 0.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án D được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 357.4, "audio": "audio/d9994860f3cb55ad.mp3", "dur": 3.98, "words": [[0.1, "Hai", 0], [0.312, "câu", 0], [0.475, "hỏi", 0], [0.713, "sau", 0], [0.9, "kiểm", 0], [1.163, "tra", 0], [1.337, "charset", 0], [1.85, "và", 0], [2.075, "cách", 0], [2.288, "chọn", 0], [2.575, "framing.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/78788e3b32d8a4ea.mp3", "dur2": 5.74, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.688, "là", 0], [0.825, "D.", 0], [1.1, "Chữ", 1], [1.425, "à", 1], [1.587, "chiếm", 1], [1.85, "hai", 1], [2.0, "byte,", 1], [2.487, "chữ", 1], [2.75, "ộ", 1], [2.938, "chiếm", 1], [3.225, "ba", 1], [3.375, "byte,", 1], [3.875, "tổng", 1], [4.112, "cộng", 1], [4.362, "chín", 1], [4.6, "byte.", 1]], "dap_an": "D", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án A.", "start": 373.72, "audio": "audio/f48c5bcd49480c65.mp3", "dur": 2.93, "words": [[0.1, "Câu", 0], [0.362, "thứ", 0], [0.562, "hai", 0], [0.8, "về", 0], [0.938, "một", 0], [1.15, "giao", 0], [1.337, "thức", 0], [1.55, "nhị", 0], [1.75, "phân.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/7086fbd38fe4226c.mp3", "dur2": 6.7, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.675, "là", 0], [0.875, "A.", 0], [1.262, "Dữ", 1], [1.462, "liệu", 1], [1.7, "có", 1], [1.837, "thể", 1], [2.0, "chứa", 1], [2.225, "byte", 1], [2.45, "của", 1], [2.894, "LF,", 1], [3.337, "nên", 1], [3.625, "chỉ", 1], [3.8, "tiền", 1], [4.025, "tố", 1], [4.237, "độ", 1], [4.425, "dài", 1], [4.65, "xác", 1], [4.862, "định", 1], [5.088, "đúng", 1], [5.3, "ranh", 1], [5.487, "giới.", 1]], "dap_an": "A", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “charset quy định cách đổi”; bước 2 khi đọc “Framing đánh dấu”; bước 3 khi đọc “Giao thức tra cứu là”; bước 4 khi đọc “Các từ khóa cần nhớ”.", "start": 389.95, "audio": "audio/dc83b76f3e9fc985.mp3", "dur": 33.41, "words": [[0.1, "Trả", 0], [0.375, "lời", 0], [0.588, "câu", 0], [0.787, "hỏi", 0], [0.975, "của", 0], [1.125, "phần:", 0], [1.613, "charset", 0], [2.062, "quy", 0], [2.237, "định", 0], [2.45, "cách", 0], [2.625, "đổi", 0], [2.8, "ký", 0], [3.038, "tự", 0], [3.212, "thành", 0], [3.413, "byte,", 0], [3.9, "và", 0], [4.1, "hai", 0], [4.287, "đầu", 0], [4.487, "phải", 0], [4.638, "dùng", 0], [4.862, "cùng", 0], [5.062, "một", 0], [5.225, "charset,", 0], [5.888, "chỉ", 0], [6.088, "định", 0], [6.3, "rõ", 0], [6.525, "khi", 0], [6.7, "tạo", 0], [6.95, "InputStreamReader", 0], [8.0, "và", 0], [8.225, "OutputStreamWriter.", 0], [10.325, "Framing", 1], [10.963, "đánh", 1], [11.162, "dấu", 1], [11.375, "ranh", 1], [11.575, "giới", 1], [11.775, "message,", 1], [12.537, "bằng", 1], [12.75, "ký", 1], [12.95, "tự", 1], [13.125, "phân", 1], [13.338, "cách", 1], [13.55, "như", 1], [13.95, "LF", 1], [14.35, "hoặc", 1], [14.562, "bằng", 1], [14.775, "tiền", 1], [15.012, "tố", 1], [15.225, "độ", 1], [15.412, "dài.", 1], [16.562, "Giao", 2], [16.85, "thức", 2], [17.025, "tra", 2], [17.2, "cứu", 2], [17.5, "là", 2], [17.663, "giao", 2], [17.863, "thức", 2], [18.012, "theo", 2], [18.175, "dòng:", 2], [18.712, "mỗi", 2], [18.913, "message", 2], [19.475, "là", 2], [19.6, "một", 2], [19.788, "dòng", 2], [20.357, "UTF-8", 2], [20.925, "kết", 2], [21.137, "thúc", 2], [21.35, "bằng", 2], [22.1, "LF.", 2], [22.85, "Các", 3], [23.05, "từ", 3], [23.2, "khóa", 3], [23.425, "cần", 3], [23.637, "nhớ", 3], [23.9, "gồm", 3], [24.175, "character", 3], [24.675, "stream,", 3], [25.288, "Reader,", 3], [25.975, "Writer,", 3], [26.788, "charset,", 3], [27.763, "UTF-8,", 3], [28.738, "framing,", 3], [29.55, "ký", 3], [29.812, "tự", 3], [30.0, "phân", 3], [30.225, "cách,", 3], [30.663, "tiền", 3], [30.875, "tố", 3], [31.087, "độ", 3], [31.275, "dài", 3], [31.562, "và", 3], [31.7, "giao", 3], [31.9, "thức", 3], [32.075, "theo", 3], [32.263, "dòng.", 3]], "cues": [1.613, 10.325, 16.562, 22.85], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Chủ đề nâng cao của phần”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 423.96, "audio": "audio/38468af9051b9484.mp3", "dur": 24.58, "words": [[0.1, "Chủ", 0], [0.388, "đề", 0], [0.588, "nâng", 0], [0.85, "cao", 0], [1.087, "của", 0], [1.238, "phần", 0], [1.5, "gồm", 0], [1.762, "hai", 0], [1.962, "mục.", 0], [3.05, "Thứ", 1], [3.25, "nhất", 1], [3.525, "là", 1], [3.812, "cách", 1], [4.062, "escape", 1], [4.463, "ký", 1], [4.7, "tự", 1], [4.888, "phân", 1], [5.112, "cách", 1], [5.3, "khi", 1], [5.525, "dữ", 1], [5.713, "liệu", 1], [5.95, "có", 1], [6.088, "chứa", 1], [6.287, "nó,", 1], [6.85, "như", 1], [7.1, "trong", 1], [7.562, "HTTP", 1], [8.025, "chunked", 1], [8.5, "hay", 1], [8.675, "file", 1], [9.531, "CSV.", 1], [10.387, "Thứ", 2], [10.625, "hai", 2], [10.875, "là", 2], [10.95, "định", 2], [11.188, "dạng", 2], [11.825, "TLV,", 2], [12.463, "gồm", 2], [12.787, "kiểu,", 2], [13.4, "độ", 2], [13.637, "dài", 2], [13.963, "và", 2], [14.113, "giá", 2], [14.325, "trị.", 2], [15.512, "Bài", 3], [15.762, "tập", 3], [15.963, "mở", 3], [16.15, "rộng:", 3], [16.663, "viết", 3], [16.925, "lớp", 3], [17.175, "LineFramer", 3], [18.025, "đọc", 3], [18.387, "từng", 3], [18.587, "dòng", 3], [18.8, "với", 3], [18.913, "độ", 3], [19.087, "dài", 3], [19.288, "tối", 3], [19.512, "đa,", 3], [20.0, "ném", 3], [20.25, "ngoại", 3], [20.45, "lệ", 3], [20.65, "khi", 3], [20.837, "vượt,", 3], [21.3, "rồi", 3], [21.525, "kiểm", 3], [21.75, "thử", 3], [21.975, "với", 3], [22.087, "dòng", 3], [22.325, "tiếng", 3], [22.6, "Việt", 3], [22.8, "và", 3], [22.95, "dòng", 3], [23.2, "quá", 3], [23.4, "dài.", 3]], "cues": [0.1, 15.512], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 449.14, "audio": "audio/d3fbed6577d4900e.mp3", "dur": 14.64, "words": [[0.1, "Đến", 0], [0.388, "đây,", 0], [0.812, "giao", 0], [1.062, "thức", 0], [1.25, "tra", 0], [1.425, "cứu", 0], [1.738, "đã", 0], [1.85, "có", 0], [1.962, "định", 0], [2.175, "dạng:", 0], [2.725, "một", 0], [2.95, "dòng", 0], [3.538, "UTF-8", 0], [4.125, "kết", 0], [4.338, "thúc", 0], [4.55, "bằng", 0], [5.3, "LF.", 0], [6.05, "Phần", 1], [6.325, "tiếp", 1], [6.525, "theo,", 1], [7.013, "bài", 1], [7.2, "toán", 1], [7.463, "ứng", 1], [7.612, "dụng", 1], [7.862, "về", 1], [7.963, "đặc", 1], [8.15, "tả", 1], [8.45, "và", 1], [8.588, "thử", 1], [8.8, "giao", 1], [8.975, "thức", 1], [9.137, "tra", 1], [9.325, "cứu,", 1], [9.9, "viết", 1], [10.137, "đặc", 1], [10.312, "tả", 1], [10.5, "đầy", 1], [10.662, "đủ", 1], [10.938, "và", 1], [11.113, "thử", 1], [11.3, "giao", 1], [11.475, "thức", 1], [11.662, "trên", 1], [11.938, "dữ", 1], [12.1, "liệu", 1], [12.312, "thật,", 1], [12.762, "trước", 1], [12.95, "khi", 1], [13.1, "viết", 1], [13.287, "chương", 1], [13.525, "trình.", 1]], "cues": [], "lang": 0.6}], "video_sau": "Bài toán ứng dụng: đặc tả và thử giao thức tra cứu"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

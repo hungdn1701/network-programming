@@ -1,0 +1,2 @@
+serialized: 100 bytes
+equals: true, same object: false

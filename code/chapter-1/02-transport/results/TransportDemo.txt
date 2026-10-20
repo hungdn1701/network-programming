@@ -1,0 +1,2 @@
+TCP: listening 9199, client 56456 -> 9199; UDP: 9200
+pid 23180, waiting 30 s

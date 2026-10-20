@@ -12,7 +12,7 @@ body.trinh-chieu, body.tong-quan { font-family: 'Roboto', 'Segoe UI', sans-serif
 
 /* --- trình chiếu --- */
 .bo-cuc { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; padding: 20px 24px; max-width: 1680px; margin: 0 auto; }
-@media (max-width: 1100px) { .bo-cuc { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .bo-cuc { grid-template-columns: minmax(0, 1fr); } }
 .khung-169 { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #FFF; overflow: hidden;
              box-shadow: 0 1px 3px rgba(5, 26, 83, .15); }
 #stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
@@ -49,6 +49,18 @@ aside h2 { font-size: 15px; font-weight: 500; color: var(--phu); margin-bottom: 
 #ds-canh li.dang { background: var(--chu); color: #FFF; }
 #ds-canh li .t { font-variant-numeric: tabular-nums; color: var(--phu); min-width: 38px; }
 #ds-canh li.dang .t { color: #C9D3EA; }
+
+/* toàn màn hình: Fullscreen API nếu có (Android, desktop); iPhone không có thì phủ kín khung nhìn bằng CSS */
+.toan-man { overflow: hidden; }
+.toan-man .khung-169 { position: fixed; inset: 0; width: auto; aspect-ratio: auto; z-index: 1000; background: #000; box-shadow: none; }
+.khung-169:fullscreen { background: #000; }
+#thoat-tm { display: none; position: absolute; right: 12px; top: 12px; z-index: 5; width: 40px; height: 40px; border: 0;
+            border-radius: 20px; background: rgba(5, 26, 83, .75); color: #FFF; font-size: 18px; cursor: pointer; }
+.toan-man #thoat-tm { display: block; }
+@media (orientation: portrait) {
+  .toan-man .khung-169::after { content: "Xoay ngang điện thoại để xem slide lớn hơn"; position: absolute; left: 0; right: 0;
+                                bottom: 24px; text-align: center; color: #C9D3EA; font-size: 14px; }
+}
 
 /* --- toàn văn kịch bản --- */
 .toan-van-kb { grid-column: 1 / -1; margin-top: 24px; background: #FFF; border: 1px solid var(--vien); border-radius: 6px; padding: 24px 28px; }
@@ -119,3 +131,36 @@ aside h2 { font-size: 15px; font-weight: 500; color: var(--phu); margin-bottom: 
 td.lk { white-space: nowrap; }
 td.lk a { color: var(--chu); margin-right: 8px; font-size: 13px; }
 td.lk a.xem { background: var(--chu); color: #FFF; padding: 3px 8px; border-radius: 3px; text-decoration: none; }
+
+/* --- điện thoại --- */
+@media (max-width: 640px) {
+  .dau { padding: 10px 16px; }
+  .dau h1 { font-size: 18px; }
+  .bo-cuc { padding: 12px 16px; gap: 14px; }
+  #bat-dau { width: 180px; height: 52px; font-size: 17px; }
+  #h5p { font-size: 13px; padding: 6px 10px; }
+  #phu-de { font-size: 16px; }
+  .dieu-khien { flex-wrap: wrap; gap: 8px; }
+  #thanh { flex-basis: 100%; order: -1; height: 10px; }  /* thanh tiến độ một hàng riêng, phía trên các nút */
+  #gio { min-width: 0; margin-left: auto; }
+  .toan-van-kb { padding: 16px; }
+  .kb-thanh-cong-cu { flex-direction: column; }
+  .canh-kb { padding: 12px 14px; }
+  .canh-kb-head { flex-wrap: wrap; }
+  .trang { padding: 14px 16px 40px; }
+  .so-lieu { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .so-lieu b { font-size: 22px; }
+  /* bảng các phần → thẻ: tên phần trên cùng, rồi mã, phút, trạng thái, liên kết */
+  .chuong table:not(.dinh-muc), .chuong table:not(.dinh-muc) tbody { display: block; }
+  .chuong table:not(.dinh-muc) thead { display: none; }
+  .chuong table:not(.dinh-muc) tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 10px 12px;
+                                    border-bottom: 1px solid var(--vien); }
+  .chuong table:not(.dinh-muc) td { display: block; padding: 0; border: 0; }
+  .chuong table:not(.dinh-muc) td:nth-child(2) { order: -1; flex-basis: 100%; }
+  .chuong table:not(.dinh-muc) td:nth-child(3)::before { content: "Kế hoạch "; color: var(--phu); }
+  .chuong table:not(.dinh-muc) td:nth-child(4)::before { content: "Đo "; color: var(--phu); }
+  .chuong table:not(.dinh-muc) td.lk { flex-basis: 100%; }
+  .chuong table:not(.dinh-muc) td.lk:empty { display: none; }
+  .chuong table.dinh-muc { display: block; overflow-x: auto; font-size: 13px; }
+  .chuong h2 { font-size: 17px; }
+}

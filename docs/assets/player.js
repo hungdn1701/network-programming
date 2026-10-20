@@ -10,8 +10,25 @@
   const doDai = c => c.dur + (c.dur2 || 0) + (c.lang || 0);
   function boLang() { if (lang) { clearTimeout(lang.hen); lang = null; } }
 
-  function coGian() { stage.style.transform = `scale(${khung.clientWidth / 1920})`; }
+  function coGian() {  // vừa khung và căn giữa (toàn màn hình có thể khác tỉ lệ 16:9)
+    const w = khung.clientWidth, h = khung.clientHeight, s = Math.min(w / 1920, h / 1080);
+    stage.style.transform = `translate(${(w - 1920 * s) / 2}px, ${(h - 1080 * s) / 2}px) scale(${s})`;
+  }
   window.addEventListener('resize', coGian); coGian();
+
+  function toanMan(bat) {
+    document.body.classList.toggle('toan-man', bat);
+    if (bat && khung.requestFullscreen) {
+      khung.requestFullscreen().then(() => screen.orientation?.lock?.('landscape')?.catch(() => {})).catch(() => {});
+    } else if (!bat && document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+    coGian();
+  }
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) document.body.classList.remove('toan-man');
+    coGian();
+  });
 
   function hien(id) { stage.querySelectorAll('.slide').forEach(s => s.classList.toggle('active', s.id === id)); }
   function buoc(id, k) {
@@ -102,6 +119,11 @@
   $('#lui').onclick = () => nap(i - 1, 1, true);
   $('#toi').onclick = () => nap(i + 1, 1, true);
   $('#toc').onchange = () => { audio.playbackRate = +$('#toc').value; };
+  $('#toan-man').onclick = () => toanMan(true);
+  $('#thoat-tm').onclick = e => { e.stopPropagation(); toanMan(false); };
+  stage.addEventListener('click', e => {  // toàn màn hình không có thanh điều khiển: chạm slide để chạy/dừng
+    if (document.body.classList.contains('toan-man') && !e.target.closest('.lua-chon')) $('#chay').onclick();
+  });
   $('#thanh').onclick = e => {
     const r = e.currentTarget.getBoundingClientRect(), t = D.tong * (e.clientX - r.left) / r.width;
     let k = S.findIndex(c => c.start + doDai(c) > t); if (k < 0) k = S.length - 1;
@@ -113,6 +135,7 @@
     if (e.code === 'Space') { e.preventDefault(); $('#chay').onclick(); }
     if (e.code === 'ArrowRight') $('#toi').onclick();
     if (e.code === 'ArrowLeft') $('#lui').onclick();
+    if (e.code === 'KeyF') toanMan(!document.body.classList.contains('toan-man'));
   });
 
   window.playerNap = (k) => {

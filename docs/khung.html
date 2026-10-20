@@ -1,16 +1,16 @@
 <!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>INT1433 — bản khung để duyệt</title><link rel="stylesheet" href="assets/slide.css"><link rel="stylesheet" href="assets/player.css">
 <style>
-body.khung { font-family: 'Roboto', 'Segoe UI', sans-serif; color: #051A53; background: #F3F4F7; }
-.khung main { max-width: 1180px; margin: 0 auto; padding: 20px 24px 60px; }
-.khung h2 { font-size: 22px; font-weight: 500; margin: 34px 0 10px; border-bottom: 2px solid #D5DAE5; padding-bottom: 6px; }
-.khung h3 { font-size: 18px; font-weight: 500; margin: 24px 0 8px; }
-.khung p, .khung li { line-height: 1.5; font-size: 15px; }
-.khung ul.quy-uoc li { margin: 4px 0; }
-.khung table { width: 100%; border-collapse: collapse; background: #FFF; font-size: 14px; margin: 6px 0 12px; }
-.khung th { text-align: left; font-weight: 500; color: #5B6478; padding: 7px 10px; border-bottom: 1px solid #D5DAE5; }
-.khung td { padding: 7px 10px; border-bottom: 1px solid #F3F4F7; vertical-align: top; line-height: 1.45; }
-.khung td.ma { font-family: Consolas, monospace; white-space: nowrap; color: #5B6478; }
+body.trang-khung { font-family: 'Roboto', 'Segoe UI', sans-serif; color: #051A53; background: #F3F4F7; }
+.trang-khung main { max-width: 1180px; margin: 0 auto; padding: 20px 24px 60px; }
+.trang-khung h2 { font-size: 22px; font-weight: 500; margin: 34px 0 10px; border-bottom: 2px solid #D5DAE5; padding-bottom: 6px; }
+.trang-khung h3 { font-size: 18px; font-weight: 500; margin: 24px 0 8px; }
+.trang-khung p, .trang-khung li { line-height: 1.5; font-size: 15px; }
+.trang-khung ul.quy-uoc li { margin: 4px 0; }
+.trang-khung table { width: 100%; border-collapse: collapse; background: #FFF; font-size: 14px; margin: 6px 0 12px; }
+.trang-khung th { text-align: left; font-weight: 500; color: #5B6478; padding: 7px 10px; border-bottom: 1px solid #D5DAE5; }
+.trang-khung td { padding: 7px 10px; border-bottom: 1px solid #F3F4F7; vertical-align: top; line-height: 1.45; }
+.trang-khung td.ma { font-family: Consolas, monospace; white-space: nowrap; color: #5B6478; }
 .the-phan { background: #FFF; border: 1px solid #D5DAE5; border-top: 4px solid #051A53; padding: 12px 18px 6px; margin: 14px 0; }
 .the-phan h4 { font-size: 17px; font-weight: 500; margin-bottom: 8px; }
 .the-phan h4 span { font-family: Consolas, monospace; font-size: 13px; color: #5B6478; margin-right: 8px; }
@@ -19,18 +19,27 @@ body.khung { font-family: 'Roboto', 'Segoe UI', sans-serif; color: #051A53; back
 .the-phan dt { color: #5B6478; }
 .trang-thai { font-size: 13px; color: #BC2626; }
 .muc-luc a { color: #051A53; margin-right: 14px; font-size: 14px; }
-</style></head><body class="khung"><div class="ban-nhap" style="position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center"><b>BẢN NHÁP</b> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</div>
+@media (max-width: 640px) {
+  .trang-khung main { padding: 12px 16px 40px; }
+  .trang-khung table { display: block; overflow-x: auto; font-size: 13px; }  /* bảng cuộn ngang trong khung, trang không tràn */
+  .trang-khung th, .trang-khung td { min-width: 96px; }
+  .the-phan { padding: 10px 12px 4px; }
+  .the-phan dl { grid-template-columns: 1fr; gap: 0; }
+  .the-phan dt { margin-top: 6px; font-weight: 500; }
+  .muc-luc a { display: inline-block; margin: 2px 12px 2px 0; }
+}
+</style></head><body class="trang-khung"><div class="ban-nhap" style="position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center"><b>BẢN NHÁP</b> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</div>
 <header class="dau"><a href="index.html">← Tổng quan</a><h1>INT1433 · Lập trình mạng — bản khung đợt 1</h1>
-<span class="nhan-noi-bo">Bản nội bộ để duyệt · sinh từ plan.yaml + glossary.yaml · 13/10/2026</span></header><main>
+<span class="nhan-noi-bo">Bản nội bộ để duyệt · sinh từ plan.yaml + glossary.yaml · 20/10/2026</span></header><main>
 <p class="muc-luc"><a href="#quy-uoc">1. Quy ước</a><a href="#khung-bai">2. Khung một phần</a><a href="#khung-noi-dung">3. Khung nội dung</a>
 <a href="#storyline">4. Storyline</a><a href="#thuat-ngu">5. Thuật ngữ</a><a href="#gate">6. Gate văn phong</a></p>
-<h2 id="quy-uoc">1. Quy ước đã chốt</h2><ul class="quy-uoc"><li>Mã V01…Vnn chỉ để quản lý (tên file, DS cấu trúc, hậu kỳ). Trong nội dung không có mã, không gọi là “video”: chương gồm N phần, nhắc phần trước bằng tên nội dung.</li><li>Tên phần theo dạng “&lt;chặng&gt;: &lt;chi tiết&gt;” — chặng là nhóm phần trong chương, cũng là cột của slide lộ trình (ví dụ “TCP: kết nối giữa client và server”); phần áp dụng tổng hợp đặt tên “Bài toán ứng dụng: …”.</li><li>Thời lượng một phần = đọc + khoảng lặng có chủ đích (đọc mã, kết quả chạy, đề câu hỏi); nhắm 7–8′.</li><li>Văn phong: giọng giảng viên đứng lớp (“mình”, “các bạn”, câu ngắn để đọc); từ vựng theo chuẩn sách, tài liệu kỹ thuật phần mềm. Không văn nói, không nhân hóa, không cường điệu, không sáo rỗng, không hàn lâm hay trừu tượng quá mức.</li><li>Thuật ngữ: một khái niệm một cách gọi cho cả môn; tiếng Việt khi có từ chuẩn, giữ tiếng Anh khi lập trình viên quen dùng hoặc là tên API; lần đầu ghi kèm dạng gốc.</li><li>Gate rà sau mỗi lần thực hiện: lint tự động (style-rules.yaml, glossary), checklist người duyệt (PEDAGOGY.md mục 6), agy rà soát chỉ đọc (reviews/).</li></ul>
+<h2 id="quy-uoc">1. Quy ước đã chốt</h2><ul class="quy-uoc"><li>Mã V01…Vnn chỉ để quản lý (tên file, DS cấu trúc, hậu kỳ). Trong nội dung không có mã, không gọi là “video”: chương gồm N phần, nhắc phần trước bằng tên nội dung.</li><li>Tên phần theo dạng “&lt;nhóm&gt;: &lt;chi tiết&gt;” — nhóm là nhóm phần trong chương, cũng là cột của slide lộ trình (ví dụ “TCP: kết nối giữa client và server”); phần áp dụng tổng hợp đặt tên “Bài toán ứng dụng: …”.</li><li>Thời lượng một phần = đọc + khoảng lặng có chủ đích (đọc mã, kết quả chạy, đề câu hỏi); nhắm 7–8′.</li><li>Văn phong: giọng giảng viên đứng lớp (“mình”, “các bạn”, câu ngắn để đọc); từ vựng theo chuẩn sách, tài liệu kỹ thuật phần mềm. Không văn nói, không nhân hóa, không cường điệu, không sáo rỗng, không hàn lâm hay trừu tượng quá mức.</li><li>Thuật ngữ: một khái niệm một cách gọi cho cả môn; tiếng Việt khi có từ chuẩn, giữ tiếng Anh khi lập trình viên quen dùng hoặc là tên API; lần đầu ghi kèm dạng gốc.</li><li>Gate rà sau mỗi lần thực hiện: lint tự động (style-rules.yaml, glossary), checklist người duyệt (PEDAGOGY.md mục 6), agy rà soát chỉ đọc (reviews/).</li></ul>
 <p><b>Câu hỏi lớn của học phần.</b> Viết các chương trình trao đổi dữ liệu qua mạng sao cho đúng (message nguyên vẹn, đúng định dạng), chịu được lỗi (timeout, mất gói, đầu kia của kết nối không phản hồi) và mở rộng được (nhiều client, giao thức hiện đại, hệ phân tán).</p>
 <p><b>Case xuyên suốt — Dịch vụ tra cứu một dòng (port 9199).</b> Client gửi một dòng là khóa cần tra, server trả một dòng là kết quả. Cùng một dịch vụ được dựng lại và nâng cấp qua các chương: socket TCP, đa luồng, UDP; lần lượt đưa ra ngoài bằng RMI, SOAP, REST, gRPC; phát sự kiện qua message broker; bảo vệ bằng TLS, JWT; tối ưu bằng lời gọi không chặn và NIO; bản UDP được bổ sung độ tin cậy.</p>
 <h2 id="khung-bai">2. Khung một phần (6–8 phút)</h2><table><thead><tr><th>Phân cảnh</th><th>Thời lượng</th><th>Nội dung</th></tr></thead><tbody>
 <tr><td>Lời mở đầu</td><td>≤ 20″</td><td>Giảng viên xuất hiện: chào, nêu vấn đề của phần trong một câu.</td></tr><tr><td>(Giới thiệu chương)</td><td>~40″</td><td>Chỉ ở phần đầu chương: chương gồm những phần nào (tên nội dung, không đánh số).</td></tr><tr><td>Vấn đề</td><td>~45″</td><td>Giới hạn của phần trước hoặc nhu cầu thật; một câu hỏi dẫn dắt.</td></tr><tr><td>Khái niệm</td><td>~1′</td><td>Gọi tên các khái niệm chính (nên ≤ 3), chưa có mã.</td></tr><tr><td>Cơ chế</td><td>1,5–2′</td><td>Hình SVG hiện dần theo câu mốc: bên dưới xảy ra gì.</td></tr><tr><td>Mã</td><td>1,5–2′</td><td>Mã tối thiểu chạy được, đoán trước rồi chạy (replay).</td></tr><tr><td>Lưu ý</td><td>≤ 45″</td><td>Một lỗi thường gặp hoặc giới hạn, dẫn sang phần sau.</td></tr><tr><td>Câu hỏi tương tác</td><td>1–3 câu</td><td>Gom cuối phần, số câu theo số khái niệm; dừng chờ chọn (H5P).</td></tr><tr><td>Tổng kết</td><td>~30″</td><td>≤ 3 ý trả lời câu hỏi dẫn dắt, kèm từ khóa cần nhớ.</td></tr><tr><td>Mở rộng</td><td>~20″</td><td>Chủ đề nâng cao và bài tập mở rộng.</td></tr><tr><td>(Tổng kết chương)</td><td>~1′</td><td>Chỉ ở phần cuối chương.</td></tr><tr><td>Lời kết</td><td>~15″</td><td>Vấn đề còn mở, dẫn sang phần sau.</td></tr></tbody></table>
 <h2 id="khung-noi-dung">3. Khung nội dung</h2>
-<h3>Cân đối giữa các chương</h3><table><thead><tr><th>Chương</th><th>Phần</th><th>Phút</th><th style='width:22%'></th><th>Chặng (số phần)</th><th>Mạch nội dung</th><th>Bài toán ứng dụng</th></tr></thead><tbody>
+<h3>Cân đối giữa các chương</h3><table><thead><tr><th>Chương</th><th>Phần</th><th>Phút</th><th style='width:22%'></th><th>Nhóm (số phần)</th><th>Mạch nội dung</th><th>Bài toán ứng dụng</th></tr></thead><tbody>
 <tr><td>Chương 1. Tổng quan lập trình mạng</td><td>6</td><td>46′</td><td><div style='background:#051A53;height:12px;width:81%'></div></td><td>Định danh (1) → Giao vận (1) → Stream (4)</td><td>Nền tảng: định danh trên mạng (địa chỉ IP, port, endpoint); dịch vụ của TCP và UDP; bốn họ stream trong Java; framing và charset; đặc tả một giao thức và thử bằng NetCat, curl.</td><td>đặc tả và thử giao thức tra cứu</td></tr>
 <tr><td>Chương 2. Lập trình socket TCP và đa luồng</td><td>7</td><td>55′</td><td><div style='background:#051A53;height:12px;width:96%'></div></td><td>TCP (3) → Đa luồng (4)</td><td>Socket TCP: từ kết nối đến dịch vụ hoàn chỉnh; đa luồng để một server phục vụ nhiều client.</td><td>dịch vụ tra cứu qua TCP; server tra cứu phục vụ nhiều client</td></tr>
 <tr><td>Chương 3. Lập trình UDP và giao thức ứng dụng hiện đại</td><td>7</td><td>54′</td><td><div style='background:#051A53;height:12px;width:95%'></div></td><td>UDP (1) → Multicast (2) → WebSocket (2) → HTTP/2 (1) → HTTP/3 (1)</td><td>Ngoài mô hình một kết nối TCP, một yêu cầu: UDP và multicast; WebSocket cho giao tiếp hai chiều; HTTP/2 với multiplexing; QUIC và HTTP/3 — tin cậy trên UDP.</td><td>truyền video theo nhóm multicast; chat thời gian thực bằng WebSocket</td></tr>
@@ -392,7 +401,8 @@ body.khung { font-family: 'Roboto', 'Segoe UI', sans-serif; color: #051A53; back
 <tr><td>Thuật ngữ chung không dùng</td><td>chặn build</td><td>nội dung người học</td><td>case study, chặng</td><td>Dùng tên chuẩn trong glossary; dùng &#x27;nhóm&#x27; thay cho &#x27;chặng&#x27;.</td></tr>
 <tr><td>Văn nói, nhân hóa, ẩn dụ đời thường</td><td>cảnh báo</td><td>nội dung và storyline</td><td>gặp nhau, nói chuyện, cầm gì, cầm trong tay, làm hộ, hộ chúng ta, kết nối hộ, đứng chờ, đứng yên, im lặng, ai cũng biết, tự lo, chắc chắn sẽ gặp, gọn hơn, ngon </td><td>Dùng thuật ngữ kỹ thuật: thiết lập kết nối, trao đổi dữ liệu, bị chặn ở accept(), không phản hồi…</td></tr>
 <tr><td>Cường điệu</td><td>cảnh báo</td><td>nội dung và storyline</td><td>vô cùng, cực kỳ, cực kì, tuyệt vời, hoàn hảo, thần kỳ, đỉnh cao, mạnh mẽ, vượt trội, đột phá, mang tính cách mạng, kinh điển, tuyệt đối, siêu nhanh, siêu nhẹ</td><td>Nêu số liệu hoặc hệ quả cụ thể thay cho tính từ mạnh.</td></tr>
-<tr><td>Sáo rỗng kiểu văn AI</td><td>cảnh báo</td><td>nội dung và storyline</td><td>trong phần này, tóm lại, điều quan trọng, không chỉ, hãy cùng, cùng tìm hiểu, cùng khám phá, khám phá, chắc chắn rằng, có thể nói rằng, cần lưu ý rằng, đóng vai</td><td>Bỏ câu đệm; nói thẳng nội dung.</td></tr>
+<tr><td>Sáo rỗng kiểu văn AI</td><td>cảnh báo</td><td>nội dung và storyline</td><td>tóm lại, điều quan trọng, không chỉ, hãy cùng, nội dung trọng tâm, khám phá, chắc chắn rằng, có thể nói rằng, cần lưu ý rằng, đóng vai trò quan trọng, then chốt</td><td>Bỏ câu đệm; nói thẳng nội dung.</td></tr>
+<tr><td>Gắn thời điểm, ngữ cảnh lớp học trực tiếp</td><td>cảnh báo</td><td>nội dung người học</td><td>hôm nay, buổi học, tiết học, tiết này, tuần này, tuần sau</td><td>Bài giảng số xem lúc nào cũng được: nêu nội dung, không nêu thời điểm (Chương 2 bắt đầu…).</td></tr>
 <tr><td>Hàn lâm, trừu tượng quá mức</td><td>cảnh báo</td><td>nội dung và storyline</td><td>mang tính, phương diện, khía cạnh, bản chất của, phạm trù, mô thức, hệ hình, về mặt bản chất, tính chất của, tầm quan trọng, hiện thân, kiến tạo, tối ưu hóa trả</td><td>Viết như sách kỹ thuật: chủ ngữ cụ thể, động từ cụ thể.</td></tr>
 </tbody></table>
 <p>Kết quả gate trên khung hiện tại: <b>0</b> vi phạm.</p>

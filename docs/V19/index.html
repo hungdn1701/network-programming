@@ -1,0 +1,389 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V19 — Bài toán ứng dụng: chat thời gian thực bằng WebSocket · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-3/05-websocket-chat">Mã</a>
+<h1>V19 · Bài toán ứng dụng: chat thời gian thực bằng WebSocket</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 3</div><div class="ten">Bài toán ứng dụng: chat thời gian thực bằng WebSocket</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Phòng chat: nhiều phiên cùng lúc, tin gửi tới mọi phiên còn lại</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Server giữ <b>nhiều phiên WebSocket</b> cùng lúc; mỗi tin gửi tới <b>mọi phiên còn lại</b></li><li data-s="2">Phiên mở và đóng bất cứ lúc nào</li><li data-s="3">Các phiên chạy đồng thời: tập phiên bị <b>nhiều thread</b> truy cập</li></ul><div class="khung" data-s="4"><b>Bài toán:</b> server phòng chat quản lý tập phiên đúng khi nhiều thread cùng truy cập; client dùng API của JDK.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Endpoint giữ tập phiên: onOpen thêm, onMessage gửi, onClose xóa</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Ba client an, binh, chi mỗi client giữ một kết nối WebSocket tới server. Server có ChatEndpoint giữ tập phiên trong một ConcurrentHashMap; onOpen thêm phiên. Khi an gửi chào cả nhóm, onMessage gửi tin tới phiên binh và chi, không gửi lại an. Khi chi đóng, onClose xóa phiên chi và báo chi left cho an và binh.">
+  <defs>
+    <marker id="tp-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- ① ba phiên đang mở; onOpen thêm phiên -->
+  <g data-s="1">
+    <g stroke="#D5DAE5" stroke-width="12" stroke-linecap="round">
+      <line x1="300" y1="120" x2="800" y2="180"/>
+      <line x1="300" y1="260" x2="800" y2="280"/>
+      <line x1="300" y1="400" x2="800" y2="380"/>
+    </g>
+    <g fill="#EEF2FB" stroke="#051A53" stroke-width="2.5">
+      <rect x="60" y="80" width="240" height="80" rx="6"/>
+      <rect x="60" y="220" width="240" height="80" rx="6"/>
+      <rect x="60" y="360" width="240" height="80" rx="6"/>
+    </g>
+    <g font-size="22" fill="#051A53" text-anchor="middle">
+      <text x="180" y="128">client an</text><text x="180" y="268">client binh</text><text x="180" y="408">client chi</text>
+    </g>
+    <rect x="760" y="40" width="960" height="460" rx="8" fill="none" stroke="#051A53" stroke-width="2.5"/>
+    <text x="790" y="78" font-size="22" font-weight="500" fill="#051A53">server: ChatEndpoint</text>
+    <rect x="800" y="110" width="320" height="330" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2"/>
+    <text x="960" y="140" text-anchor="middle" font-size="20" fill="#6B4E06">tập phiên (ConcurrentHashMap)</text>
+    <g fill="#FFFFFF" stroke="#8A6508" stroke-width="2">
+      <rect x="830" y="155" width="260" height="56" rx="28"/>
+      <rect x="830" y="252" width="260" height="56" rx="28"/>
+      <rect x="830" y="349" width="260" height="56" rx="28"/>
+    </g>
+    <g font-size="21" fill="#6B4E06" text-anchor="middle">
+      <text x="960" y="190">phiên an</text><text x="960" y="287">phiên binh</text><text x="960" y="384">phiên chi</text>
+    </g>
+    <text x="1170" y="150" font-size="21" fill="#051A53"><tspan font-family="Consolas, monospace">onOpen</tspan>: thêm phiên vào tập</text>
+  </g>
+
+  <!-- ② onMessage: gửi tới các phiên còn lại -->
+  <g data-s="2">
+    <text x="1170" y="250" font-size="21" fill="#22603F"><tspan font-family="Consolas, monospace">onMessage</tspan>: an gửi "chào cả nhóm"</text>
+    <text x="1170" y="282" font-size="21" fill="#22603F">→ gửi tới binh và chi, không gửi lại an</text>
+    <line x1="826" y1="285" x2="312" y2="262" stroke="#2F855A" stroke-width="3.5" marker-end="url(#tp-ok)"/>
+    <line x1="826" y1="381" x2="312" y2="400" stroke="#2F855A" stroke-width="3.5" marker-end="url(#tp-ok)"/>
+    <text x="560" y="250" text-anchor="middle" font-size="20" fill="#22603F">an: chào cả nhóm</text>
+    <text x="560" y="420" text-anchor="middle" font-size="20" fill="#22603F">an: chào cả nhóm</text>
+  </g>
+
+  <!-- ③ onClose: xóa phiên chi -->
+  <g data-s="3">
+    <rect x="830" y="349" width="260" height="56" rx="28" fill="none" stroke="#BC2626" stroke-width="2.5" stroke-dasharray="7 5"/>
+    <path d="M1040,365 L1064,389 M1064,365 L1040,389" stroke="#BC2626" stroke-width="4"/>
+    <text x="1170" y="370" font-size="21" fill="#BC2626"><tspan font-family="Consolas, monospace">onClose</tspan>: xóa phiên chi khỏi tập</text>
+    <text x="1170" y="402" font-size="21" fill="#BC2626">→ báo "* chi left" cho an và binh</text>
+    <text x="1240" y="470" text-anchor="middle" font-size="20" fill="#5B6478">thư viện gọi các phương thức này trên nhiều thread</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>WebSocket endpoint</b>: thư viện gọi <code>onOpen</code>, <code>onMessage</code>, <code>onClose</code> cho từng <b>phiên WebSocket</b>; endpoint giữ tập phiên.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>ChatEndpoint: ba phương thức theo vòng đời của phiên</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-a">@ServerEndpoint</span>(<span class="hl-s">"</span><span class="hl-s">/chat</span><span class="hl-s">"</span>)
+<span class="hl-k">private</span> <span class="hl-k">static</span> <span class="hl-k">final</span> <span class="hl-t">Map</span>&lt;<span class="hl-t">String</span>, <span class="hl-t">Session</span>&gt; sessions = <span class="hl-k">new</span> <span class="hl-t">ConcurrentHashMap</span>&lt;&gt;();  <span class="hl-c">// nhiều thread cùng truy cập</span>
+<span class="hl-a">@OnOpen</span>
+<span class="hl-k">public</span> <span class="hl-k">void</span> <span class="hl-m">onOpen</span>(<span class="hl-t">Session</span> session) {
+    sessions.<span class="hl-m">put</span>(session.<span class="hl-m">getId</span>(), session);
+<span class="hl-a">@OnMessage</span>
+<span class="hl-k">public</span> <span class="hl-k">void</span> <span class="hl-m">onMessage</span>(<span class="hl-t">Session</span> session, <span class="hl-t">String</span> text) {
+    <span class="hl-k">int</span> sent = <span class="hl-m">broadcast</span>(session, name + <span class="hl-s">"</span><span class="hl-s">: </span><span class="hl-s">"</span> + text);
+<span class="hl-a">@OnClose</span>
+<span class="hl-k">public</span> <span class="hl-k">void</span> <span class="hl-m">onClose</span>(<span class="hl-t">Session</span> session, <span class="hl-t">CloseReason</span> reason) {
+    sessions.<span class="hl-m">remove</span>(session.<span class="hl-m">getId</span>());              <span class="hl-c">// phiên đã đóng: không gửi tới nữa</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>open  an (sessions: 1)
+open  binh (sessions: 2)
+open  chi (sessions: 3)
+an: chào cả nhóm -&gt; sent to 2
+binh: chào an -&gt; sent to 2
+close chi, code 1000 (sessions: 2)
+an: chi vừa rời phòng -&gt; sent to 1
+close an, code 1000 (sessions: 1)
+close binh, code 1000 (sessions: 0)</pre></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Gửi tới mọi phiên khác, mỗi phiên một thao tác gửi tại một thời điểm</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">for</span> (<span class="hl-t">Session</span> s : sessions.<span class="hl-m">values</span>()) {
+    <span class="hl-k">if</span> (s == from || !s.<span class="hl-m">isOpen</span>()) {
+        <span class="hl-k">continue</span>;
+    }
+    <span class="hl-k">try</span> {
+        <span class="hl-k">synchronized</span> (s) {                     <span class="hl-c">// mỗi phiên chỉ một thao tác gửi tại một thời điểm</span>
+            s.<span class="hl-m">getBasicRemote</span>().<span class="hl-m">sendText</span>(text);
+        }
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>* chi joined
+an: chào cả nhóm
+* chi left
+an: chi vừa rời phòng
+* an left</pre></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Tyrus chạy endpoint ở port 9401, ba client chat trong ba tiến trình</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">Server</span> server = <span class="hl-k">new</span> <span class="hl-m">Server</span>(<span class="hl-s">"</span><span class="hl-s">localhost</span><span class="hl-s">"</span>, <span class="hl-n">9401</span>, <span class="hl-s">"</span><span class="hl-s">/</span><span class="hl-s">"</span>, <span class="hl-t">Map</span>.<span class="hl-m">of</span>(), <span class="hl-t">ChatEndpoint</span>.class);
+server.<span class="hl-m">start</span>();                                <span class="hl-c">// endpoint ở ws://localhost:9401/chat</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>* binh joined
+* chi joined
+binh: chào an
+* chi left</pre></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>Tập phiên an toàn đồng thời, gửi có đồng bộ, phiên đã mất phải được đóng</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Tập phiên bị nhiều thread truy cập: dùng <b>ConcurrentHashMap</b>, không dùng <code>HashMap</code></li><li data-s="2">Mỗi phiên <b>một thao tác gửi tại một thời điểm</b>: đồng bộ hóa, hoặc hàng đợi gửi riêng cho mỗi phiên</li><li data-s="3">Client mất mạng không gửi close: đặt <b>thời gian chờ</b> cho phiên hoặc gửi <b>ping</b> định kỳ</li></ul></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Phòng chat giữ tập phiên đang mở; thư viện gọi onOpen, onMessage, onClose trên nhiều thread cùng lúc. Nên dùng cấu trúc dữ liệu nào?</div></div><div class="lua-chon"><div class=""><span>A</span><div>HashMap, vì thêm và xóa đều nhanh.</div></div><div class="dung"><span>B</span><div>ConcurrentHashMap, vì cho nhiều thread thêm, xóa và duyệt đồng thời an toàn.</div></div><div class=""><span>C</span><div>ArrayList, vì chỉ cần duyệt để gửi tin.</div></div><div class=""><span>D</span><div>HashMap gán cho một biến volatile.</div></div></div><div class="giai-thich">ConcurrentHashMap cho nhiều thread đọc, ghi và duyệt đồng thời mà không hỏng cấu trúc. volatile chỉ bảo đảm các thread thấy tham chiếu mới nhất, không bảo vệ thao tác bên trong HashMap.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Phòng chat giữ tập phiên đang mở; thư viện gọi onOpen, onMessage, onClose trên nhiều thread cùng lúc. Nên dùng cấu trúc dữ liệu nào?</div></div><div class="lua-chon"><div class=""><span>A</span><div>HashMap, vì thêm và xóa đều nhanh.</div></div><div class="dung"><span>B</span><div>ConcurrentHashMap, vì cho nhiều thread thêm, xóa và duyệt đồng thời an toàn.</div></div><div class=""><span>C</span><div>ArrayList, vì chỉ cần duyệt để gửi tin.</div></div><div class=""><span>D</span><div>HashMap gán cho một biến volatile.</div></div></div><div class="giai-thich">ConcurrentHashMap cho nhiều thread đọc, ghi và duyệt đồng thời mà không hỏng cấu trúc. volatile chỉ bảo đảm các thread thấy tham chiếu mới nhất, không bảo vệ thao tác bên trong HashMap.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Một client mất mạng đột ngột, không gửi được frame close. Server phát hiện phiên đó đã mất bằng cách nào?</div></div><div class="lua-chon"><div class=""><span>A</span><div>onClose được gọi ngay khi client mất mạng.</div></div><div class=""><span>B</span><div>TCP báo lỗi ngay lập tức cho server.</div></div><div class="dung"><span>C</span><div>Server đặt thời gian chờ tối đa cho phiên hoặc gửi ping định kỳ; quá hạn không có dữ liệu hay pong thì đóng phiên.</div></div><div class=""><span>D</span><div>Không cần phát hiện, vì phiên tự hết hạn sau mỗi tin.</div></div></div><div class="giai-thich">Khi client mất mạng mà không có gói nào báo, TCP không biết đầu kia đã mất, nên không có sự kiện nào để gọi onClose. Server phải tự phát hiện bằng thời gian chờ tối đa của phiên hoặc ping/pong.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Một client mất mạng đột ngột, không gửi được frame close. Server phát hiện phiên đó đã mất bằng cách nào?</div></div><div class="lua-chon"><div class=""><span>A</span><div>onClose được gọi ngay khi client mất mạng.</div></div><div class=""><span>B</span><div>TCP báo lỗi ngay lập tức cho server.</div></div><div class="dung"><span>C</span><div>Server đặt thời gian chờ tối đa cho phiên hoặc gửi ping định kỳ; quá hạn không có dữ liệu hay pong thì đóng phiên.</div></div><div class=""><span>D</span><div>Không cần phát hiện, vì phiên tự hết hạn sau mỗi tin.</div></div></div><div class="giai-thich">Khi client mất mạng mà không có gói nào báo, TCP không biết đầu kia đã mất, nên không có sự kiện nào để gọi onClose. Server phải tự phát hiện bằng thời gian chờ tối đa của phiên hoặc ping/pong.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>WebSocket endpoint</b>: thư viện gọi <code>onOpen</code>, <code>onMessage</code>, <code>onClose</code> cho từng <b>phiên WebSocket</b></div></div><div class="the" data-s="2"><span class="so">2</span><div>Tập phiên trong <code>ConcurrentHashMap</code>; mỗi tin gửi tới mọi phiên khác, gửi có đồng bộ</div></div><div class="the" data-s="3"><span class="so">3</span><div>Phiên đã mất: thời gian chờ hoặc <b>ping/pong</b></div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>WebSocket endpoint</span><span>phiên WebSocket</span><span>onMessage</span><span>ping/pong</span></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>STOMP trên WebSocket</li><li>Chat nhiều server qua message broker (Chương 4)</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Thêm phòng chat theo tên: client gửi /join &lt;phòng&gt;, tin chỉ gửi tới các phiên cùng phòng.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">HTTP/2: binary framing và multiplexing</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Một phòng chat cần server giữ nhiều kết nối WebSocket cùng lúc và chuyển mỗi tin tới những người còn lại. Viết server đó bằng API chuẩn Jakarta WebSocket thế nào, khi nhiều thread cùng truy cập danh sách người đang trong phòng?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:15</span>
+      <h3>Slide 1. Phòng chat: nhiều phiên cùng lúc, tin gửi tới mọi phiên còn lại</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Server giữ **nhiều phiên WebSocket** cùng lúc; mỗi tin gửi tới **mọi phiên còn lại**</li><li>Phiên mở và đóng bất cứ lúc nào</li><li>Các phiên chạy đồng thời: tập phiên bị **nhiều thread** truy cập</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Bài toán:** server phòng chat quản lý tập phiên đúng khi nhiều thread cùng truy cập; client dùng API của JDK.</div></div>
+    <div class="kb-thoai"><p>Server tối giản ở phần trước chỉ phục vụ một kết nối mỗi lần và trả lại đúng tin của client đó. Một phòng chat thật cần nhiều hơn: server giữ nhiều phiên WebSocket cùng lúc, và mỗi tin nhận từ một phiên phải gửi tới mọi phiên còn lại. Các phiên mở ra, đóng lại bất cứ lúc nào. Hơn nữa, các phiên chạy đồng thời, nên thư viện gọi mã của server trên nhiều thread cùng lúc, đúng loại vấn đề của Chương 2. Bài toán của phần là viết server phòng chat quản lý tập phiên đúng khi nhiều thread cùng truy cập, cùng với client chat dùng API của JDK.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung bài toán hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Một phòng chat thật”; bước 2 khi đọc “phiên mở ra”; bước 3 khi đọc “Hơn nữa”; bước 4 khi đọc “Bài toán của phần”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:48</span>
+      <h3>Slide 2. Endpoint giữ tập phiên: onOpen thêm, onMessage gửi, onClose xóa</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**WebSocket endpoint**: thư viện gọi `onOpen`, `onMessage`, `onClose` cho từng **phiên WebSocket**; endpoint giữ tập phiên.</li></ul></div></div>
+    <div class="kb-thoai"><p>Với Jakarta WebSocket, bộ API chuẩn của Java cho WebSocket phía server, mình không tự đọc frame như server tối giản nữa. Mình viết một lớp WebSocket endpoint gắn với đường dẫn /chat, và thư viện gọi các phương thức của lớp đó theo sự kiện của từng phiên WebSocket, hay WebSocket session. Trong ví dụ, ba người dùng an, binh và chi lần lượt vào phòng: mỗi lần có client kết nối, phương thức onOpen được gọi và thêm phiên mới vào tập phiên, ở đây là một ConcurrentHashMap. Lúc an gửi tin chào cả nhóm, phương thức onMessage nhận tin và chuyển tới phiên của binh và chi, không gửi lại an. Còn khi chi đóng kết nối, phương thức onClose xóa phiên của chi khỏi tập và báo cho hai người còn lại. Thư viện gọi các phương thức này trên nhiều thread, nên tập phiên phải an toàn khi truy cập đồng thời.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình tap-phien: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “ba người dùng an, binh và chi”; bước 2 khi đọc “Lúc an gửi tin”; bước 3 khi đọc “Còn khi chi đóng”; bước 4 khi đọc “Thư viện gọi các phương thức này”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:39</span>
+      <h3>Slide 3. ChatEndpoint: ba phương thức theo vòng đời của phiên</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/chat/ChatEndpoint.java</span><pre><code>@ServerEndpoint(&quot;/chat&quot;)
+private static final Map&lt;String, Session&gt; sessions = new ConcurrentHashMap&lt;&gt;();  // nhiều thread cùng truy cập
+@OnOpen
+public void onOpen(Session session) {
+    sessions.put(session.getId(), session);
+@OnMessage
+public void onMessage(Session session, String text) {
+    int sent = broadcast(session, name + &quot;: &quot; + text);
+@OnClose
+public void onClose(Session session, CloseReason reason) {
+    sessions.remove(session.getId());              // phiên đã đóng: không gửi tới nữa</code></pre></div></div>
+    <div class="kb-thoai"><p>Trong mã, chú thích ServerEndpoint gắn lớp ChatEndpoint với đường dẫn /chat. Tập phiên là một ConcurrentHashMap khai báo static, khóa là mã phiên, vì mặc định thư viện tạo một đối tượng endpoint mới cho mỗi phiên. Ba phương thức mang ba chú thích theo vòng đời của phiên: OnOpen thêm phiên vào tập, OnMessage nhận chuỗi text rồi gửi tới các phiên khác, OnClose xóa phiên. Mỗi phương thức còn in một dòng log, nên log của server cho thấy số phiên tăng lên ba khi an, binh, chi vào phòng, mỗi tin được gửi tới hai phiên, và số phiên giảm dần khi từng client đóng với mã 1000.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, log của server phía dưới. Highlight ba chú thích @OnOpen, @OnMessage, @OnClose theo lời đọc.
+Hiện dần: bước 1 khi đọc “Log của server”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:24</span>
+      <h3>Slide 4. Gửi tới mọi phiên khác, mỗi phiên một thao tác gửi tại một thời điểm</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/chat/ChatEndpoint.java</span><pre><code>for (Session s : sessions.values()) {
+    if (s == from || !s.isOpen()) {
+        continue;
+    }
+    try {
+        synchronized (s) {                     // mỗi phiên chỉ một thao tác gửi tại một thời điểm
+            s.getBasicRemote().sendText(text);
+        }</code></pre></div></div>
+    <div class="kb-thoai"><p>Phương thức broadcast duyệt tập phiên, bỏ qua phiên nguồn và phiên đã đóng, rồi gửi tin bằng phương thức sendText trên đối tượng mà phương thức getBasicRemote trả về, kiểu gửi chặn đến khi gửi xong. Lời gọi gửi nằm trong khối synchronized trên chính phiên đích, vì tài liệu API quy định mỗi phiên chỉ cho một thao tác gửi tại một thời điểm. Khi an và binh gửi tin gần như cùng lúc, hai thread có thể cùng gửi tới phiên của chi, và thao tác gửi thứ hai có thể ném IllegalStateException. Màn hình của binh nhận đủ: chi vào phòng, tin của an, chi rời phòng, tin tiếp theo của an, rồi an rời phòng.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, màn hình của binh phía dưới.
+Hiện dần: bước 1 khi đọc “Màn hình của binh”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:09</span>
+      <h3>Slide 5. Tyrus chạy endpoint ở port 9401, ba client chat trong ba tiến trình</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/chat/ChatServer.java</span><pre><code>Server server = new Server(&quot;localhost&quot;, 9401, &quot;/&quot;, Map.of(), ChatEndpoint.class);
+server.start();                                // endpoint ở ws://localhost:9401/chat</code></pre></div></div>
+    <div class="kb-thoai"><p>Bước cuối là chạy endpoint trên một server thật. Tyrus, bản cài đặt tham chiếu của Jakarta WebSocket, có lớp Server nhận địa chỉ, port 9401, đường dẫn gốc và lớp endpoint, và lời gọi start mở server. Client chat dùng cùng API WebSocket của JDK như phần trước, nhưng đọc từ bàn phím: mỗi dòng gõ vào là một frame text, hết dữ liệu nhập thì gửi frame close. Mình chạy ba client an, binh, chi trong ba tiến trình riêng; khung kết quả dưới mã là màn hình của client an. Màn hình của an thấy binh và chi vào phòng, tin của binh, rồi thông báo chi rời phòng; tin của chính an không quay lại an.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, màn hình của an phía dưới. Có thể đặt ba terminal an, binh, chi cạnh nhau (results/ChatClient-an.txt, -binh.txt, -chi.txt).
+Hiện dần: bước 1 khi đọc “Màn hình của an”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:58</span>
+      <h3>Slide 6. Tập phiên an toàn đồng thời, gửi có đồng bộ, phiên đã mất phải được đóng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Tập phiên bị nhiều thread truy cập: dùng **ConcurrentHashMap**, không dùng `HashMap`</li><li>Mỗi phiên **một thao tác gửi tại một thời điểm**: đồng bộ hóa, hoặc hàng đợi gửi riêng cho mỗi phiên</li><li>Client mất mạng không gửi close: đặt **thời gian chờ** cho phiên hoặc gửi **ping** định kỳ</li></ul></div>
+    <div class="kb-thoai"><p>Có ba điểm cần giữ khi viết server WebSocket. Tập phiên bị nhiều thread truy cập, nên dùng ConcurrentHashMap: HashMap thường có thể hỏng cấu trúc, hoặc ném ConcurrentModificationException khi một thread duyệt trong lúc thread khác xóa phiên. Mỗi phiên chỉ cho một thao tác gửi tại một thời điểm, nên gửi từ nhiều thread phải đồng bộ hóa như trong mã, hoặc dùng một hàng đợi gửi riêng cho mỗi phiên. Cuối cùng, client mất mạng không gửi được frame close, nên server cần đặt thời gian chờ tối đa cho phiên bằng phương thức setMaxIdleTimeout, hoặc gửi ping định kỳ, để đóng các phiên đã mất.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt.
+Hiện dần: bước 1 khi đọc “Tập phiên bị nhiều thread”; bước 2 khi đọc “Mỗi phiên chỉ cho”; bước 3 khi đọc “Cuối cùng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:32</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Với tập phiên đang mở, các bạn sẽ chọn cấu trúc dữ liệu nào?</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Phòng chat giữ tập phiên đang mở; thư viện gọi onOpen, onMessage, onClose trên nhiều thread cùng lúc. Nên dùng cấu trúc dữ liệu nào?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> HashMap, vì thêm và xóa đều nhanh.</li>
+      <li><b>B.</b> ConcurrentHashMap, vì cho nhiều thread thêm, xóa và duyệt đồng thời an toàn.</li>
+      <li><b>C.</b> ArrayList, vì chỉ cần duyệt để gửi tin.</li>
+      <li><b>D.</b> HashMap gán cho một biến volatile.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: B</b> — <span>ConcurrentHashMap cho nhiều thread đọc, ghi và duyệt đồng thời mà không hỏng cấu trúc. volatile chỉ bảo đảm các thread thấy tham chiếu mới nhất, không bảo vệ thao tác bên trong HashMap.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là B. Phương án D dễ được chọn vì có từ khóa volatile của Chương 2. Nhưng volatile chỉ bảo đảm các thread thấy tham chiếu mới nhất của biến, còn các thao tác thêm, xóa bên trong HashMap vẫn không được bảo vệ.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án B được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:57</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu cuối đặt ra tình huống một client mất mạng giữa chừng.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Một client mất mạng đột ngột, không gửi được frame close. Server phát hiện phiên đó đã mất bằng cách nào?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> onClose được gọi ngay khi client mất mạng.</li>
+      <li><b>B.</b> TCP báo lỗi ngay lập tức cho server.</li>
+      <li><b>C.</b> Server đặt thời gian chờ tối đa cho phiên hoặc gửi ping định kỳ; quá hạn không có dữ liệu hay pong thì đóng phiên.</li>
+      <li><b>D.</b> Không cần phát hiện, vì phiên tự hết hạn sau mỗi tin.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: C</b> — <span>Khi client mất mạng mà không có gói nào báo, TCP không biết đầu kia đã mất, nên không có sự kiện nào để gọi onClose. Server phải tự phát hiện bằng thời gian chờ tối đa của phiên hoặc ping/pong.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là C. Phương án A nghe hợp lý, nhưng onClose chỉ được gọi khi có frame close hoặc khi TCP báo lỗi. Client mất mạng mà không có gói nào báo thì server không nhận được gì, nên phải tự phát hiện bằng thời gian chờ hoặc ping.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án C.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:21</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**WebSocket endpoint**: thư viện gọi `onOpen`, `onMessage`, `onClose` cho từng **phiên WebSocket**</li><li>Tập phiên trong `ConcurrentHashMap`; mỗi tin gửi tới mọi phiên khác, gửi có đồng bộ</li><li>Phiên đã mất: thời gian chờ hoặc **ping/pong**</li></ul></div>
+    <div class="kb-thoai"><p>Phòng chat dựng trên một WebSocket endpoint: thư viện gọi onOpen, onMessage, onClose theo sự kiện của từng phiên WebSocket. Server giữ tập phiên trong một ConcurrentHashMap, gửi mỗi tin tới mọi phiên khác, và gửi tới một phiên có đồng bộ vì mỗi phiên chỉ cho một thao tác gửi tại một thời điểm. Phiên đã mất mà không có frame close được phát hiện bằng thời gian chờ hoặc ping/pong. Những từ khóa cần nhớ: WebSocket endpoint, phiên WebSocket, onMessage và ping/pong.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “Phòng chat dựng trên”; bước 2 khi đọc “Server giữ”; bước 3 khi đọc “Phiên đã mất”; bước 4 khi đọc “Những từ khóa cần nhớ”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:51</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Ứng dụng chat lớn thường dùng STOMP, một giao thức message đặt trên WebSocket, để có khái niệm kênh và đăng ký nhận tin. Khi một server không đủ, các server chat trao đổi tin qua một message broker, chủ đề của Chương 4. Bài tập mở rộng là thêm phòng chat theo tên: client gửi lệnh /join kèm tên phòng, và tin chỉ được gửi tới các phiên cùng phòng.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Ứng dụng chat lớn”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:14</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>WebSocket giữ một kết nối lâu dài cho một ứng dụng. Một trang web thì khác: nó cần tải hàng chục tài nguyên từ cùng một server. Nhóm tiếp theo quay lại chính HTTP, với HTTP/2: binary framing và multiplexing.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V19", "tieu_de": "Bài toán ứng dụng: chat thời gian thực bằng WebSocket", "giong": "vi-VN-NamMinhNeural", "tong": 390.67, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/9029406ac313a15f.mp3", "dur": 14.86, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Một", 1], [2.188, "phòng", 1], [2.375, "chat", 1], [2.6, "cần", 1], [2.775, "server", 1], [3.163, "giữ", 1], [3.362, "nhiều", 1], [3.612, "kết", 1], [3.85, "nối", 1], [4.025, "WebSocket", 1], [4.65, "cùng", 1], [4.888, "lúc", 1], [5.075, "và", 1], [5.25, "chuyển", 1], [5.475, "mỗi", 1], [5.65, "tin", 1], [5.875, "tới", 1], [6.062, "những", 1], [6.237, "người", 1], [6.412, "còn", 1], [6.65, "lại.", 1], [7.787, "Viết", 2], [8.088, "server", 2], [8.412, "đó", 2], [8.675, "bằng", 2], [9.082, "API", 2], [9.488, "chuẩn", 2], [9.787, "Jakarta", 2], [10.287, "WebSocket", 2], [10.863, "thế", 2], [11.0, "nào,", 2], [11.45, "khi", 2], [11.675, "nhiều", 2], [11.887, "thread", 2], [12.162, "cùng", 2], [12.387, "truy", 2], [12.537, "cập", 2], [12.75, "danh", 2], [12.925, "sách", 2], [13.137, "người", 2], [13.35, "đang", 2], [13.55, "trong", 2], [13.713, "phòng?", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Phòng chat: nhiều phiên cùng lúc, tin gửi tới mọi phiên còn lại", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung bài toán hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Một phòng chat thật”; bước 2 khi đọc “phiên mở ra”; bước 3 khi đọc “Hơn nữa”; bước 4 khi đọc “Bài toán của phần”.", "start": 15.46, "audio": "audio/6110697f63ef7252.mp3", "dur": 32.76, "words": [[0.1, "Server", 0], [0.562, "tối", 0], [0.787, "giản", 0], [1.1, "ở", 0], [1.175, "phần", 0], [1.425, "trước", 0], [1.613, "chỉ", 0], [1.762, "phục", 0], [1.938, "vụ", 0], [2.163, "một", 0], [2.362, "kết", 0], [2.55, "nối", 0], [2.737, "mỗi", 0], [2.925, "lần", 0], [3.175, "và", 0], [3.312, "trả", 0], [3.513, "lại", 0], [3.688, "đúng", 0], [3.9, "tin", 0], [4.125, "của", 0], [4.3, "client", 0], [4.662, "đó.", 0], [5.85, "Một", 1], [6.188, "phòng", 1], [6.388, "chat", 1], [6.588, "thật", 1], [6.763, "cần", 1], [6.925, "nhiều", 1], [7.125, "hơn:", 1], [7.6, "server", 1], [8.012, "giữ", 1], [8.213, "nhiều", 1], [8.438, "phiên", 1], [8.662, "WebSocket", 1], [9.25, "cùng", 1], [9.475, "lúc,", 1], [9.887, "và", 1], [10.088, "mỗi", 1], [10.287, "tin", 1], [10.463, "nhận", 1], [10.725, "từ", 1], [10.875, "một", 1], [11.062, "phiên", 1], [11.325, "phải", 1], [11.475, "gửi", 1], [11.688, "tới", 1], [11.875, "mọi", 1], [12.088, "phiên", 1], [12.325, "còn", 1], [12.537, "lại.", 1], [13.688, "Các", 2], [13.875, "phiên", 2], [14.125, "mở", 2], [14.338, "ra,", 2], [14.85, "đóng", 2], [15.113, "lại", 2], [15.338, "bất", 2], [15.562, "cứ", 2], [15.787, "lúc", 2], [15.988, "nào.", 2], [17.113, "Hơn", 3], [17.375, "nữa,", 3], [17.913, "các", 3], [18.062, "phiên", 3], [18.312, "chạy", 3], [18.488, "đồng", 3], [18.688, "thời,", 3], [19.188, "nên", 3], [19.475, "thư", 3], [19.65, "viện", 3], [19.875, "gọi", 3], [20.05, "mã", 3], [20.325, "của", 3], [20.488, "server", 3], [20.913, "trên", 3], [21.1, "nhiều", 3], [21.3, "thread", 3], [21.575, "cùng", 3], [21.8, "lúc,", 3], [22.275, "đúng", 3], [22.512, "loại", 3], [22.7, "vấn", 3], [22.875, "đề", 3], [23.075, "của", 3], [23.238, "Chương", 3], [23.475, "2.", 3], [24.625, "Bài", 4], [24.875, "toán", 4], [25.163, "của", 4], [25.288, "phần", 4], [25.575, "là", 4], [25.7, "viết", 4], [25.875, "server", 4], [26.288, "phòng", 4], [26.55, "chat", 4], [26.75, "quản", 4], [26.975, "lý", 4], [27.175, "tập", 4], [27.363, "phiên", 4], [27.65, "đúng", 4], [27.863, "khi", 4], [28.038, "nhiều", 4], [28.262, "thread", 4], [28.5, "cùng", 4], [28.712, "truy", 4], [28.875, "cập,", 4], [29.35, "cùng", 4], [29.575, "với", 4], [29.738, "client", 4], [30.038, "chat", 4], [30.288, "dùng", 4], [30.712, "API", 4], [31.137, "của", 4], [31.137, "JDK.", 4]], "cues": [5.85, 13.875, 17.113, 24.625], "lang": 0.6}, {"ten": "Slide 2. Endpoint giữ tập phiên: onOpen thêm, onMessage gửi, onClose xóa", "loai": "slide", "slide": "S02", "dung": "Hình tap-phien: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “ba người dùng an, binh và chi”; bước 2 khi đọc “Lúc an gửi tin”; bước 3 khi đọc “Còn khi chi đóng”; bước 4 khi đọc “Thư viện gọi các phương thức này”.", "start": 48.82, "audio": "audio/e87695639e95c445.mp3", "dur": 48.48, "words": [[0.1, "Với", 0], [0.425, "Jakarta", 0], [0.95, "WebSocket,", 0], [1.788, "bộ", 0], [2.188, "API", 0], [2.587, "chuẩn", 0], [2.888, "của", 0], [3.062, "Java", 0], [3.462, "cho", 0], [3.625, "WebSocket", 0], [4.188, "phía", 0], [4.4, "server,", 0], [5.138, "mình", 0], [5.388, "không", 0], [5.625, "tự", 0], [5.775, "đọc", 0], [5.938, "frame", 0], [6.237, "như", 0], [6.5, "server", 0], [6.875, "tối", 0], [7.125, "giản", 0], [7.375, "nữa.", 0], [8.575, "Mình", 1], [8.925, "viết", 1], [9.125, "một", 1], [9.287, "lớp", 1], [9.512, "WebSocket", 1], [10.213, "endpoint", 1], [10.588, "gắn", 1], [10.875, "với", 1], [10.988, "đường", 1], [11.213, "dẫn", 1], [11.762, "/chat,", 1], [12.287, "và", 1], [12.475, "thư", 1], [12.662, "viện", 1], [12.9, "gọi", 1], [13.088, "các", 1], [13.25, "phương", 1], [13.475, "thức", 1], [13.65, "của", 1], [13.775, "lớp", 1], [13.975, "đó", 1], [14.213, "theo", 1], [14.363, "sự", 1], [14.537, "kiện", 1], [14.825, "của", 1], [14.95, "từng", 1], [15.15, "phiên", 1], [15.363, "WebSocket,", 1], [16.225, "hay", 1], [16.462, "WebSocket", 1], [17.0, "session.", 1], [18.413, "Trong", 2], [18.712, "ví", 2], [18.875, "dụ,", 2], [19.363, "ba", 2], [19.587, "người", 2], [19.8, "dùng", 2], [20.062, "an,", 2], [20.512, "binh", 2], [20.8, "và", 2], [20.925, "chi", 2], [21.15, "lần", 2], [21.3, "lượt", 2], [21.475, "vào", 2], [21.625, "phòng:", 2], [22.175, "mỗi", 2], [22.363, "lần", 2], [22.587, "có", 2], [22.725, "client", 2], [23.025, "kết", 2], [23.225, "nối,", 2], [23.75, "phương", 2], [24.025, "thức", 2], [24.25, "onOpen", 2], [24.875, "được", 2], [25.025, "gọi", 2], [25.275, "và", 2], [25.4, "thêm", 2], [25.637, "phiên", 2], [25.837, "mới", 2], [26.075, "vào", 2], [26.225, "tập", 2], [26.425, "phiên,", 2], [26.975, "ở", 2], [27.175, "đây", 2], [27.337, "là", 2], [27.413, "một", 2], [27.613, "ConcurrentHashMap.", 2], [29.538, "Lúc", 3], [29.825, "an", 3], [30.05, "gửi", 3], [30.238, "tin", 3], [30.462, "chào", 3], [30.688, "cả", 3], [30.875, "nhóm,", 3], [31.387, "phương", 3], [31.675, "thức", 3], [31.9, "onMessage", 3], [32.513, "nhận", 3], [32.8, "tin", 3], [33.062, "và", 3], [33.175, "chuyển", 3], [33.425, "tới", 3], [33.575, "phiên", 3], [33.837, "của", 3], [33.95, "binh", 3], [34.163, "và", 3], [34.288, "chi,", 3], [34.862, "không", 3], [35.112, "gửi", 3], [35.312, "lại", 3], [35.525, "an.", 3], [36.675, "Còn", 4], [36.938, "khi", 4], [37.125, "chi", 4], [37.312, "đóng", 4], [37.5, "kết", 4], [37.7, "nối,", 4], [38.2, "phương", 4], [38.475, "thức", 4], [38.725, "onClose", 4], [39.2, "xóa", 4], [39.475, "phiên", 4], [39.725, "của", 4], [39.85, "chi", 4], [40.038, "khỏi", 4], [40.263, "tập", 4], [40.513, "và", 4], [40.688, "báo", 4], [40.938, "cho", 4], [41.075, "hai", 4], [41.237, "người", 4], [41.438, "còn", 4], [41.663, "lại.", 4], [42.812, "Thư", 5], [43.013, "viện", 5], [43.275, "gọi", 5], [43.462, "các", 5], [43.625, "phương", 5], [43.825, "thức", 5], [44.0, "này", 5], [44.212, "trên", 5], [44.388, "nhiều", 5], [44.587, "thread,", 5], [45.138, "nên", 5], [45.438, "tập", 5], [45.625, "phiên", 5], [45.888, "phải", 5], [46.087, "an", 5], [46.3, "toàn", 5], [46.575, "khi", 5], [46.763, "truy", 5], [46.913, "cập", 5], [47.112, "đồng", 5], [47.337, "thời.", 5]], "cues": [19.363, 29.538, 36.675, 42.812], "lang": 2.6}, {"ten": "Slide 3. ChatEndpoint: ba phương thức theo vòng đời của phiên", "loai": "slide", "slide": "S03", "dung": "Mã phía trên, log của server phía dưới. Highlight ba chú thích @OnOpen, @OnMessage, @OnClose theo lời đọc.\nHiện dần: bước 1 khi đọc “Log của server”.", "start": 99.9, "audio": "audio/a5c70a23ec1dfc07.mp3", "dur": 35.04, "words": [[0.1, "Trong", 0], [0.425, "mã,", 0], [0.975, "chú", 0], [1.188, "thích", 0], [1.363, "ServerEndpoint", 0], [2.3, "gắn", 0], [2.538, "lớp", 0], [2.75, "ChatEndpoint", 0], [3.45, "với", 0], [3.587, "đường", 0], [3.812, "dẫn", 0], [4.375, "/chat.", 0], [5.5, "Tập", 1], [5.787, "phiên", 1], [6.075, "là", 1], [6.162, "một", 1], [6.375, "ConcurrentHashMap", 1], [7.438, "khai", 1], [7.662, "báo", 1], [7.9, "static,", 1], [8.725, "khóa", 1], [9.0, "là", 1], [9.1, "mã", 1], [9.312, "phiên,", 1], [9.825, "vì", 1], [9.988, "mặc", 1], [10.162, "định", 1], [10.363, "thư", 1], [10.525, "viện", 1], [10.738, "tạo", 1], [10.938, "một", 1], [11.125, "đối", 1], [11.287, "tượng", 1], [11.575, "endpoint", 1], [11.95, "mới", 1], [12.225, "cho", 1], [12.412, "mỗi", 1], [12.613, "phiên.", 1], [13.787, "Ba", 2], [14.113, "phương", 2], [14.35, "thức", 2], [14.55, "mang", 2], [14.787, "ba", 2], [14.95, "chú", 2], [15.162, "thích", 2], [15.338, "theo", 2], [15.488, "vòng", 2], [15.7, "đời", 2], [15.875, "của", 2], [16.025, "phiên:", 2], [16.587, "OnOpen", 2], [17.238, "thêm", 2], [17.462, "phiên", 2], [17.7, "vào", 2], [17.85, "tập,", 2], [18.337, "OnMessage", 2], [18.962, "nhận", 2], [19.25, "chuỗi", 2], [19.438, "text", 2], [19.7, "rồi", 2], [19.9, "gửi", 2], [20.113, "tới", 2], [20.3, "các", 2], [20.45, "phiên", 2], [20.65, "khác,", 2], [21.113, "OnClose", 2], [21.663, "xóa", 2], [21.925, "phiên.", 2], [23.1, "Mỗi", 3], [23.475, "phương", 3], [23.712, "thức", 3], [23.887, "còn", 3], [24.113, "in", 3], [24.275, "một", 3], [24.425, "dòng", 3], [24.663, "log,", 3], [25.137, "nên", 3], [25.413, "log", 3], [25.625, "của", 3], [25.775, "server", 3], [26.188, "cho", 3], [26.337, "thấy", 3], [26.512, "số", 3], [26.75, "phiên", 3], [26.962, "tăng", 3], [27.175, "lên", 3], [27.4, "ba", 3], [27.587, "khi", 3], [27.788, "an,", 3], [28.288, "binh,", 3], [28.788, "chi", 3], [29.012, "vào", 3], [29.163, "phòng,", 3], [29.663, "mỗi", 3], [29.875, "tin", 3], [30.1, "được", 3], [30.225, "gửi", 3], [30.425, "tới", 3], [30.613, "hai", 3], [30.788, "phiên,", 3], [31.312, "và", 3], [31.512, "số", 3], [31.688, "phiên", 3], [31.887, "giảm", 3], [32.163, "dần", 3], [32.362, "khi", 3], [32.538, "từng", 3], [32.788, "client", 3], [33.15, "đóng", 3], [33.413, "với", 3], [33.525, "mã", 3], [33.688, "1000.", 3]], "cues": [25.413], "lang": 9.6}, {"ten": "Slide 4. Gửi tới mọi phiên khác, mỗi phiên một thao tác gửi tại một thời điểm", "loai": "slide", "slide": "S04", "dung": "Mã phía trên, màn hình của binh phía dưới.\nHiện dần: bước 1 khi đọc “Màn hình của binh”.", "start": 144.54, "audio": "audio/baed26240074ca08.mp3", "dur": 35.33, "words": [[0.1, "Phương", 0], [0.4, "thức", 0], [0.613, "broadcast", 0], [1.15, "duyệt", 0], [1.363, "tập", 0], [1.55, "phiên,", 0], [2.038, "bỏ", 0], [2.275, "qua", 0], [2.487, "phiên", 0], [2.688, "nguồn", 0], [2.975, "và", 0], [3.087, "phiên", 0], [3.337, "đã", 0], [3.462, "đóng,", 0], [3.95, "rồi", 0], [4.188, "gửi", 0], [4.388, "tin", 0], [4.612, "bằng", 0], [4.825, "phương", 0], [5.025, "thức", 0], [5.15, "sendText", 0], [5.638, "trên", 0], [5.8, "đối", 0], [5.938, "tượng", 0], [6.225, "mà", 0], [6.362, "phương", 0], [6.575, "thức", 0], [6.763, "getBasicRemote", 0], [7.775, "trả", 0], [8.012, "về,", 0], [8.5, "kiểu", 0], [8.713, "gửi", 0], [8.925, "chặn", 0], [9.2, "đến", 0], [9.4, "khi", 0], [9.575, "gửi", 0], [9.775, "xong.", 0], [10.95, "Lời", 1], [11.262, "gọi", 1], [11.488, "gửi", 1], [11.675, "nằm", 1], [11.925, "trong", 1], [12.1, "khối", 1], [12.312, "synchronized", 1], [12.95, "trên", 1], [13.162, "chính", 1], [13.375, "phiên", 1], [13.588, "đích,", 1], [13.975, "vì", 1], [14.175, "tài", 1], [14.338, "liệu", 1], [14.719, "API", 1], [15.1, "quy", 1], [15.275, "định", 1], [15.475, "mỗi", 1], [15.662, "phiên", 1], [15.912, "chỉ", 1], [16.137, "cho", 1], [16.238, "một", 1], [16.413, "thao", 1], [16.562, "tác", 1], [16.812, "gửi", 1], [17.038, "tại", 1], [17.175, "một", 1], [17.375, "thời", 1], [17.538, "điểm.", 1], [18.725, "Khi", 2], [19.05, "an", 2], [19.337, "và", 2], [19.45, "binh", 2], [19.675, "gửi", 2], [19.863, "tin", 2], [20.113, "gần", 2], [20.312, "như", 2], [20.488, "cùng", 2], [20.7, "lúc,", 2], [21.125, "hai", 2], [21.337, "thread", 2], [21.625, "có", 2], [21.738, "thể", 2], [21.887, "cùng", 2], [22.113, "gửi", 2], [22.3, "tới", 2], [22.488, "phiên", 2], [22.725, "của", 2], [22.85, "chi,", 2], [23.4, "và", 2], [23.6, "thao", 2], [23.775, "tác", 2], [24.012, "gửi", 2], [24.163, "thứ", 2], [24.35, "hai", 2], [24.575, "có", 2], [24.7, "thể", 2], [24.863, "ném", 2], [25.188, "IllegalStateException.", 2], [27.55, "Màn", 3], [27.95, "hình", 3], [28.15, "của", 3], [28.262, "binh", 3], [28.45, "nhận", 3], [28.725, "đủ:", 3], [29.3, "chi", 3], [29.538, "vào", 3], [29.7, "phòng,", 3], [30.225, "tin", 3], [30.488, "của", 3], [30.7, "an,", 3], [31.175, "chi", 3], [31.438, "rời", 3], [31.625, "phòng,", 3], [32.138, "tin", 3], [32.388, "tiếp", 3], [32.587, "theo", 3], [32.775, "của", 3], [32.987, "an,", 3], [33.45, "rồi", 3], [33.75, "an", 3], [34.0, "rời", 3], [34.188, "phòng.", 3]], "cues": [27.55], "lang": 9.6}, {"ten": "Slide 5. Tyrus chạy endpoint ở port 9401, ba client chat trong ba tiến trình", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, màn hình của an phía dưới. Có thể đặt ba terminal an, binh, chi cạnh nhau (results/ChatClient-an.txt, -binh.txt, -chi.txt).\nHiện dần: bước 1 khi đọc “Màn hình của an”.", "start": 189.47, "audio": "audio/519366c2389fb9c2.mp3", "dur": 39.12, "words": [[0.1, "Bước", 0], [0.362, "cuối", 0], [0.6, "là", 0], [0.762, "chạy", 0], [1.05, "endpoint", 0], [1.525, "trên", 0], [1.725, "một", 0], [1.9, "server", 0], [2.325, "thật.", 0], [3.4, "Tyrus,", 1], [4.138, "bản", 1], [4.388, "cài", 1], [4.575, "đặt", 1], [4.725, "tham", 1], [4.938, "chiếu", 1], [5.213, "của", 1], [5.5, "Jakarta", 1], [6.075, "WebSocket,", 1], [6.925, "có", 1], [7.1, "lớp", 1], [7.3, "Server", 1], [7.713, "nhận", 1], [7.987, "địa", 1], [8.137, "chỉ,", 1], [8.75, "port", 1], [9.431, "9401,", 1], [10.113, "đường", 1], [10.387, "dẫn", 1], [10.625, "gốc", 1], [10.812, "và", 1], [11.05, "lớp", 1], [11.325, "endpoint,", 1], [11.975, "và", 1], [12.162, "lời", 1], [12.338, "gọi", 1], [12.575, "start", 1], [12.85, "mở", 1], [13.1, "server.", 1], [14.4, "Client", 2], [14.85, "chat", 2], [15.075, "dùng", 2], [15.3, "cùng", 2], [15.775, "API", 2], [16.25, "WebSocket", 2], [16.725, "của", 2], [17.107, "JDK", 2], [17.488, "như", 2], [17.663, "phần", 2], [17.887, "trước,", 2], [18.375, "nhưng", 2], [18.675, "đọc", 2], [18.85, "từ", 2], [18.988, "bàn", 2], [19.175, "phím:", 2], [19.712, "mỗi", 2], [19.938, "dòng", 2], [20.163, "gõ", 2], [20.387, "vào", 2], [20.562, "là", 2], [20.637, "một", 2], [20.837, "frame", 2], [21.113, "text,", 2], [21.587, "hết", 2], [21.8, "dữ", 2], [21.988, "liệu", 2], [22.2, "nhập", 2], [22.475, "thì", 2], [22.663, "gửi", 2], [22.9, "frame", 2], [23.225, "close.", 2], [24.438, "Mình", 3], [24.837, "chạy", 3], [25.062, "ba", 3], [25.25, "client", 3], [25.625, "an,", 3], [26.075, "binh,", 3], [26.613, "chi", 3], [26.925, "trong", 3], [27.15, "ba", 3], [27.3, "tiến", 3], [27.562, "trình", 3], [27.75, "riêng;", 3], [28.262, "khung", 3], [28.512, "kết", 3], [28.7, "quả", 3], [28.9, "dưới", 3], [29.062, "mã", 3], [29.3, "là", 3], [29.387, "màn", 3], [29.625, "hình", 3], [29.837, "của", 3], [30.012, "client", 3], [30.375, "an.", 3], [31.512, "Màn", 4], [31.9, "hình", 4], [32.1, "của", 4], [32.275, "an", 4], [32.45, "thấy", 4], [32.638, "binh", 4], [32.913, "và", 4], [33.038, "chi", 4], [33.288, "vào", 4], [33.438, "phòng,", 4], [33.95, "tin", 4], [34.188, "của", 4], [34.325, "binh,", 4], [34.825, "rồi", 4], [35.1, "thông", 4], [35.312, "báo", 4], [35.5, "chi", 4], [35.75, "rời", 4], [35.925, "phòng;", 4], [36.45, "tin", 4], [36.725, "của", 4], [36.862, "chính", 4], [37.112, "an", 4], [37.325, "không", 4], [37.562, "quay", 4], [37.763, "lại", 4], [37.962, "an.", 4]], "cues": [31.512], "lang": 9.6}, {"ten": "Slide 6. Tập phiên an toàn đồng thời, gửi có đồng bộ, phiên đã mất phải được đóng", "loai": "slide", "slide": "S06", "dung": "Ba ý hiện lần lượt.\nHiện dần: bước 1 khi đọc “Tập phiên bị nhiều thread”; bước 2 khi đọc “Mỗi phiên chỉ cho”; bước 3 khi đọc “Cuối cùng”.", "start": 238.19, "audio": "audio/49265edf82b2318f.mp3", "dur": 34.08, "words": [[0.1, "Có", 0], [0.287, "ba", 0], [0.487, "điểm", 0], [0.75, "cần", 0], [0.988, "giữ", 0], [1.238, "khi", 0], [1.387, "viết", 0], [1.587, "server", 0], [1.988, "WebSocket.", 0], [3.525, "Tập", 1], [3.775, "phiên", 1], [4.013, "bị", 1], [4.162, "nhiều", 1], [4.375, "thread", 1], [4.625, "truy", 1], [4.787, "cập,", 1], [5.275, "nên", 1], [5.562, "dùng", 1], [5.787, "ConcurrentHashMap:", 1], [7.112, "HashMap", 1], [7.638, "thường", 1], [7.9, "có", 1], [8.012, "thể", 1], [8.175, "hỏng", 1], [8.387, "cấu", 1], [8.6, "trúc,", 1], [9.062, "hoặc", 1], [9.287, "ném", 1], [9.525, "ConcurrentModificationException", 1], [11.613, "khi", 1], [11.775, "một", 1], [11.975, "thread", 1], [12.225, "duyệt", 1], [12.5, "trong", 1], [12.688, "lúc", 1], [12.875, "thread", 1], [13.1, "khác", 1], [13.325, "xóa", 1], [13.55, "phiên.", 1], [14.725, "Mỗi", 2], [15.088, "phiên", 2], [15.338, "chỉ", 2], [15.5, "cho", 2], [15.6, "một", 2], [15.775, "thao", 2], [15.912, "tác", 2], [16.15, "gửi", 2], [16.375, "tại", 2], [16.512, "một", 2], [16.688, "thời", 2], [16.837, "điểm,", 2], [17.375, "nên", 2], [17.675, "gửi", 2], [17.9, "từ", 2], [18.075, "nhiều", 2], [18.288, "thread", 2], [18.55, "phải", 2], [18.7, "đồng", 2], [18.913, "bộ", 2], [19.087, "hóa", 2], [19.35, "như", 2], [19.538, "trong", 2], [19.712, "mã,", 2], [20.275, "hoặc", 2], [20.525, "dùng", 2], [20.725, "một", 2], [20.875, "hàng", 2], [21.062, "đợi", 2], [21.25, "gửi", 2], [21.475, "riêng", 2], [21.725, "cho", 2], [21.863, "mỗi", 2], [22.062, "phiên.", 2], [23.238, "Cuối", 3], [23.475, "cùng,", 3], [23.975, "client", 3], [24.3, "mất", 3], [24.488, "mạng", 3], [24.738, "không", 3], [24.95, "gửi", 3], [25.125, "được", 3], [25.275, "frame", 3], [25.55, "close,", 3], [26.212, "nên", 3], [26.512, "server", 3], [26.938, "cần", 3], [27.2, "đặt", 3], [27.35, "thời", 3], [27.475, "gian", 3], [27.712, "chờ", 3], [27.938, "tối", 3], [28.137, "đa", 3], [28.312, "cho", 3], [28.438, "phiên", 3], [28.712, "bằng", 3], [28.9, "phương", 3], [29.075, "thức", 3], [29.212, "setMaxIdleTimeout,", 3], [30.712, "hoặc", 3], [30.938, "gửi", 3], [31.137, "ping", 3], [31.363, "định", 3], [31.55, "kỳ,", 3], [32.062, "để", 3], [32.25, "đóng", 3], [32.45, "các", 3], [32.6, "phiên", 3], [32.85, "đã", 3], [32.987, "mất.", 3]], "cues": [3.525, 14.725, 23.238], "lang": 0.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án B được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 272.87, "audio": "audio/3798e3ae67e236c8.mp3", "dur": 4.34, "words": [[0.1, "Với", 0], [0.375, "tập", 0], [0.575, "phiên", 0], [0.85, "đang", 0], [1.012, "mở,", 0], [1.575, "các", 0], [1.738, "bạn", 0], [1.975, "sẽ", 0], [2.112, "chọn", 0], [2.362, "cấu", 0], [2.575, "trúc", 0], [2.775, "dữ", 0], [2.962, "liệu", 0], [3.175, "nào?", 0]], "slide2": "Q1-dap-an", "audio2": "audio/cc7a4143ef07e7e3.mp3", "dur2": 13.51, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.662, "là", 0], [0.762, "B.", 0], [1.113, "Phương", 1], [1.462, "án", 1], [1.663, "D", 1], [1.837, "dễ", 1], [2.038, "được", 1], [2.2, "chọn", 1], [2.513, "vì", 1], [2.663, "có", 1], [2.8, "từ", 1], [2.975, "khóa", 1], [3.25, "volatile", 1], [3.825, "của", 1], [3.975, "Chương", 1], [4.213, "2.", 1], [5.362, "Nhưng", 2], [5.737, "volatile", 2], [6.3, "chỉ", 2], [6.463, "bảo", 2], [6.688, "đảm", 2], [6.925, "các", 2], [7.1, "thread", 2], [7.338, "thấy", 2], [7.513, "tham", 2], [7.737, "chiếu", 2], [7.975, "mới", 2], [8.2, "nhất", 2], [8.425, "của", 2], [8.575, "biến,", 2], [9.113, "còn", 2], [9.338, "các", 2], [9.5, "thao", 2], [9.637, "tác", 2], [9.838, "thêm,", 2], [10.325, "xóa", 2], [10.6, "bên", 2], [10.838, "trong", 2], [11.025, "HashMap", 2], [11.55, "vẫn", 2], [11.775, "không", 2], [12.0, "được", 2], [12.125, "bảo", 2], [12.338, "vệ.", 2]], "dap_an": "B", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án C.", "start": 297.32, "audio": "audio/f39ef9b6c78a9a21.mp3", "dur": 3.74, "words": [[0.1, "Câu", 0], [0.325, "cuối", 0], [0.525, "đặt", 0], [0.713, "ra", 0], [0.887, "tình", 0], [1.125, "huống", 0], [1.375, "một", 0], [1.562, "client", 0], [1.875, "mất", 0], [2.087, "mạng", 0], [2.35, "giữa", 0], [2.575, "chừng.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/440cdcb16f9ffdc0.mp3", "dur2": 14.23, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.662, "là", 0], [0.762, "C.", 0], [1.062, "Phương", 1], [1.375, "án", 1], [1.613, "A", 1], [1.75, "nghe", 1], [1.925, "hợp", 1], [2.112, "lý,", 1], [2.638, "nhưng", 1], [2.962, "onClose", 1], [3.438, "chỉ", 1], [3.587, "được", 1], [3.75, "gọi", 1], [3.95, "khi", 1], [4.125, "có", 1], [4.25, "frame", 1], [4.537, "close", 1], [4.862, "hoặc", 1], [5.15, "khi", 1], [5.525, "TCP", 1], [5.9, "báo", 1], [6.125, "lỗi.", 1], [7.362, "Client", 2], [7.812, "mất", 2], [8.0, "mạng", 2], [8.262, "mà", 2], [8.45, "không", 2], [8.675, "có", 2], [8.775, "gói", 2], [8.925, "nào", 2], [9.1, "báo", 2], [9.363, "thì", 2], [9.537, "server", 2], [9.95, "không", 2], [10.137, "nhận", 2], [10.338, "được", 2], [10.475, "gì,", 2], [11.012, "nên", 2], [11.3, "phải", 2], [11.463, "tự", 2], [11.625, "phát", 2], [11.812, "hiện", 2], [12.075, "bằng", 2], [12.262, "thời", 2], [12.4, "gian", 2], [12.637, "chờ", 2], [12.875, "hoặc", 2], [13.075, "ping.", 2]], "dap_an": "C", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “Phòng chat dựng trên”; bước 2 khi đọc “Server giữ”; bước 3 khi đọc “Phiên đã mất”; bước 4 khi đọc “Những từ khóa cần nhớ”.", "start": 321.89, "audio": "audio/b388b7f7b33ba4be.mp3", "dur": 28.97, "words": [[0.1, "Phòng", 0], [0.375, "chat", 0], [0.562, "dựng", 0], [0.8, "trên", 0], [0.975, "một", 0], [1.113, "WebSocket", 0], [1.762, "endpoint:", 0], [2.438, "thư", 0], [2.638, "viện", 0], [2.862, "gọi", 0], [3.1, "onOpen,", 0], [4.013, "onMessage,", 0], [4.987, "onClose", 0], [5.575, "theo", 0], [5.763, "sự", 0], [5.938, "kiện", 0], [6.225, "của", 0], [6.35, "từng", 0], [6.55, "phiên", 0], [6.775, "WebSocket.", 0], [8.238, "Server", 1], [8.713, "giữ", 1], [8.912, "tập", 1], [9.113, "phiên", 1], [9.4, "trong", 1], [9.55, "một", 1], [9.725, "ConcurrentHashMap,", 1], [11.012, "gửi", 1], [11.238, "mỗi", 1], [11.45, "tin", 1], [11.65, "tới", 1], [11.863, "mọi", 1], [12.05, "phiên", 1], [12.262, "khác,", 1], [12.75, "và", 1], [12.95, "gửi", 1], [13.188, "tới", 1], [13.325, "một", 1], [13.488, "phiên", 1], [13.75, "có", 1], [13.85, "đồng", 1], [14.037, "bộ", 1], [14.25, "vì", 1], [14.387, "mỗi", 1], [14.588, "phiên", 1], [14.825, "chỉ", 1], [15.037, "cho", 1], [15.137, "một", 1], [15.312, "thao", 1], [15.463, "tác", 1], [15.713, "gửi", 1], [15.925, "tại", 1], [16.062, "một", 1], [16.25, "thời", 1], [16.413, "điểm.", 1], [17.6, "Phiên", 2], [17.95, "đã", 2], [18.062, "mất", 2], [18.3, "mà", 2], [18.562, "không", 2], [18.8, "có", 2], [18.913, "frame", 2], [19.2, "close", 2], [19.55, "được", 2], [19.712, "phát", 2], [19.9, "hiện", 2], [20.163, "bằng", 2], [20.35, "thời", 2], [20.488, "gian", 2], [20.738, "chờ", 2], [20.988, "hoặc", 2], [21.212, "ping/pong.", 2], [22.562, "Những", 3], [22.837, "từ", 3], [23.025, "khóa", 3], [23.275, "cần", 3], [23.5, "nhớ:", 3], [24.05, "WebSocket", 3], [24.8, "endpoint,", 3], [25.475, "phiên", 3], [25.775, "WebSocket,", 3], [26.7, "onMessage", 3], [27.4, "và", 3], [27.55, "ping/pong.", 3]], "cues": [0.1, 8.238, 17.6, 22.562], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Ứng dụng chat lớn”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 351.46, "audio": "audio/1523ba4c9e333716.mp3", "dur": 22.63, "words": [[0.1, "Ứng", 0], [0.35, "dụng", 0], [0.575, "chat", 0], [0.812, "lớn", 0], [1.075, "thường", 0], [1.288, "dùng", 0], [2.113, "STOMP,", 0], [2.938, "một", 0], [3.15, "giao", 0], [3.325, "thức", 0], [3.55, "message", 0], [4.0, "đặt", 0], [4.188, "trên", 0], [4.412, "WebSocket,", 0], [5.263, "để", 0], [5.45, "có", 0], [5.575, "khái", 0], [5.787, "niệm", 0], [6.025, "kênh", 0], [6.3, "và", 0], [6.425, "đăng", 0], [6.625, "ký", 0], [6.825, "nhận", 0], [7.062, "tin.", 0], [8.213, "Khi", 1], [8.463, "một", 1], [8.625, "server", 1], [8.988, "không", 1], [9.213, "đủ,", 1], [9.75, "các", 1], [9.925, "server", 1], [10.312, "chat", 1], [10.575, "trao", 1], [10.725, "đổi", 1], [10.925, "tin", 1], [11.162, "qua", 1], [11.338, "một", 1], [11.562, "message", 1], [11.963, "broker,", 1], [12.725, "chủ", 1], [13.0, "đề", 1], [13.225, "của", 1], [13.412, "Chương", 1], [13.65, "4.", 1], [14.825, "Bài", 2], [15.075, "tập", 2], [15.287, "mở", 2], [15.475, "rộng", 2], [15.75, "là", 2], [15.912, "thêm", 2], [16.188, "phòng", 2], [16.413, "chat", 2], [16.637, "theo", 2], [16.775, "tên:", 2], [17.325, "client", 2], [17.75, "gửi", 2], [17.95, "lệnh", 2], [18.488, "/join", 2], [18.75, "kèm", 2], [19.05, "tên", 2], [19.288, "phòng,", 2], [19.762, "và", 2], [19.95, "tin", 2], [20.188, "chỉ", 2], [20.325, "được", 2], [20.488, "gửi", 2], [20.675, "tới", 2], [20.875, "các", 2], [21.025, "phiên", 2], [21.3, "cùng", 2], [21.5, "phòng.", 2]], "cues": [0.1, 14.825], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 374.69, "audio": "audio/9ed5c66ce690f954.mp3", "dur": 15.38, "words": [[0.1, "WebSocket", 0], [0.963, "giữ", 0], [1.137, "một", 0], [1.363, "kết", 0], [1.562, "nối", 0], [1.762, "lâu", 0], [1.925, "dài", 0], [2.212, "cho", 0], [2.35, "một", 0], [2.6, "ứng", 0], [2.763, "dụng.", 0], [3.925, "Một", 1], [4.3, "trang", 1], [4.525, "web", 1], [4.713, "thì", 1], [4.862, "khác:", 1], [5.375, "nó", 1], [5.588, "cần", 1], [5.838, "tải", 1], [6.013, "hàng", 1], [6.225, "chục", 1], [6.438, "tài", 1], [6.638, "nguyên", 1], [6.925, "từ", 1], [7.112, "cùng", 1], [7.338, "một", 1], [7.5, "server.", 1], [8.812, "Nhóm", 2], [9.137, "tiếp", 2], [9.35, "theo", 2], [9.5, "quay", 2], [9.713, "lại", 2], [9.875, "chính", 2], [10.525, "HTTP,", 2], [11.175, "với", 2], [11.925, "HTTP/2:", 2], [12.675, "binary", 2], [13.2, "framing", 2], [13.75, "và", 2], [13.887, "multiplexing.", 2]], "cues": [], "lang": 0.6}], "video_sau": "HTTP/2: binary framing và multiplexing"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

@@ -1,0 +1,2 @@
+r4: joined 239.1.2.3 on ethernet_32775 (Hyper-V Virtual Ethernet Adapter)
+r4: no datagram for 3 s, stop

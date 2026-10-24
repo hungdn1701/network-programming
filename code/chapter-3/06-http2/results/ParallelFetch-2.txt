@@ -1,0 +1,2 @@
+HTTP/2, at most 20 at a time: 20 requests in 261 ms, response version [HTTP_2]
+server: 20 requests on 1 connection(s), protocol [HTTP/2.0]

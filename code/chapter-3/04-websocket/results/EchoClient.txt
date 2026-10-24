@@ -1,0 +1,5 @@
+connected
+text: welcome
+text: echo: hello
+pong: still there?
+closed with code 1000

@@ -1,0 +1,7 @@
+r2: joined 239.1.2.3 on wireless_32768 (Intel(R) Wireless-AC 9560 160MHz)
+r2: "tick 1" from 192.168.1.171
+r2: "tick 2" from 192.168.1.171
+r2: "tick 3" from 192.168.1.171
+r2: "tick 4" from 192.168.1.171
+r2: "tick 5" from 192.168.1.171
+r2: no datagram for 3 s, stop

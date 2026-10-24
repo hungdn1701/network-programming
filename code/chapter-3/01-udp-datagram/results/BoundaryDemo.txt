@@ -1,0 +1,2 @@
+receive #1: 5 bytes "hanoi"
+receive #2: 6 bytes "danang"

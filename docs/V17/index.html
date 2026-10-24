@@ -1,0 +1,430 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V17 — Bài toán ứng dụng: truyền video theo nhóm multicast · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-3/03-video-multicast">Mã</a>
+<h1>V17 · Bài toán ứng dụng: truyền video theo nhóm multicast</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 3</div><div class="ten">Bài toán ứng dụng: truyền video theo nhóm multicast</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Video multicast: khung hình đến liên tục, có thể mất, máy nhận vào giữa chừng</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Video là chuỗi <b>khung hình</b> liên tục, ví dụ 10 khung hình mỗi giây, tới nhiều máy nhận</li><li data-s="2">UDP có thể <b>mất</b> hoặc <b>đảo thứ tự</b> datagram, và không báo</li><li data-s="3">Máy nhận có thể <b>tham gia nhóm khi nguồn đang phát</b></li></ul><div class="khung" data-s="4"><b>Bài toán:</b> đóng gói khung hình thế nào để máy nhận phát hiện được khung hình mất, và vẫn chạy tiếp khi mất?</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Mỗi khung hình thành một datagram, đứng đầu là số thứ tự 4 byte</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 480" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Nguồn phát chuỗi khung hình, 10 khung hình mỗi giây, mỗi khung hình 1 000 byte. Mỗi khung hình thành một datagram gồm số thứ tự 4 byte và dữ liệu khung hình 1 000 byte, tổng 1 004 byte. Trên đường truyền, header IP 20 byte và header UDP 8 byte bọc ngoài: 1 032 byte, nhỏ hơn 1 500 byte, vừa một gói Ethernet hay Wi-Fi.">
+  <defs>
+    <marker id="dgo-net" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#1F5FA8"/></marker>
+  </defs>
+
+  <!-- ① chuỗi khung hình ở nguồn -->
+  <g data-s="1">
+    <text x="460" y="50" text-anchor="middle" font-size="22" fill="#051A53">nguồn: 10 khung hình mỗi giây</text>
+    <g fill="#EEF2FB" stroke="#051A53" stroke-width="2.5">
+      <rect x="265" y="80" width="130" height="90" rx="4"/>
+      <rect x="415" y="80" width="130" height="90" rx="4"/>
+      <rect x="565" y="80" width="130" height="90" rx="4"/>
+    </g>
+    <g font-size="28" font-weight="500" fill="#051A53" text-anchor="middle">
+      <text x="330" y="135">1</text><text x="480" y="135">2</text><text x="630" y="135">3</text>
+    </g>
+    <text x="480" y="210" text-anchor="middle" font-size="21" fill="#373D4E">mỗi khung hình 1 000 byte</text>
+  </g>
+
+  <!-- ② một khung hình thành một datagram có số thứ tự -->
+  <g data-s="2">
+    <line x1="705" y1="125" x2="812" y2="125" stroke="#1F5FA8" stroke-width="3" marker-end="url(#dgo-net)"/>
+    <text x="1180" y="50" text-anchor="middle" font-size="22" fill="#051A53">một khung hình = một datagram</text>
+    <rect x="825" y="80" width="150" height="90" rx="4" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="900" y="118" text-anchor="middle" font-size="21" font-weight="500" fill="#6B4E06">số thứ tự</text>
+    <text x="900" y="150" text-anchor="middle" font-size="20" fill="#6B4E06">4 byte</text>
+    <rect x="975" y="80" width="560" height="90" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1255" y="118" text-anchor="middle" font-size="21" font-weight="500" fill="#051A53">dữ liệu khung hình</text>
+    <text x="1255" y="150" text-anchor="middle" font-size="20" fill="#373D4E">1 000 byte</text>
+    <text x="1180" y="210" text-anchor="middle" font-size="21" fill="#373D4E">datagram 1 004 byte; khung hình 2 mang số thứ tự 2</text>
+  </g>
+
+  <!-- ③ header IP, UDP bọc ngoài: vừa một gói Ethernet, Wi-Fi -->
+  <g data-s="3">
+    <text x="1030" y="296" text-anchor="middle" font-size="22" fill="#051A53">trên đường truyền: header IP và UDP bọc ngoài</text>
+    <rect x="525" y="320" width="150" height="80" rx="4" fill="#F4F5F8" stroke="#9AA3B8" stroke-width="2"/>
+    <text x="600" y="354" text-anchor="middle" font-size="20" fill="#5B6478">header IP</text>
+    <text x="600" y="384" text-anchor="middle" font-size="20" fill="#5B6478">20 byte</text>
+    <rect x="675" y="320" width="150" height="80" rx="4" fill="#F4F5F8" stroke="#9AA3B8" stroke-width="2"/>
+    <text x="750" y="354" text-anchor="middle" font-size="20" fill="#5B6478">header UDP</text>
+    <text x="750" y="384" text-anchor="middle" font-size="20" fill="#5B6478">8 byte</text>
+    <rect x="825" y="320" width="150" height="80" rx="4" fill="#FFF6DD" stroke="#8A6508" stroke-width="2"/>
+    <text x="900" y="368" text-anchor="middle" font-size="20" fill="#6B4E06">số thứ tự</text>
+    <rect x="975" y="320" width="560" height="80" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2"/>
+    <text x="1255" y="368" text-anchor="middle" font-size="20" fill="#373D4E">dữ liệu khung hình</text>
+    <text x="1030" y="450" text-anchor="middle" font-size="22" fill="#22603F">1 032 byte &lt; 1 500 byte: vừa một gói Ethernet hay Wi-Fi, không bị chia nhỏ</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Đóng gói khung hình</b>: mỗi khung hình một datagram, gồm <b>số thứ tự</b> 4 byte và dữ liệu; datagram đủ nhỏ để đi trọn trong một gói.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Máy nhận so số thứ tự: có khoảng trống thì bỏ qua và chạy tiếp</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 470" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Máy nhận r2 nhận khung hình 1, 2, 3 và ghi expected bằng 4, số thứ tự chờ nhận tiếp theo. Khung hình 6 đến khi expected bằng 4: mất hai khung hình 4 và 5; máy nhận bỏ qua khoảng trống, hiển thị 6, đặt expected bằng 7. Máy nhận r3 tham gia sau 5 giây: khung hình 1 đến 52 phát trước khi tham gia; khung hình đầu tiên nhận được là 53, máy nhận bắt đầu từ đó, không tính là mất.">
+
+  <!-- ① nhận 1, 2, 3; expected = 4 -->
+  <g data-s="1">
+    <text x="80" y="104" font-size="26" font-weight="500" fill="#051A53">r2</text>
+    <g fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5">
+      <rect x="200" y="60" width="90" height="70" rx="4"/><rect x="300" y="60" width="90" height="70" rx="4"/><rect x="400" y="60" width="90" height="70" rx="4"/>
+    </g>
+    <g font-size="24" fill="#22603F" text-anchor="middle"><text x="245" y="104">1</text><text x="345" y="104">2</text><text x="445" y="104">3</text></g>
+    <text x="1030" y="88" font-size="22" fill="#051A53">sau khung hình 3: expected = 4</text>
+    <text x="1030" y="122" font-size="20" fill="#5B6478">expected: số thứ tự chờ nhận tiếp theo</text>
+  </g>
+
+  <!-- ② 6 đến khi expected = 4: mất 4, 5; bỏ qua và tiếp tục -->
+  <g data-s="2">
+    <g fill="#FFFFFF" stroke="#BC2626" stroke-width="2.5" stroke-dasharray="7 5">
+      <rect x="500" y="60" width="90" height="70" rx="4"/><rect x="600" y="60" width="90" height="70" rx="4"/>
+    </g>
+    <g font-size="24" fill="#BC2626" text-anchor="middle"><text x="545" y="104">4</text><text x="645" y="104">5</text></g>
+    <g fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5">
+      <rect x="700" y="60" width="90" height="70" rx="4"/><rect x="800" y="60" width="90" height="70" rx="4"/>
+    </g>
+    <g font-size="24" fill="#22603F" text-anchor="middle"><text x="745" y="104">6</text><text x="845" y="104">7</text></g>
+    <text x="200" y="180" font-size="22" fill="#BC2626">nhận 6 khi expected = 4: mất 2 khung hình (4 và 5)</text>
+    <text x="200" y="214" font-size="22" fill="#051A53">bỏ qua khoảng trống, hiển thị 6, đặt expected = 7</text>
+  </g>
+
+  <!-- ③ r3 tham gia khi đang phát: bắt đầu từ khung hình đầu tiên nhận được -->
+  <g data-s="3">
+    <text x="80" y="318" font-size="26" font-weight="500" fill="#051A53">r3</text>
+    <text x="80" y="348" font-size="20" fill="#5B6478">vào sau 5 s</text>
+    <rect x="200" y="290" width="490" height="70" rx="4" fill="#F4F5F8" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="7 5"/>
+    <text x="445" y="334" text-anchor="middle" font-size="21" fill="#5B6478">1 … 52: phát trước khi tham gia</text>
+    <g fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5">
+      <rect x="700" y="290" width="90" height="70" rx="4"/><rect x="800" y="290" width="90" height="70" rx="4"/><rect x="900" y="290" width="90" height="70" rx="4"/>
+    </g>
+    <g font-size="24" fill="#22603F" text-anchor="middle"><text x="745" y="334">53</text><text x="845" y="334">54</text><text x="945" y="334">55</text></g>
+    <text x="200" y="410" font-size="22" fill="#051A53">khung hình đầu tiên nhận được (53) là điểm bắt đầu</text>
+    <text x="200" y="444" font-size="22" fill="#5B6478">khung hình phát trước khi tham gia không tính là mất</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p>Máy nhận so <b>số thứ tự</b> với expected: lớn hơn là có khoảng trống, bỏ qua và chạy tiếp; khung hình đầu tiên nhận được là điểm bắt đầu.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Nguồn ghi số thứ tự và khung hình vào một ByteBuffer, phát đều 10 khung hình mỗi giây</h1></header><main class="bo-cuc-ma"><div class="ma-hang"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">for</span> (<span class="hl-k">int</span> seq = <span class="hl-n">1</span>; seq &lt;= <span class="hl-n">100</span>; seq++) {
+    <span class="hl-t">ByteBuffer</span> buf = <span class="hl-t">ByteBuffer</span>.<span class="hl-m">allocate</span>(<span class="hl-n">4</span> + <span class="hl-t">FRAME_BYTES</span>);
+    buf.<span class="hl-m">putInt</span>(seq);              <span class="hl-c">// số thứ tự 4 byte, big-endian</span>
+    buf.<span class="hl-m">put</span>(<span class="hl-m">frame</span>(seq));          <span class="hl-c">// dữ liệu khung hình</span>
+    socket.<span class="hl-m">send</span>(<span class="hl-k">new</span> <span class="hl-m">DatagramPacket</span>(buf.<span class="hl-m">array</span>(), buf.<span class="hl-m">position</span>(), group, <span class="hl-t">PORT</span>));
+    <span class="hl-k">long</span> next = start + seq * <span class="hl-n">100_000_000L</span>;  <span class="hl-c">// 10 khung hình mỗi giây</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>sent frame 20 (1004 bytes)
+sent frame 40 (1004 bytes)
+sent frame 60 (1004 bytes)
+sent frame 80 (1004 bytes)
+sent frame 100 (1004 bytes)</pre></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Máy nhận đếm khoảng trống theo số thứ tự, khung hình đến muộn bị bỏ</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">int</span> seq = <span class="hl-t">ByteBuffer</span>.<span class="hl-m">wrap</span>(p.<span class="hl-m">getData</span>(), <span class="hl-n">0</span>, <span class="hl-n">4</span>).<span class="hl-m">getInt</span>();
+<span class="hl-k">if</span> (expected == -<span class="hl-n">1</span>) {
+} <span class="hl-k">else</span> <span class="hl-k">if</span> (seq &gt; expected) {
+    lost += seq - expected;
+} <span class="hl-k">else</span> <span class="hl-k">if</span> (seq &lt; expected) {
+    <span class="hl-t">System</span>.out.<span class="hl-m">printf</span>(<span class="hl-s">"</span><span class="hl-s">%s: late frame %d, dropped%n</span><span class="hl-s">"</span>, name, seq);  <span class="hl-c">// đến muộn: không còn giá trị</span>
+expected = seq + <span class="hl-n">1</span>;
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>r2: first frame 1
+r2: gap 3 -&gt; 6, lost 2 frame(s)
+r2: gap 7 -&gt; 9, lost 1 frame(s)
+r2: gap 33 -&gt; 35, lost 1 frame(s)
+r2: gap 60 -&gt; 62, lost 1 frame(s)
+r2: gap 67 -&gt; 69, lost 1 frame(s)
+r2: gap 97 -&gt; 99, lost 1 frame(s)
+r2: received 93 frames, lost 7 (7.0%)</pre></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>Máy nhận vào khi đang phát bắt đầu từ khung hình đầu tiên nhận được</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span>socket.<span class="hl-m">setSoTimeout</span>(<span class="hl-n">10_000</span>);  <span class="hl-c">// chờ nguồn tối đa 10 giây; sau khung hình đầu: 2 giây</span>
+<span class="hl-k">if</span> (expected == -<span class="hl-n">1</span>) {
+    <span class="hl-t">System</span>.out.<span class="hl-m">printf</span>(<span class="hl-s">"</span><span class="hl-s">%s: first frame %d%n</span><span class="hl-s">"</span>, name, seq);  <span class="hl-c">// tham gia khi đang phát: bắt đầu từ đây</span>
+    socket.<span class="hl-m">setSoTimeout</span>(<span class="hl-n">2_000</span>);
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>r3: first frame 53
+r3: received 48 frames, lost 0 (0.0%)</pre></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S07"><header><h1>Multicast không gửi lại khung hình mất: bỏ qua và chạy tiếp</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Gửi lại cũng là gửi tới <b>cả nhóm</b>: mọi máy nhận khác nhận thêm dữ liệu thừa</li><li data-s="2">Khung hình <b>đến muộn</b> hơn lúc cần hiển thị thì không còn giá trị</li><li data-s="3">Muốn giảm ảnh hưởng của mất gói: nguồn gửi kèm <b>dữ liệu dự phòng</b>, không gửi lại</li></ul><div class="khung" data-s="4"><b>Nguyên tắc:</b> máy nhận video multicast bỏ khung hình mất và chạy tiếp.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Máy nhận vừa hiển thị khung hình 41; datagram tiếp theo nhận được mang số thứ tự 44. Đã mất bao nhiêu khung hình?</div></div><div class="lua-chon"><div class=""><span>A</span><div>3 khung hình.</div></div><div class="dung"><span>B</span><div>2 khung hình: 42 và 43.</div></div><div class=""><span>C</span><div>1 khung hình.</div></div><div class=""><span>D</span><div>Không xác định được, vì UDP không đánh số datagram.</div></div></div><div class="giai-thich">Sau khung hình 41, expected bằng 42. Khung hình 44 đến nên số khung hình mất là 44 − 42 = 2, gồm 42 và 43. Lấy 44 − 41 là đếm cả khung hình 44 vừa nhận. UDP không đánh số, nhưng giao thức của ứng dụng đã thêm số thứ tự.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Máy nhận vừa hiển thị khung hình 41; datagram tiếp theo nhận được mang số thứ tự 44. Đã mất bao nhiêu khung hình?</div></div><div class="lua-chon"><div class=""><span>A</span><div>3 khung hình.</div></div><div class="dung"><span>B</span><div>2 khung hình: 42 và 43.</div></div><div class=""><span>C</span><div>1 khung hình.</div></div><div class=""><span>D</span><div>Không xác định được, vì UDP không đánh số datagram.</div></div></div><div class="giai-thich">Sau khung hình 41, expected bằng 42. Khung hình 44 đến nên số khung hình mất là 44 − 42 = 2, gồm 42 và 43. Lấy 44 − 41 là đếm cả khung hình 44 vừa nhận. UDP không đánh số, nhưng giao thức của ứng dụng đã thêm số thứ tự.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Vì sao máy nhận video multicast không yêu cầu nguồn gửi lại khung hình mất?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Vì MulticastSocket không gửi được datagram unicast.</div></div><div class=""><span>B</span><div>Vì UDP không cho máy nhận gửi datagram ngược về nguồn.</div></div><div class=""><span>C</span><div>Vì số thứ tự 4 byte không đủ để đánh số khung hình gửi lại.</div></div><div class="dung"><span>D</span><div>Vì khung hình gửi lại tới cả nhóm, làm các máy nhận khác nhận thêm dữ liệu thừa, và khung hình đến muộn không còn giá trị.</div></div></div><div class="giai-thich">Nguồn gửi tới nhóm, nên khung hình gửi lại tới mọi máy nhận, kể cả máy đã có; khung hình đến muộn hơn lúc hiển thị cũng vô ích. Máy nhận vẫn gửi được datagram unicast về nguồn, nên B sai.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Vì sao máy nhận video multicast không yêu cầu nguồn gửi lại khung hình mất?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Vì MulticastSocket không gửi được datagram unicast.</div></div><div class=""><span>B</span><div>Vì UDP không cho máy nhận gửi datagram ngược về nguồn.</div></div><div class=""><span>C</span><div>Vì số thứ tự 4 byte không đủ để đánh số khung hình gửi lại.</div></div><div class="dung"><span>D</span><div>Vì khung hình gửi lại tới cả nhóm, làm các máy nhận khác nhận thêm dữ liệu thừa, và khung hình đến muộn không còn giá trị.</div></div></div><div class="giai-thich">Nguồn gửi tới nhóm, nên khung hình gửi lại tới mọi máy nhận, kể cả máy đã có; khung hình đến muộn hơn lúc hiển thị cũng vô ích. Máy nhận vẫn gửi được datagram unicast về nguồn, nên B sai.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>Đóng gói khung hình</b>: mỗi khung hình một datagram, đầu là <b>số thứ tự</b> 4 byte; datagram đi trọn trong một gói</div></div><div class="the" data-s="2"><span class="so">2</span><div>Máy nhận so số thứ tự với expected: phát hiện khoảng trống, <b>bỏ khung hình mất</b>; vào giữa chừng thì bắt đầu từ khung hình đầu tiên</div></div><div class="the" data-s="3"><span class="so">3</span><div><b>Không gửi lại</b> trong multicast: gửi lại tới cả nhóm, khung hình đến muộn không còn giá trị</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>số thứ tự</span><span>đóng gói khung hình</span><span>khung hình</span><span>nhóm multicast</span></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>RTP và RTCP cho truyền media thời gian thực</li><li>Forward error correction</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Thêm thống kê tỉ lệ mất gói mỗi 5 giây ở máy nhận và cảnh báo khi vượt 10%.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">WebSocket: nâng cấp từ HTTP và giao tiếp hai chiều</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Multicast gửi được một datagram tới cả nhóm máy nhận, nhưng truyền video theo nhóm đòi hỏi nhiều hơn: dữ liệu đến liên tục, một số datagram bị mất, và có máy nhận tham gia khi đang phát. Nguồn phát và máy nhận phải làm gì để video vẫn chạy trong những điều kiện đó?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:18</span>
+      <h3>Slide 1. Video multicast: khung hình đến liên tục, có thể mất, máy nhận vào giữa chừng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Video là chuỗi **khung hình** liên tục, ví dụ 10 khung hình mỗi giây, tới nhiều máy nhận</li><li>UDP có thể **mất** hoặc **đảo thứ tự** datagram, và không báo</li><li>Máy nhận có thể **tham gia nhóm khi nguồn đang phát**</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Bài toán:** đóng gói khung hình thế nào để máy nhận phát hiện được khung hình mất, và vẫn chạy tiếp khi mất?</div></div>
+    <div class="kb-thoai"><p>Phần này đưa multicast vào một bài toán ứng dụng: một nguồn phát video tới nhiều máy nhận trong mạng cục bộ. Video là chuỗi khung hình, hay video frame, tức các ảnh liên tiếp, và ví dụ của phần phát 10 khung hình mỗi giây. Dòng dữ liệu này kéo dài, khác với năm datagram tick ở phần trước, nên UDP có thể làm mất hoặc đảo thứ tự datagram bất cứ lúc nào, và mạng không báo gì khi điều đó xảy ra. Thêm vào đó, một máy nhận có thể tham gia nhóm khi nguồn đã phát được một lúc. Bài toán đặt ra là: đóng gói khung hình thế nào để máy nhận phát hiện được khung hình mất, và vẫn chạy tiếp khi mất?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung bài toán hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Phần này đưa multicast”; bước 2 khi đọc “Dòng dữ liệu này kéo dài”; bước 3 khi đọc “Thêm vào đó”; bước 4 khi đọc “Bài toán đặt ra”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:55</span>
+      <h3>Slide 2. Mỗi khung hình thành một datagram, đứng đầu là số thứ tự 4 byte</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Đóng gói khung hình**: mỗi khung hình một datagram, gồm **số thứ tự** 4 byte và dữ liệu; datagram đủ nhỏ để đi trọn trong một gói.</li></ul></div></div>
+    <div class="kb-thoai"><p>Cách đóng gói của ví dụ chỉ có một quy tắc. Ở nguồn, mỗi khung hình là 1 000 byte dữ liệu. Mỗi khung hình thành một datagram, đứng đầu là số thứ tự, hay sequence number, dài 4 byte và tăng dần từ 1. Máy nhận dùng số này để biết khung hình nào đã mất, và datagram vì thế dài 1 004 byte. Trên đường truyền, header IP và header UDP bọc thêm 28 byte, thành 1 032 byte, vẫn nhỏ hơn 1 500 byte là kích thước gói lớn nhất của Ethernet và Wi-Fi. Như vậy, mỗi khung hình đi trọn trong một gói, không bị chia nhỏ, nên mất một gói chỉ làm mất đúng một khung hình.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình dong-goi: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Ở nguồn”; bước 2 khi đọc “Mỗi khung hình thành một datagram”; bước 3 khi đọc “Trên đường truyền”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:36</span>
+      <h3>Slide 3. Máy nhận so số thứ tự: có khoảng trống thì bỏ qua và chạy tiếp</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>Máy nhận so **số thứ tự** với expected: lớn hơn là có khoảng trống, bỏ qua và chạy tiếp; khung hình đầu tiên nhận được là điểm bắt đầu.</li></ul></div></div>
+    <div class="kb-thoai"><p>Phía máy nhận dựa hoàn toàn vào số thứ tự. Máy nhận giữ một biến expected, là số thứ tự của khung hình chờ nhận tiếp theo: sau khung hình 3, biến expected bằng 4. Khi khung hình 6 đến trong lúc expected vẫn là 4, máy nhận biết hai khung hình 4 và 5 đã mất. Máy nhận không chờ hai khung hình đó, mà hiển thị khung hình 6 và đặt expected bằng 7. Hình còn một trường hợp nữa. Máy nhận r3 tham gia nhóm sau 5 giây, nên khung hình đầu tiên r3 nhận được là 53. Đó là điểm bắt đầu của r3, và các khung hình phát trước khi tham gia không tính là mất. Cả cơ chế chỉ là so hai số rồi đi tiếp, nên máy nhận không bao giờ bị chặn vì một khung hình đã mất.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình may-nhan: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Máy nhận giữ một biến expected”; bước 2 khi đọc “Khi khung hình 6 đến”; bước 3 khi đọc “Máy nhận r3”; bước 4 khi đọc “Cả cơ chế”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:22</span>
+      <h3>Slide 4. Nguồn ghi số thứ tự và khung hình vào một ByteBuffer, phát đều 10 khung hình mỗi giây</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/video/VideoSender.java</span><pre><code>for (int seq = 1; seq &lt;= 100; seq++) {
+    ByteBuffer buf = ByteBuffer.allocate(4 + FRAME_BYTES);
+    buf.putInt(seq);              // số thứ tự 4 byte, big-endian
+    buf.put(frame(seq));          // dữ liệu khung hình
+    socket.send(new DatagramPacket(buf.array(), buf.position(), group, PORT));
+    long next = start + seq * 100_000_000L;  // 10 khung hình mỗi giây</code></pre></div></div>
+    <div class="kb-thoai"><p>Mã nguồn phát dùng lại MulticastSocket và TTL 1 của phần trước; phần mới nằm ở cách đóng gói. Với mỗi khung hình, nguồn cấp một ByteBuffer 1 004 byte, ghi số thứ tự bằng phương thức putInt theo thứ tự big-endian, rồi ghi dữ liệu khung hình bằng phương thức put. Datagram gửi đi lấy đúng phần đã ghi của buffer. Để giữ nhịp đều, mình tính thời điểm gửi từ lúc bắt đầu: khung hình thứ n gửi ở mốc n lần 100 mili giây, nên nguồn giữ đúng 10 khung hình mỗi giây dù mỗi lần gửi tốn thời gian khác nhau. Nguồn in một dòng log sau mỗi 20 khung hình, và mỗi dòng cho thấy datagram dài 1 004 byte.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, log của nguồn phía dưới. Highlight dòng putInt, dòng put theo lời đọc.
+Hiện dần: bước 1 khi đọc “Nguồn in một dòng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:09</span>
+      <h3>Slide 5. Máy nhận đếm khoảng trống theo số thứ tự, khung hình đến muộn bị bỏ</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/video/VideoReceiver.java</span><pre><code>int seq = ByteBuffer.wrap(p.getData(), 0, 4).getInt();
+if (expected == -1) {
+} else if (seq &gt; expected) {
+    lost += seq - expected;
+} else if (seq &lt; expected) {
+    System.out.printf(&quot;%s: late frame %d, dropped%n&quot;, name, seq);  // đến muộn: không còn giá trị
+expected = seq + 1;</code></pre></div></div>
+    <div class="kb-thoai"><p>Mình chạy ba máy nhận cùng lúc: r1 nhận từ đầu, r2 cũng nhận từ đầu nhưng mô phỏng mất gói, và r3 vào sau 5 giây. Mỗi máy nhận đọc lại số thứ tự từ 4 byte đầu của datagram, cũng bằng ByteBuffer, rồi so với giá trị expected. Lớn hơn expected nghĩa là có khoảng trống, và hiệu giữa hai số là số khung hình mất; nhỏ hơn expected là khung hình đến muộn, bị bỏ. Sau mỗi khung hình hợp lệ, máy nhận đặt expected bằng số thứ tự vừa nhận cộng một. Mạng cục bộ hiếm khi mất gói, nên r2 tự bỏ ngẫu nhiên 5% datagram đã nhận, như thể chúng không tới. Máy nhận r2 phát hiện sáu khoảng trống, tổng cộng 7 khung hình mất, và vẫn hiển thị 93 khung hình còn lại.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả của r2 phía dưới. Ghi chú nhỏ dưới kết quả: &quot;r2: mất gói mô phỏng 5%&quot;.
+Hiện dần: bước 1 khi đọc “Máy nhận r2 phát hiện”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:03</span>
+      <h3>Slide 6. Máy nhận vào khi đang phát bắt đầu từ khung hình đầu tiên nhận được</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/video/VideoReceiver.java</span><pre><code>socket.setSoTimeout(10_000);  // chờ nguồn tối đa 10 giây; sau khung hình đầu: 2 giây
+if (expected == -1) {
+    System.out.printf(&quot;%s: first frame %d%n&quot;, name, seq);  // tham gia khi đang phát: bắt đầu từ đây
+    socket.setSoTimeout(2_000);</code></pre></div></div>
+    <div class="kb-thoai"><p>Với r3, ở lần nhận đầu tiên biến expected còn giữ giá trị khởi tạo âm một, nên r3 chỉ ghi lại khung hình đầu tiên làm điểm bắt đầu, không coi các khung hình trước đó là mất. Từ khung hình đó, máy nhận rút read timeout xuống 2 giây: nguồn ngừng phát quá 2 giây thì máy nhận in thống kê rồi kết thúc. Kết quả: r3 bắt đầu từ khung hình 53 và nhận đủ 48 khung hình còn lại, không mất khung hình nào. Còn r1, chạy từ đầu và không mô phỏng mất gói, nhận đủ cả 100 khung hình.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả của r3 phía dưới. Có thể đặt kết quả r1 (results/VideoReceiver-r1.txt) cạnh r3.
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:43</span>
+      <h3>Slide 7. Multicast không gửi lại khung hình mất: bỏ qua và chạy tiếp</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Gửi lại cũng là gửi tới **cả nhóm**: mọi máy nhận khác nhận thêm dữ liệu thừa</li><li>Khung hình **đến muộn** hơn lúc cần hiển thị thì không còn giá trị</li><li>Muốn giảm ảnh hưởng của mất gói: nguồn gửi kèm **dữ liệu dự phòng**, không gửi lại</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Nguyên tắc:** máy nhận video multicast bỏ khung hình mất và chạy tiếp.</div></div>
+    <div class="kb-thoai"><p>Máy nhận đã phát hiện được khung hình mất, vậy tại sao không yêu cầu nguồn gửi lại? Với multicast, nguồn chỉ gửi tới nhóm, nên một khung hình gửi lại cho r2 cũng tới r1, r3 và mọi máy nhận khác, dù các máy đó đã có khung hình này. Khi nhóm lớn và mỗi máy mất một ít, các yêu cầu gửi lại cộng dồn làm cả nhóm nhận thêm nhiều dữ liệu thừa. Ngoài ra, với video, một khung hình đến muộn hơn lúc cần hiển thị không còn giá trị. Khi cần giảm ảnh hưởng của mất gói, nguồn gửi kèm dữ liệu dự phòng để máy nhận tự khôi phục, thay vì gửi lại. Vì vậy, máy nhận video multicast bỏ khung hình mất và chạy tiếp.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung nguyên tắc hiện cuối.
+Hiện dần: bước 1 khi đọc “Với multicast, nguồn chỉ gửi tới nhóm”; bước 2 khi đọc “Ngoài ra, với video”; bước 3 khi đọc “Khi cần giảm”; bước 4 khi đọc “Vì vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:23</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Để kiểm tra cách đếm khoảng trống, các bạn tính thử một trường hợp.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Máy nhận vừa hiển thị khung hình 41; datagram tiếp theo nhận được mang số thứ tự 44. Đã mất bao nhiêu khung hình?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> 3 khung hình.</li>
+      <li><b>B.</b> 2 khung hình: 42 và 43.</li>
+      <li><b>C.</b> 1 khung hình.</li>
+      <li><b>D.</b> Không xác định được, vì UDP không đánh số datagram.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: B</b> — <span>Sau khung hình 41, expected bằng 42. Khung hình 44 đến nên số khung hình mất là 44 − 42 = 2, gồm 42 và 43. Lấy 44 − 41 là đếm cả khung hình 44 vừa nhận. UDP không đánh số, nhưng giao thức của ứng dụng đã thêm số thứ tự.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là B. Phương án A lấy 44 trừ 41, nhưng hiệu đó đếm cả khung hình 44 vừa nhận. Số khung hình mất là 44 trừ expected, tức 44 trừ 42, bằng 2. Phương án D đúng ở chỗ UDP không đánh số, nhưng số thứ tự ở đây do ứng dụng tự thêm.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án B được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:53</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu cuối hỏi lại lý do của quyết định không gửi lại khung hình mất.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Vì sao máy nhận video multicast không yêu cầu nguồn gửi lại khung hình mất?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Vì MulticastSocket không gửi được datagram unicast.</li>
+      <li><b>B.</b> Vì UDP không cho máy nhận gửi datagram ngược về nguồn.</li>
+      <li><b>C.</b> Vì số thứ tự 4 byte không đủ để đánh số khung hình gửi lại.</li>
+      <li><b>D.</b> Vì khung hình gửi lại tới cả nhóm, làm các máy nhận khác nhận thêm dữ liệu thừa, và khung hình đến muộn không còn giá trị.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: D</b> — <span>Nguồn gửi tới nhóm, nên khung hình gửi lại tới mọi máy nhận, kể cả máy đã có; khung hình đến muộn hơn lúc hiển thị cũng vô ích. Máy nhận vẫn gửi được datagram unicast về nguồn, nên B sai.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là D. Phương án B sai: máy nhận vẫn gửi được datagram unicast về endpoint của nguồn. Vấn đề nằm ở chính khung hình gửi lại: nguồn gửi tới nhóm, nên mọi máy nhận đều nhận thêm, trong khi khung hình đến muộn đã hết giá trị.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án D.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:19</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**Đóng gói khung hình**: mỗi khung hình một datagram, đầu là **số thứ tự** 4 byte; datagram đi trọn trong một gói</li><li>Máy nhận so số thứ tự với expected: phát hiện khoảng trống, **bỏ khung hình mất**; vào giữa chừng thì bắt đầu từ khung hình đầu tiên</li><li>**Không gửi lại** trong multicast: gửi lại tới cả nhóm, khung hình đến muộn không còn giá trị</li></ul></div>
+    <div class="kb-thoai"><p>Bài toán truyền video được giải bằng một quyết định đóng gói: mỗi khung hình thành một datagram, đứng đầu là số thứ tự 4 byte, và datagram đủ nhỏ để đi trọn trong một gói. Máy nhận so số thứ tự với expected để phát hiện khoảng trống, bỏ khung hình mất và chạy tiếp; máy nhận vào giữa chừng lấy khung hình đầu tiên nhận được làm điểm bắt đầu. Multicast không gửi lại, vì gửi lại cũng tới cả nhóm, và khung hình đến muộn không còn giá trị. Từ bài toán này, các bạn giữ lại bốn từ khóa: số thứ tự, đóng gói khung hình, khung hình và nhóm multicast.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “Bài toán truyền video”; bước 2 khi đọc “Máy nhận so”; bước 3 khi đọc “Multicast không gửi lại”; bước 4 khi đọc “Từ bài toán này”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:53</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Ứng dụng media thật dùng RTP, giao thức đặt số thứ tự và mốc thời gian vào header của mỗi gói, cùng RTCP để máy nhận báo tỉ lệ mất gói về nguồn. Muốn giảm ảnh hưởng của mất gói mà không gửi lại, các bạn có thể tìm hiểu kỹ thuật sửa lỗi trước, hay forward error correction. Bài tập mở rộng là thêm thống kê tỉ lệ mất gói mỗi 5 giây ở máy nhận, và cảnh báo khi tỉ lệ vượt 10%.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Ứng dụng media thật”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-12" data-index="12">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:17</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(12)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(12, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Multicast thường chỉ dùng được trong mạng của một tổ chức, và chương trình chạy trong trình duyệt không mở được socket UDP. Nhóm tiếp theo chuyển sang web, bắt đầu với WebSocket: nâng cấp từ HTTP và giao tiếp hai chiều.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V17", "tieu_de": "Bài toán ứng dụng: truyền video theo nhóm multicast", "giong": "vi-VN-NamMinhNeural", "tong": 452.03, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/0ce9519e2189f19f.mp3", "dur": 18.14, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Multicast", 1], [2.65, "gửi", 1], [2.812, "được", 1], [2.987, "một", 1], [3.175, "datagram", 1], [3.837, "tới", 1], [4.05, "cả", 1], [4.2, "nhóm", 1], [4.463, "máy", 1], [4.625, "nhận,", 1], [5.188, "nhưng", 1], [5.487, "truyền", 1], [5.725, "video", 1], [6.162, "theo", 1], [6.35, "nhóm", 1], [6.662, "đòi", 1], [6.812, "hỏi", 1], [7.013, "nhiều", 1], [7.225, "hơn:", 1], [7.725, "dữ", 1], [7.925, "liệu", 1], [8.15, "đến", 1], [8.375, "liên", 1], [8.537, "tục,", 1], [9.012, "một", 1], [9.213, "số", 1], [9.463, "datagram", 1], [10.1, "bị", 1], [10.25, "mất,", 1], [10.725, "và", 1], [11.0, "có", 1], [11.113, "máy", 1], [11.275, "nhận", 1], [11.512, "tham", 1], [11.738, "gia", 1], [11.95, "khi", 1], [12.113, "đang", 1], [12.287, "phát.", 1], [13.4, "Nguồn", 2], [13.675, "phát", 2], [13.938, "và", 2], [14.075, "máy", 2], [14.262, "nhận", 2], [14.512, "phải", 2], [14.637, "làm", 2], [14.838, "gì", 2], [15.062, "để", 2], [15.225, "video", 2], [15.75, "vẫn", 2], [15.975, "chạy", 2], [16.238, "trong", 2], [16.4, "những", 2], [16.613, "điều", 2], [16.738, "kiện", 2], [16.988, "đó?", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Video multicast: khung hình đến liên tục, có thể mất, máy nhận vào giữa chừng", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung bài toán hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Phần này đưa multicast”; bước 2 khi đọc “Dòng dữ liệu này kéo dài”; bước 3 khi đọc “Thêm vào đó”; bước 4 khi đọc “Bài toán đặt ra”.", "start": 18.74, "audio": "audio/fdb2203ce9123fe6.mp3", "dur": 36.02, "words": [[0.1, "Phần", 0], [0.362, "này", 0], [0.562, "đưa", 0], [0.75, "multicast", 0], [1.387, "vào", 0], [1.525, "một", 0], [1.7, "bài", 0], [1.875, "toán", 0], [2.15, "ứng", 0], [2.3, "dụng:", 0], [2.825, "một", 0], [3.062, "nguồn", 0], [3.263, "phát", 0], [3.475, "video", 0], [3.975, "tới", 0], [4.162, "nhiều", 0], [4.4, "máy", 0], [4.588, "nhận", 0], [4.862, "trong", 0], [5.05, "mạng", 0], [5.275, "cục", 0], [5.45, "bộ.", 0], [6.6, "Video", 1], [7.213, "là", 1], [7.362, "chuỗi", 1], [7.562, "khung", 1], [7.775, "hình,", 1], [8.238, "hay", 1], [8.463, "video", 1], [8.887, "frame,", 1], [9.488, "tức", 1], [9.7, "các", 1], [9.938, "ảnh", 1], [10.162, "liên", 1], [10.375, "tiếp,", 1], [10.875, "và", 1], [11.088, "ví", 1], [11.262, "dụ", 1], [11.475, "của", 1], [11.625, "phần", 1], [11.85, "phát", 1], [12.075, "10", 1], [12.262, "khung", 1], [12.475, "hình", 1], [12.637, "mỗi", 1], [12.838, "giây.", 1], [13.963, "Dòng", 2], [14.25, "dữ", 2], [14.4, "liệu", 2], [14.6, "này", 2], [14.75, "kéo", 2], [14.975, "dài,", 2], [15.475, "khác", 2], [15.738, "với", 2], [15.838, "năm", 2], [16.087, "datagram", 2], [16.712, "tick", 2], [16.988, "ở", 2], [17.087, "phần", 2], [17.312, "trước,", 2], [17.812, "nên", 2], [18.2, "UDP", 2], [18.587, "có", 2], [18.712, "thể", 2], [18.863, "làm", 2], [19.075, "mất", 2], [19.275, "hoặc", 2], [19.488, "đảo", 2], [19.675, "thứ", 2], [19.85, "tự", 2], [20.087, "datagram", 2], [20.762, "bất", 2], [20.938, "cứ", 2], [21.15, "lúc", 2], [21.35, "nào,", 2], [21.8, "và", 2], [21.975, "mạng", 2], [22.225, "không", 2], [22.413, "báo", 2], [22.575, "gì", 2], [22.788, "khi", 2], [22.962, "điều", 2], [23.113, "đó", 2], [23.312, "xảy", 2], [23.538, "ra.", 2], [24.65, "Thêm", 3], [24.938, "vào", 3], [25.087, "đó,", 3], [25.6, "một", 3], [25.825, "máy", 3], [26.0, "nhận", 3], [26.25, "có", 3], [26.363, "thể", 3], [26.525, "tham", 3], [26.762, "gia", 3], [26.95, "nhóm", 3], [27.262, "khi", 3], [27.45, "nguồn", 3], [27.725, "đã", 3], [27.837, "phát", 3], [28.05, "được", 3], [28.212, "một", 3], [28.387, "lúc.", 3], [29.45, "Bài", 4], [29.688, "toán", 4], [29.938, "đặt", 4], [30.1, "ra", 4], [30.288, "là:", 4], [30.775, "đóng", 4], [31.012, "gói", 4], [31.188, "khung", 4], [31.413, "hình", 4], [31.6, "thế", 4], [31.738, "nào", 4], [31.988, "để", 4], [32.087, "máy", 4], [32.275, "nhận", 4], [32.513, "phát", 4], [32.675, "hiện", 4], [32.913, "được", 4], [33.05, "khung", 4], [33.263, "hình", 4], [33.438, "mất,", 4], [33.875, "và", 4], [34.138, "vẫn", 4], [34.35, "chạy", 4], [34.55, "tiếp", 4], [34.763, "khi", 4], [34.925, "mất?", 4]], "cues": [0.1, 13.963, 24.65, 29.45], "lang": 0.6}, {"ten": "Slide 2. Mỗi khung hình thành một datagram, đứng đầu là số thứ tự 4 byte", "loai": "slide", "slide": "S02", "dung": "Hình dong-goi: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Ở nguồn”; bước 2 khi đọc “Mỗi khung hình thành một datagram”; bước 3 khi đọc “Trên đường truyền”; bước 4 khi đọc “Như vậy”.", "start": 55.36, "audio": "audio/c6881808b0b5a38f.mp3", "dur": 38.64, "words": [[0.1, "Cách", 0], [0.325, "đóng", 0], [0.6, "gói", 0], [0.863, "của", 0], [1.025, "ví", 0], [1.212, "dụ", 0], [1.462, "chỉ", 0], [1.675, "có", 0], [1.788, "một", 0], [2.025, "quy", 0], [2.2, "tắc.", 0], [3.3, "Ở", 1], [3.475, "nguồn,", 1], [4.025, "mỗi", 1], [4.25, "khung", 1], [4.475, "hình", 1], [4.75, "là", 1], [4.9, "1", 1], [5.112, "000", 1], [5.812, "byte", 1], [5.987, "dữ", 1], [6.2, "liệu.", 1], [7.375, "Mỗi", 2], [7.75, "khung", 2], [7.987, "hình", 2], [8.15, "thành", 2], [8.325, "một", 2], [8.5, "datagram,", 2], [9.425, "đứng", 2], [9.65, "đầu", 2], [9.85, "là", 2], [9.975, "số", 2], [10.2, "thứ", 2], [10.35, "tự,", 2], [10.925, "hay", 2], [11.137, "sequence", 2], [11.588, "number,", 2], [12.238, "dài", 2], [12.512, "4", 2], [12.787, "byte", 2], [13.0, "và", 2], [13.15, "tăng", 2], [13.387, "dần", 2], [13.613, "từ", 2], [13.787, "1.", 2], [14.875, "Máy", 3], [15.213, "nhận", 3], [15.463, "dùng", 3], [15.637, "số", 3], [15.838, "này", 3], [16.075, "để", 3], [16.175, "biết", 3], [16.375, "khung", 3], [16.6, "hình", 3], [16.775, "nào", 3], [16.962, "đã", 3], [17.1, "mất,", 3], [17.6, "và", 3], [17.9, "datagram", 3], [18.675, "vì", 3], [18.825, "thế", 3], [18.975, "dài", 3], [19.2, "1", 3], [19.413, "004", 3], [20.05, "byte.", 3], [21.188, "Trên", 4], [21.475, "đường", 4], [21.65, "truyền,", 4], [22.125, "header", 4], [22.587, "IP", 4], [23.05, "và", 4], [23.2, "header", 4], [23.681, "UDP", 4], [24.163, "bọc", 4], [24.363, "thêm", 4], [24.65, "28", 4], [25.2, "byte,", 4], [25.7, "thành", 4], [25.875, "1", 4], [26.025, "032", 4], [26.538, "byte,", 4], [27.012, "vẫn", 4], [27.225, "nhỏ", 4], [27.488, "hơn", 4], [27.7, "1", 4], [27.863, "500", 4], [28.262, "byte", 4], [28.45, "là", 4], [28.538, "kích", 4], [28.738, "thước", 4], [28.925, "gói", 4], [29.113, "lớn", 4], [29.337, "nhất", 4], [29.525, "của", 4], [29.812, "Ethernet", 4], [30.238, "và", 4], [30.387, "Wi-Fi.", 4], [31.7, "Như", 5], [31.938, "vậy,", 5], [32.4, "mỗi", 5], [32.612, "khung", 5], [32.837, "hình", 5], [33.013, "đi", 5], [33.138, "trọn", 5], [33.425, "trong", 5], [33.575, "một", 5], [33.725, "gói,", 5], [34.275, "không", 5], [34.525, "bị", 5], [34.675, "chia", 5], [34.888, "nhỏ,", 5], [35.525, "nên", 5], [35.788, "mất", 5], [35.975, "một", 5], [36.138, "gói", 5], [36.337, "chỉ", 5], [36.5, "làm", 5], [36.725, "mất", 5], [36.925, "đúng", 5], [37.175, "một", 5], [37.325, "khung", 5], [37.538, "hình.", 5]], "cues": [3.3, 7.375, 21.188, 31.7], "lang": 2.6}, {"ten": "Slide 3. Máy nhận so số thứ tự: có khoảng trống thì bỏ qua và chạy tiếp", "loai": "slide", "slide": "S03", "dung": "Hình may-nhan: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Máy nhận giữ một biến expected”; bước 2 khi đọc “Khi khung hình 6 đến”; bước 3 khi đọc “Máy nhận r3”; bước 4 khi đọc “Cả cơ chế”.", "start": 96.6, "audio": "audio/1385f8baf4ea016e.mp3", "dur": 42.91, "words": [[0.1, "Phía", 0], [0.35, "máy", 0], [0.637, "nhận", 0], [0.912, "dựa", 0], [1.1, "hoàn", 0], [1.363, "toàn", 0], [1.65, "vào", 0], [1.8, "số", 0], [2.038, "thứ", 0], [2.2, "tự.", 0], [3.388, "Máy", 1], [3.737, "nhận", 1], [4.0, "giữ", 1], [4.15, "một", 1], [4.338, "biến", 1], [4.65, "expected,", 1], [5.263, "là", 1], [5.463, "số", 1], [5.65, "thứ", 1], [5.787, "tự", 1], [6.013, "của", 1], [6.175, "khung", 1], [6.375, "hình", 1], [6.575, "chờ", 1], [6.763, "nhận", 1], [7.0, "tiếp", 1], [7.188, "theo:", 1], [7.713, "sau", 1], [7.95, "khung", 1], [8.15, "hình", 1], [8.338, "3,", 1], [8.838, "biến", 1], [9.162, "expected", 1], [9.575, "bằng", 1], [9.812, "4.", 1], [11.0, "Khi", 2], [11.238, "khung", 2], [11.463, "hình", 2], [11.625, "6", 2], [11.912, "đến", 2], [12.125, "trong", 2], [12.325, "lúc", 2], [12.55, "expected", 2], [12.887, "vẫn", 2], [13.1, "là", 2], [13.2, "4,", 2], [13.738, "máy", 2], [13.938, "nhận", 2], [14.175, "biết", 2], [14.35, "hai", 2], [14.575, "khung", 2], [14.787, "hình", 2], [14.975, "4", 2], [15.275, "và", 2], [15.412, "5", 2], [15.662, "đã", 2], [15.825, "mất.", 2], [16.9, "Máy", 3], [17.262, "nhận", 3], [17.525, "không", 3], [17.762, "chờ", 3], [17.975, "hai", 3], [18.137, "khung", 3], [18.337, "hình", 3], [18.512, "đó,", 3], [19.012, "mà", 3], [19.212, "hiển", 3], [19.413, "thị", 3], [19.613, "khung", 3], [19.837, "hình", 3], [20.012, "6", 3], [20.363, "và", 3], [20.5, "đặt", 3], [20.75, "expected", 3], [21.113, "bằng", 3], [21.337, "7.", 3], [22.562, "Hình", 4], [22.875, "còn", 4], [23.075, "một", 4], [23.25, "trường", 4], [23.5, "hợp", 4], [23.725, "nữa.", 4], [24.938, "Máy", 5], [25.3, "nhận", 5], [25.65, "r3", 5], [26.163, "tham", 5], [26.387, "gia", 5], [26.55, "nhóm", 5], [26.863, "sau", 5], [27.062, "5", 5], [27.238, "giây,", 5], [27.762, "nên", 5], [28.062, "khung", 5], [28.288, "hình", 5], [28.425, "đầu", 5], [28.575, "tiên", 5], [28.938, "r3", 5], [29.4, "nhận", 5], [29.675, "được", 5], [29.837, "là", 5], [30.025, "53.", 5], [31.438, "Đó", 6], [31.663, "là", 6], [31.762, "điểm", 6], [31.975, "bắt", 6], [32.138, "đầu", 6], [32.362, "của", 6], [32.625, "r3,", 6], [33.462, "và", 6], [33.712, "các", 6], [33.862, "khung", 6], [34.062, "hình", 6], [34.237, "phát", 6], [34.462, "trước", 6], [34.612, "khi", 6], [34.75, "tham", 6], [34.962, "gia", 6], [35.163, "không", 6], [35.413, "tính", 6], [35.638, "là", 6], [35.737, "mất.", 6], [36.825, "Cả", 7], [37.025, "cơ", 7], [37.2, "chế", 7], [37.45, "chỉ", 7], [37.638, "là", 7], [37.788, "so", 7], [38.013, "hai", 7], [38.188, "số", 7], [38.487, "rồi", 7], [38.638, "đi", 7], [38.775, "tiếp,", 7], [39.3, "nên", 7], [39.525, "máy", 7], [39.7, "nhận", 7], [39.962, "không", 7], [40.175, "bao", 7], [40.3, "giờ", 7], [40.487, "bị", 7], [40.65, "chặn", 7], [40.962, "vì", 7], [41.1, "một", 7], [41.288, "khung", 7], [41.513, "hình", 7], [41.7, "đã", 7], [41.825, "mất.", 7]], "cues": [3.388, 11.0, 24.938, 36.825], "lang": 2.6}, {"ten": "Slide 4. Nguồn ghi số thứ tự và khung hình vào một ByteBuffer, phát đều 10 khung hình mỗi giây", "loai": "slide", "slide": "S04", "dung": "Mã phía trên, log của nguồn phía dưới. Highlight dòng putInt, dòng put theo lời đọc.\nHiện dần: bước 1 khi đọc “Nguồn in một dòng”.", "start": 142.11, "audio": "audio/7b51ff0831544090.mp3", "dur": 37.73, "words": [[0.1, "Mã", 0], [0.45, "nguồn", 0], [0.662, "phát", 0], [0.875, "dùng", 0], [1.1, "lại", 0], [1.3, "MulticastSocket", 0], [2.325, "và", 0], [2.744, "TTL", 0], [3.163, "1", 0], [3.388, "của", 0], [3.525, "phần", 0], [3.737, "trước;", 0], [4.213, "phần", 0], [4.438, "mới", 0], [4.65, "nằm", 0], [4.925, "ở", 0], [5.013, "cách", 0], [5.213, "đóng", 0], [5.438, "gói.", 0], [6.65, "Với", 1], [6.9, "mỗi", 1], [7.1, "khung", 1], [7.312, "hình,", 1], [7.763, "nguồn", 1], [7.987, "cấp", 1], [8.188, "một", 1], [8.363, "ByteBuffer", 1], [9.025, "1", 1], [9.225, "004", 1], [9.825, "byte,", 1], [10.325, "ghi", 1], [10.537, "số", 1], [10.762, "thứ", 1], [10.912, "tự", 1], [11.137, "bằng", 1], [11.338, "phương", 1], [11.537, "thức", 1], [11.713, "putInt", 1], [12.162, "theo", 1], [12.312, "thứ", 1], [12.5, "tự", 1], [12.713, "big-endian,", 1], [13.675, "rồi", 1], [13.925, "ghi", 1], [14.113, "dữ", 1], [14.3, "liệu", 1], [14.525, "khung", 1], [14.75, "hình", 1], [14.963, "bằng", 1], [15.15, "phương", 1], [15.375, "thức", 1], [15.525, "put.", 1], [16.637, "Datagram", 2], [17.413, "gửi", 2], [17.613, "đi", 2], [17.75, "lấy", 2], [17.938, "đúng", 2], [18.137, "phần", 2], [18.387, "đã", 2], [18.525, "ghi", 2], [18.738, "của", 2], [18.95, "buffer.", 2], [20.3, "Để", 3], [20.538, "giữ", 3], [20.738, "nhịp", 3], [20.988, "đều,", 3], [21.438, "mình", 3], [21.65, "tính", 3], [21.85, "thời", 3], [21.988, "điểm", 3], [22.212, "gửi", 3], [22.438, "từ", 3], [22.587, "lúc", 3], [22.775, "bắt", 3], [22.938, "đầu:", 3], [23.387, "khung", 3], [23.625, "hình", 3], [23.775, "thứ", 3], [23.962, "n", 3], [24.4, "gửi", 3], [24.663, "ở", 3], [24.775, "mốc", 3], [25.0, "n", 3], [25.375, "lần", 3], [25.613, "100", 3], [26.0, "mili", 3], [26.262, "giây,", 3], [26.8, "nên", 3], [27.075, "nguồn", 3], [27.312, "giữ", 3], [27.488, "đúng", 3], [27.688, "10", 3], [27.875, "khung", 3], [28.087, "hình", 3], [28.238, "mỗi", 3], [28.413, "giây", 3], [28.613, "dù", 3], [28.8, "mỗi", 3], [28.988, "lần", 3], [29.225, "gửi", 3], [29.375, "tốn", 3], [29.637, "thời", 3], [29.775, "gian", 3], [29.988, "khác", 3], [30.2, "nhau.", 3], [31.337, "Nguồn", 4], [31.65, "in", 4], [31.825, "một", 4], [31.975, "dòng", 4], [32.212, "log", 4], [32.438, "sau", 4], [32.663, "mỗi", 4], [32.9, "20", 4], [33.15, "khung", 4], [33.362, "hình,", 4], [33.8, "và", 4], [33.975, "mỗi", 4], [34.175, "dòng", 4], [34.4, "cho", 4], [34.525, "thấy", 4], [34.763, "datagram", 4], [35.487, "dài", 4], [35.725, "1", 4], [35.95, "004", 4], [36.6, "byte.", 4]], "cues": [31.337], "lang": 9.6}, {"ten": "Slide 5. Máy nhận đếm khoảng trống theo số thứ tự, khung hình đến muộn bị bỏ", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, kết quả của r2 phía dưới. Ghi chú nhỏ dưới kết quả: \"r2: mất gói mô phỏng 5%\".\nHiện dần: bước 1 khi đọc “Máy nhận r2 phát hiện”.", "start": 189.44, "audio": "audio/3f7e4a57966bb95e.mp3", "dur": 44.83, "words": [[0.1, "Mình", 0], [0.487, "chạy", 0], [0.688, "ba", 0], [0.863, "máy", 0], [1.05, "nhận", 0], [1.288, "cùng", 0], [1.512, "lúc:", 0], [1.95, "r1", 0], [2.5, "nhận", 0], [2.763, "từ", 0], [2.938, "đầu,", 0], [3.4, "r2", 0], [4.013, "cũng", 0], [4.188, "nhận", 0], [4.412, "từ", 0], [4.588, "đầu", 0], [4.825, "nhưng", 0], [5.037, "mô", 0], [5.237, "phỏng", 0], [5.475, "mất", 0], [5.625, "gói,", 0], [6.225, "và", 0], [6.5, "r3", 0], [7.088, "vào", 0], [7.263, "sau", 0], [7.487, "5", 0], [7.688, "giây.", 0], [8.812, "Mỗi", 1], [9.175, "máy", 1], [9.387, "nhận", 1], [9.6, "đọc", 1], [9.75, "lại", 1], [9.912, "số", 1], [10.125, "thứ", 1], [10.287, "tự", 1], [10.525, "từ", 1], [10.725, "4", 1], [10.975, "byte", 1], [11.113, "đầu", 1], [11.325, "của", 1], [11.5, "datagram,", 1], [12.425, "cũng", 1], [12.637, "bằng", 1], [12.85, "ByteBuffer,", 1], [13.775, "rồi", 1], [14.062, "so", 1], [14.3, "với", 1], [14.425, "giá", 1], [14.613, "trị", 1], [14.9, "expected.", 1], [16.163, "Lớn", 2], [16.5, "hơn", 2], [16.75, "expected", 2], [17.188, "nghĩa", 2], [17.363, "là", 2], [17.488, "có", 2], [17.625, "khoảng", 2], [17.875, "trống,", 2], [18.363, "và", 2], [18.55, "hiệu", 2], [18.762, "giữa", 2], [18.975, "hai", 2], [19.15, "số", 2], [19.425, "là", 2], [19.575, "số", 2], [19.788, "khung", 2], [19.988, "hình", 2], [20.163, "mất;", 2], [20.65, "nhỏ", 2], [20.925, "hơn", 2], [21.212, "expected", 2], [21.663, "là", 2], [21.887, "khung", 2], [22.1, "hình", 2], [22.288, "đến", 2], [22.475, "muộn,", 2], [22.95, "bị", 2], [23.163, "bỏ.", 2], [24.425, "Sau", 3], [24.738, "mỗi", 3], [24.975, "khung", 3], [25.2, "hình", 3], [25.363, "hợp", 3], [25.538, "lệ,", 3], [26.075, "máy", 3], [26.288, "nhận", 3], [26.562, "đặt", 3], [26.812, "expected", 3], [27.212, "bằng", 3], [27.425, "số", 3], [27.65, "thứ", 3], [27.8, "tự", 3], [28.05, "vừa", 3], [28.238, "nhận", 3], [28.525, "cộng", 3], [28.738, "một.", 3], [29.8, "Mạng", 4], [30.238, "cục", 4], [30.413, "bộ", 4], [30.613, "hiếm", 4], [30.837, "khi", 4], [30.975, "mất", 4], [31.163, "gói,", 4], [31.75, "nên", 4], [32.112, "r2", 4], [32.638, "tự", 4], [32.825, "bỏ", 4], [33.013, "ngẫu", 4], [33.237, "nhiên", 4], [33.55, "5%", 4], [34.175, "datagram", 4], [34.85, "đã", 4], [34.987, "nhận,", 4], [35.5, "như", 4], [35.763, "thể", 4], [35.95, "chúng", 4], [36.188, "không", 4], [36.4, "tới.", 4], [37.587, "Máy", 5], [37.95, "nhận", 5], [38.312, "r2", 5], [38.862, "phát", 5], [39.05, "hiện", 5], [39.263, "sáu", 5], [39.5, "khoảng", 5], [39.763, "trống,", 5], [40.25, "tổng", 5], [40.5, "cộng", 5], [40.712, "7", 5], [40.913, "khung", 5], [41.112, "hình", 5], [41.288, "mất,", 5], [41.725, "và", 5], [41.95, "vẫn", 5], [42.138, "hiển", 5], [42.35, "thị", 5], [42.538, "93", 5], [43.062, "khung", 5], [43.288, "hình", 5], [43.475, "còn", 5], [43.675, "lại.", 5]], "cues": [37.587], "lang": 9.6}, {"ten": "Slide 6. Máy nhận vào khi đang phát bắt đầu từ khung hình đầu tiên nhận được", "loai": "slide", "slide": "S06", "dung": "Mã phía trên, kết quả của r3 phía dưới. Có thể đặt kết quả r1 (results/VideoReceiver-r1.txt) cạnh r3.\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 243.87, "audio": "audio/36ce16c1cd73ca33.mp3", "dur": 30.5, "words": [[0.1, "Với", 0], [0.425, "r3,", 0], [1.275, "ở", 0], [1.425, "lần", 0], [1.6, "nhận", 0], [1.837, "đầu", 0], [2.0, "tiên", 0], [2.237, "biến", 0], [2.5, "expected", 0], [2.9, "còn", 0], [3.125, "giữ", 0], [3.288, "giá", 0], [3.475, "trị", 0], [3.675, "khởi", 0], [3.9, "tạo", 0], [4.162, "âm", 0], [4.3, "một,", 0], [4.775, "nên", 0], [5.138, "r3", 0], [5.662, "chỉ", 0], [5.838, "ghi", 0], [6.0, "lại", 0], [6.2, "khung", 0], [6.412, "hình", 0], [6.575, "đầu", 0], [6.737, "tiên", 0], [7.05, "làm", 0], [7.25, "điểm", 0], [7.45, "bắt", 0], [7.588, "đầu,", 0], [8.025, "không", 0], [8.275, "coi", 0], [8.475, "các", 0], [8.625, "khung", 0], [8.812, "hình", 0], [9.0, "trước", 0], [9.188, "đó", 0], [9.375, "là", 0], [9.488, "mất.", 0], [10.575, "Từ", 1], [10.825, "khung", 1], [11.062, "hình", 1], [11.225, "đó,", 1], [11.713, "máy", 1], [11.9, "nhận", 1], [12.175, "rút", 1], [12.363, "read", 1], [12.562, "timeout", 1], [12.963, "xuống", 1], [13.225, "2", 1], [13.375, "giây:", 1], [13.887, "nguồn", 1], [14.075, "ngừng", 1], [14.275, "phát", 1], [14.463, "quá", 1], [14.625, "2", 1], [14.8, "giây", 1], [15.037, "thì", 1], [15.225, "máy", 1], [15.412, "nhận", 1], [15.675, "in", 1], [15.863, "thống", 1], [16.075, "kê", 1], [16.3, "rồi", 1], [16.538, "kết", 1], [16.75, "thúc.", 1], [17.8, "Kết", 2], [18.012, "quả:", 2], [18.65, "r3", 2], [19.262, "bắt", 2], [19.425, "đầu", 2], [19.65, "từ", 2], [19.812, "khung", 2], [20.025, "hình", 2], [20.212, "53", 2], [20.712, "và", 2], [20.837, "nhận", 2], [21.087, "đủ", 2], [21.3, "48", 2], [21.85, "khung", 2], [22.062, "hình", 2], [22.238, "còn", 2], [22.413, "lại,", 2], [22.925, "không", 2], [23.175, "mất", 2], [23.337, "khung", 2], [23.55, "hình", 2], [23.712, "nào.", 2], [24.825, "Còn", 3], [25.2, "r1,", 3], [25.938, "chạy", 3], [26.163, "từ", 3], [26.35, "đầu", 3], [26.587, "và", 3], [26.712, "không", 3], [26.925, "mô", 3], [27.087, "phỏng", 3], [27.325, "mất", 3], [27.475, "gói,", 3], [28.062, "nhận", 3], [28.35, "đủ", 3], [28.575, "cả", 3], [28.712, "100", 3], [29.175, "khung", 3], [29.413, "hình.", 3]], "cues": [17.8], "lang": 9.6}, {"ten": "Slide 7. Multicast không gửi lại khung hình mất: bỏ qua và chạy tiếp", "loai": "slide", "slide": "S07", "dung": "Ba ý hiện lần lượt, khung nguyên tắc hiện cuối.\nHiện dần: bước 1 khi đọc “Với multicast, nguồn chỉ gửi tới nhóm”; bước 2 khi đọc “Ngoài ra, với video”; bước 3 khi đọc “Khi cần giảm”; bước 4 khi đọc “Vì vậy”.", "start": 283.97, "audio": "audio/21ae986962f24db1.mp3", "dur": 38.76, "words": [[0.1, "Máy", 0], [0.487, "nhận", 0], [0.75, "đã", 0], [0.838, "phát", 0], [1.025, "hiện", 0], [1.262, "được", 0], [1.387, "khung", 0], [1.6, "hình", 0], [1.775, "mất,", 0], [2.225, "vậy", 0], [2.462, "tại", 0], [2.612, "sao", 0], [2.825, "không", 0], [3.05, "yêu", 0], [3.2, "cầu", 0], [3.413, "nguồn", 0], [3.663, "gửi", 0], [3.825, "lại?", 0], [5.025, "Với", 1], [5.312, "multicast,", 1], [6.2, "nguồn", 1], [6.438, "chỉ", 1], [6.6, "gửi", 1], [6.8, "tới", 1], [7.0, "nhóm,", 1], [7.562, "nên", 1], [7.838, "một", 1], [7.987, "khung", 1], [8.175, "hình", 1], [8.363, "gửi", 1], [8.525, "lại", 1], [8.738, "cho", 1], [8.938, "r2", 1], [9.55, "cũng", 1], [9.75, "tới", 1], [9.938, "r1,", 1], [10.775, "r3", 1], [11.4, "và", 1], [11.525, "mọi", 1], [11.725, "máy", 1], [11.912, "nhận", 1], [12.137, "khác,", 1], [12.625, "dù", 1], [12.887, "các", 1], [13.062, "máy", 1], [13.2, "đó", 1], [13.45, "đã", 1], [13.575, "có", 1], [13.7, "khung", 1], [13.912, "hình", 1], [14.075, "này.", 1], [15.15, "Khi", 2], [15.45, "nhóm", 2], [15.762, "lớn", 2], [16.075, "và", 2], [16.188, "mỗi", 2], [16.387, "máy", 2], [16.575, "mất", 2], [16.788, "một", 2], [17.012, "ít,", 2], [17.4, "các", 2], [17.625, "yêu", 2], [17.75, "cầu", 2], [17.988, "gửi", 2], [18.163, "lại", 2], [18.325, "cộng", 2], [18.587, "dồn", 2], [18.863, "làm", 2], [19.087, "cả", 2], [19.238, "nhóm", 2], [19.525, "nhận", 2], [19.75, "thêm", 2], [19.988, "nhiều", 2], [20.2, "dữ", 2], [20.387, "liệu", 2], [20.6, "thừa.", 2], [21.75, "Ngoài", 3], [22.025, "ra,", 3], [22.45, "với", 3], [22.663, "video,", 3], [23.387, "một", 3], [23.6, "khung", 3], [23.85, "hình", 3], [24.038, "đến", 3], [24.212, "muộn", 3], [24.413, "hơn", 3], [24.65, "lúc", 3], [24.8, "cần", 3], [25.012, "hiển", 3], [25.212, "thị", 3], [25.438, "không", 3], [25.663, "còn", 3], [25.887, "giá", 3], [26.05, "trị.", 3], [27.225, "Khi", 4], [27.5, "cần", 4], [27.738, "giảm", 4], [27.962, "ảnh", 4], [28.125, "hưởng", 4], [28.375, "của", 4], [28.488, "mất", 4], [28.675, "gói,", 4], [29.25, "nguồn", 4], [29.5, "gửi", 4], [29.675, "kèm", 4], [29.95, "dữ", 4], [30.113, "liệu", 4], [30.325, "dự", 4], [30.5, "phòng", 4], [30.8, "để", 4], [30.925, "máy", 4], [31.1, "nhận", 4], [31.35, "tự", 4], [31.55, "khôi", 4], [31.725, "phục,", 4], [32.225, "thay", 4], [32.425, "vì", 4], [32.575, "gửi", 4], [32.788, "lại.", 4], [34.0, "Vì", 5], [34.25, "vậy,", 5], [34.7, "máy", 5], [34.888, "nhận", 5], [35.163, "video", 5], [35.612, "multicast", 5], [36.362, "bỏ", 5], [36.625, "khung", 5], [36.85, "hình", 5], [37.038, "mất", 5], [37.237, "và", 5], [37.413, "chạy", 5], [37.65, "tiếp.", 5]], "cues": [5.025, 21.75, 27.225, 34.0], "lang": 0.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án B được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 323.33, "audio": "audio/2b8e22808f101a71.mp3", "dur": 4.44, "words": [[0.1, "Để", 0], [0.325, "kiểm", 0], [0.588, "tra", 0], [0.787, "cách", 0], [0.988, "đếm", 0], [1.238, "khoảng", 0], [1.5, "trống,", 0], [2.013, "các", 0], [2.237, "bạn", 0], [2.45, "tính", 0], [2.663, "thử", 0], [2.875, "một", 0], [3.1, "trường", 0], [3.35, "hợp.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/ed68d899c009a2b3.mp3", "dur2": 19.3, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.662, "là", 0], [0.775, "B.", 0], [1.15, "Phương", 1], [1.538, "án", 1], [1.788, "A", 1], [2.025, "lấy", 1], [2.188, "44", 1], [2.737, "trừ", 1], [2.975, "41,", 1], [3.8, "nhưng", 1], [4.1, "hiệu", 1], [4.3, "đó", 1], [4.5, "đếm", 1], [4.713, "cả", 1], [4.912, "khung", 1], [5.138, "hình", 1], [5.338, "44", 1], [5.888, "vừa", 1], [6.088, "nhận.", 1], [7.275, "Số", 2], [7.537, "khung", 2], [7.75, "hình", 2], [7.925, "mất", 2], [8.15, "là", 2], [8.35, "44", 2], [8.912, "trừ", 2], [9.188, "expected,", 2], [9.812, "tức", 2], [10.037, "44", 2], [10.613, "trừ", 2], [10.863, "42,", 2], [11.725, "bằng", 2], [11.988, "2.", 2], [13.175, "Phương", 3], [13.537, "án", 3], [13.775, "D", 3], [13.975, "đúng", 3], [14.2, "ở", 3], [14.287, "chỗ", 3], [14.719, "UDP", 3], [15.15, "không", 3], [15.375, "đánh", 3], [15.512, "số,", 3], [16.113, "nhưng", 3], [16.375, "số", 3], [16.587, "thứ", 3], [16.738, "tự", 3], [16.988, "ở", 3], [17.125, "đây", 3], [17.337, "do", 3], [17.538, "ứng", 3], [17.7, "dụng", 3], [17.925, "tự", 3], [18.125, "thêm.", 3]], "dap_an": "B", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án D.", "start": 353.67, "audio": "audio/c988f00f363c3893.mp3", "dur": 4.01, "words": [[0.1, "Câu", 0], [0.312, "cuối", 0], [0.487, "hỏi", 0], [0.713, "lại", 0], [0.887, "lý", 0], [1.075, "do", 0], [1.3, "của", 0], [1.438, "quyết", 0], [1.625, "định", 0], [1.85, "không", 0], [2.1, "gửi", 0], [2.288, "lại", 0], [2.513, "khung", 0], [2.75, "hình", 0], [2.938, "mất.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/4fc86d6d483c8a18.mp3", "dur2": 14.86, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.65, "là", 0], [0.762, "D.", 0], [1.075, "Phương", 1], [1.425, "án", 1], [1.587, "B", 1], [1.712, "sai:", 1], [2.288, "máy", 1], [2.475, "nhận", 1], [2.737, "vẫn", 1], [2.913, "gửi", 1], [3.112, "được", 1], [3.312, "datagram", 1], [4.088, "unicast", 1], [4.625, "về", 1], [4.862, "endpoint", 1], [5.287, "của", 1], [5.45, "nguồn.", 1], [6.638, "Vấn", 2], [6.95, "đề", 2], [7.15, "nằm", 2], [7.425, "ở", 2], [7.513, "chính", 2], [7.775, "khung", 2], [8.0, "hình", 2], [8.188, "gửi", 2], [8.363, "lại:", 2], [8.925, "nguồn", 2], [9.175, "gửi", 2], [9.387, "tới", 2], [9.575, "nhóm,", 2], [10.125, "nên", 2], [10.412, "mọi", 2], [10.6, "máy", 2], [10.775, "nhận", 2], [11.037, "đều", 2], [11.175, "nhận", 2], [11.425, "thêm,", 2], [11.925, "trong", 2], [12.188, "khi", 2], [12.375, "khung", 2], [12.588, "hình", 2], [12.762, "đến", 2], [12.938, "muộn", 2], [13.175, "đã", 2], [13.287, "hết", 2], [13.488, "giá", 2], [13.675, "trị.", 2]], "dap_an": "D", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “Bài toán truyền video”; bước 2 khi đọc “Máy nhận so”; bước 3 khi đọc “Multicast không gửi lại”; bước 4 khi đọc “Từ bài toán này”.", "start": 379.14, "audio": "audio/708121804ba47dea.mp3", "dur": 33.41, "words": [[0.1, "Bài", 0], [0.338, "toán", 0], [0.575, "truyền", 0], [0.787, "video", 0], [1.3, "được", 0], [1.475, "giải", 0], [1.712, "bằng", 0], [1.9, "một", 0], [2.038, "quyết", 0], [2.188, "định", 0], [2.388, "đóng", 0], [2.575, "gói:", 0], [3.125, "mỗi", 0], [3.35, "khung", 0], [3.55, "hình", 0], [3.712, "thành", 0], [3.9, "một", 0], [4.088, "datagram,", 0], [5.05, "đứng", 0], [5.275, "đầu", 0], [5.487, "là", 0], [5.588, "số", 0], [5.8, "thứ", 0], [5.95, "tự", 0], [6.125, "4", 0], [6.35, "byte,", 0], [6.825, "và", 0], [7.112, "datagram", 0], [7.812, "đủ", 0], [8.0, "nhỏ", 0], [8.363, "để", 0], [8.5, "đi", 0], [8.637, "trọn", 0], [8.925, "trong", 0], [9.1, "một", 0], [9.25, "gói.", 0], [10.475, "Máy", 1], [10.838, "nhận", 1], [11.088, "so", 1], [11.262, "số", 1], [11.463, "thứ", 1], [11.613, "tự", 1], [11.85, "với", 1], [12.012, "expected", 1], [12.55, "để", 1], [12.7, "phát", 1], [12.887, "hiện", 1], [13.1, "khoảng", 1], [13.35, "trống,", 1], [13.85, "bỏ", 1], [14.088, "khung", 1], [14.3, "hình", 1], [14.463, "mất", 1], [14.662, "và", 1], [14.825, "chạy", 1], [15.05, "tiếp;", 1], [15.613, "máy", 1], [15.8, "nhận", 1], [16.062, "vào", 1], [16.175, "giữa", 1], [16.425, "chừng", 1], [16.663, "lấy", 1], [16.812, "khung", 1], [17.0, "hình", 1], [17.163, "đầu", 1], [17.312, "tiên", 1], [17.525, "nhận", 1], [17.788, "được", 1], [17.95, "làm", 1], [18.175, "điểm", 1], [18.387, "bắt", 1], [18.538, "đầu.", 1], [19.65, "Multicast", 2], [20.45, "không", 2], [20.688, "gửi", 2], [20.85, "lại,", 2], [21.363, "vì", 2], [21.562, "gửi", 2], [21.775, "lại", 2], [22.0, "cũng", 2], [22.2, "tới", 2], [22.375, "cả", 2], [22.562, "nhóm,", 2], [23.1, "và", 2], [23.325, "khung", 2], [23.55, "hình", 2], [23.725, "đến", 2], [23.9, "muộn", 2], [24.137, "không", 2], [24.35, "còn", 2], [24.562, "giá", 2], [24.725, "trị.", 2], [25.9, "Từ", 3], [26.163, "bài", 3], [26.312, "toán", 3], [26.562, "này,", 3], [26.988, "các", 3], [27.15, "bạn", 3], [27.4, "giữ", 3], [27.587, "lại", 3], [27.775, "bốn", 3], [28.038, "từ", 3], [28.175, "khóa:", 3], [28.775, "số", 3], [29.038, "thứ", 3], [29.2, "tự,", 3], [29.775, "đóng", 3], [30.025, "gói", 3], [30.212, "khung", 3], [30.45, "hình,", 3], [30.9, "khung", 3], [31.188, "hình", 3], [31.425, "và", 3], [31.55, "nhóm", 3], [31.9, "multicast.", 3]], "cues": [0.1, 10.475, 19.65, 25.9], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Ứng dụng media thật”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 413.15, "audio": "audio/92555db247f97219.mp3", "dur": 24.07, "words": [[0.1, "Ứng", 0], [0.35, "dụng", 0], [0.588, "media", 0], [1.075, "thật", 0], [1.312, "dùng", 0], [1.881, "RTP,", 0], [2.45, "giao", 0], [2.688, "thức", 0], [2.875, "đặt", 0], [3.013, "số", 0], [3.237, "thứ", 0], [3.388, "tự", 0], [3.65, "và", 0], [3.775, "mốc", 0], [3.962, "thời", 0], [4.112, "gian", 0], [4.375, "vào", 0], [4.5, "header", 0], [4.9, "của", 0], [5.037, "mỗi", 0], [5.225, "gói,", 0], [5.787, "cùng", 0], [6.3, "RTCP", 0], [6.812, "để", 0], [6.925, "máy", 0], [7.1, "nhận", 0], [7.35, "báo", 0], [7.537, "tỉ", 0], [7.713, "lệ", 0], [7.888, "mất", 0], [8.1, "gói", 0], [8.312, "về", 0], [8.438, "nguồn.", 0], [9.613, "Muốn", 1], [10.0, "giảm", 1], [10.213, "ảnh", 1], [10.387, "hưởng", 1], [10.65, "của", 1], [10.738, "mất", 1], [10.925, "gói", 1], [11.188, "mà", 1], [11.375, "không", 1], [11.6, "gửi", 1], [11.762, "lại,", 1], [12.275, "các", 1], [12.45, "bạn", 1], [12.662, "có", 1], [12.762, "thể", 1], [12.912, "tìm", 1], [13.15, "hiểu", 1], [13.312, "kỹ", 1], [13.488, "thuật", 1], [13.637, "sửa", 1], [13.825, "lỗi", 1], [14.025, "trước,", 1], [14.562, "hay", 1], [14.8, "forward", 1], [15.287, "error", 1], [15.537, "correction.", 1], [17.087, "Bài", 2], [17.325, "tập", 2], [17.538, "mở", 2], [17.712, "rộng", 2], [18.0, "là", 2], [18.188, "thêm", 2], [18.45, "thống", 2], [18.663, "kê", 2], [18.837, "tỉ", 2], [19.012, "lệ", 2], [19.188, "mất", 2], [19.387, "gói", 2], [19.613, "mỗi", 2], [19.812, "5", 2], [20.012, "giây", 2], [20.25, "ở", 2], [20.4, "máy", 2], [20.6, "nhận,", 2], [21.113, "và", 2], [21.325, "cảnh", 2], [21.55, "báo", 2], [21.762, "khi", 2], [21.938, "tỉ", 2], [22.113, "lệ", 2], [22.337, "vượt", 2], [22.525, "10%.", 2]], "cues": [0.1, 17.087], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 437.82, "audio": "audio/07e9f136fa0d8568.mp3", "dur": 13.61, "words": [[0.1, "Multicast", 0], [0.988, "thường", 0], [1.25, "chỉ", 0], [1.4, "dùng", 0], [1.587, "được", 0], [1.738, "trong", 0], [1.913, "mạng", 0], [2.138, "của", 0], [2.25, "một", 0], [2.425, "tổ", 0], [2.612, "chức,", 0], [3.062, "và", 0], [3.275, "chương", 0], [3.5, "trình", 0], [3.7, "chạy", 0], [3.913, "trong", 0], [4.088, "trình", 0], [4.275, "duyệt", 0], [4.487, "không", 0], [4.713, "mở", 0], [4.925, "được", 0], [5.075, "socket", 0], [6.05, "UDP.", 0], [7.025, "Nhóm", 1], [7.362, "tiếp", 1], [7.6, "theo", 1], [7.75, "chuyển", 1], [7.975, "sang", 1], [8.2, "web,", 1], [8.625, "bắt", 1], [8.838, "đầu", 1], [9.075, "với", 1], [9.2, "WebSocket:", 1], [10.125, "nâng", 1], [10.412, "cấp", 1], [10.637, "từ", 1], [11.156, "HTTP", 1], [11.675, "và", 1], [11.825, "giao", 1], [12.037, "tiếp", 1], [12.262, "hai", 1], [12.438, "chiều.", 1]], "cues": [], "lang": 0.6}], "video_sau": "WebSocket: nâng cấp từ HTTP và giao tiếp hai chiều"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

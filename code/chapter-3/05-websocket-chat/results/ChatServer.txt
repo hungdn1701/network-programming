@@ -1,0 +1,9 @@
+open  an (sessions: 1)
+open  binh (sessions: 2)
+open  chi (sessions: 3)
+an: chào cả nhóm -> sent to 2
+binh: chào an -> sent to 2
+close chi, code 1000 (sessions: 2)
+an: chi vừa rời phòng -> sent to 1
+close an, code 1000 (sessions: 1)
+close binh, code 1000 (sessions: 0)

@@ -1,0 +1,2 @@
+https://cloudflare-quic.com/ over HTTP/3: status 200, 125905 bytes
+QUIC: 69 UDP datagrams sent, 2 packets lost (resent by QUIC), smoothed RTT 29 ms

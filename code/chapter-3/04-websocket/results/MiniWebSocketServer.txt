@@ -1,0 +1,6 @@
+WebSocket on port 9400
+request: GET /chat HTTP/1.1
+101 Switching Protocols, Sec-WebSocket-Accept: 5gbzQC9ox8l8ArdNZj5GE+LaYGk=
+frame FIN=1 opcode=1 (text) masked=true length=5 "hello"
+frame FIN=1 opcode=9 (ping) masked=true length=12 "still there?"
+frame FIN=1 opcode=8 (close) masked=true length=5 code 1000

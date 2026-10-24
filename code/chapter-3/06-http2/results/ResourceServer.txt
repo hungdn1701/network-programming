@@ -1,0 +1,4 @@
+resources on http://localhost:9402 (HTTP/1.1 and h2c)
+20 requests on 1 connection(s), protocol [HTTP/2.0]
+20 requests on 6 connection(s), protocol [HTTP/1.1]
+20 requests on 20 connection(s), protocol [HTTP/1.1]

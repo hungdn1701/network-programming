@@ -1,0 +1,3 @@
+ethernet_32775  172.30.16.1  Hyper-V Virtual Ethernet Adapter
+iftype53_32770  100.98.26.74  Tailscale Tunnel
+wireless_32768  192.168.1.171  Intel(R) Wireless-AC 9560 160MHz

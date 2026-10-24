@@ -34,13 +34,13 @@ TS. Đặng Ngọc Hùng · 3 tín chỉ · Tiếng Việt · Java 21
 
 | | Phần | Phút | |
 |---|---|---|---|
-| 1 | UDP: datagram và DatagramSocket | 8′ |  |
-| 2 | Multicast: nhóm multicast, network interface và TTL | 7′ |  |
-| 3 | Bài toán ứng dụng: truyền video theo nhóm multicast | 8′ |  |
-| 4 | WebSocket: nâng cấp từ HTTP và giao tiếp hai chiều | 8′ |  |
-| 5 | Bài toán ứng dụng: chat thời gian thực bằng WebSocket | 8′ |  |
-| 6 | HTTP/2: binary framing và multiplexing | 7′ |  |
-| 7 | HTTP/3: QUIC và giao thức trên UDP | 8′ |  |
+| 1 | UDP: datagram và DatagramSocket | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V15/) · [slide](https://hungdn1701.github.io/network-programming/V15/slide.pdf) · [mã](code/chapter-3/01-udp-datagram/) |
+| 2 | Multicast: nhóm multicast, network interface và TTL | 7′ | [xem trước](https://hungdn1701.github.io/network-programming/V16/) · [slide](https://hungdn1701.github.io/network-programming/V16/slide.pdf) · [mã](code/chapter-3/02-multicast/) |
+| 3 | Bài toán ứng dụng: truyền video theo nhóm multicast | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V17/) · [slide](https://hungdn1701.github.io/network-programming/V17/slide.pdf) · [mã](code/chapter-3/03-video-multicast/) |
+| 4 | WebSocket: nâng cấp từ HTTP và giao tiếp hai chiều | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V18/) · [slide](https://hungdn1701.github.io/network-programming/V18/slide.pdf) · [mã](code/chapter-3/04-websocket/) |
+| 5 | Bài toán ứng dụng: chat thời gian thực bằng WebSocket | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V19/) · [slide](https://hungdn1701.github.io/network-programming/V19/slide.pdf) · [mã](code/chapter-3/05-websocket-chat/) |
+| 6 | HTTP/2: binary framing và multiplexing | 7′ | [xem trước](https://hungdn1701.github.io/network-programming/V20/) · [slide](https://hungdn1701.github.io/network-programming/V20/slide.pdf) · [mã](code/chapter-3/06-http2/) |
+| 7 | HTTP/3: QUIC và giao thức trên UDP | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V21/) · [slide](https://hungdn1701.github.io/network-programming/V21/slide.pdf) · [mã](code/chapter-3/07-http3/) |
 
 ## Chương 4. Kỹ thuật lập trình phân tán
 

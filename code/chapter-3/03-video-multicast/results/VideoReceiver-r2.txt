@@ -1,0 +1,8 @@
+r2: first frame 1
+r2: gap 3 -> 6, lost 2 frame(s)
+r2: gap 7 -> 9, lost 1 frame(s)
+r2: gap 33 -> 35, lost 1 frame(s)
+r2: gap 60 -> 62, lost 1 frame(s)
+r2: gap 67 -> 69, lost 1 frame(s)
+r2: gap 97 -> 99, lost 1 frame(s)
+r2: received 93 frames, lost 7 (7.0%)

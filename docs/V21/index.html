@@ -1,0 +1,483 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V21 — HTTP/3: QUIC và giao thức trên UDP · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-3/07-http3">Mã</a>
+<h1>V21 · HTTP/3: QUIC và giao thức trên UDP</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 3</div><div class="ten">HTTP/3: QUIC và giao thức trên UDP</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Ba giới hạn nằm trong chính TCP</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Mất một segment TCP: <b>mọi stream</b> trên kết nối HTTP/2 phải chờ</li><li data-s="2">Kết nối mới: bắt tay TCP rồi handshake TLS, <b>2 vòng</b> trước request đầu tiên</li><li data-s="3">Kết nối TCP gắn với <span style="white-space:nowrap">4-tuple</span>: điện thoại <b>đổi mạng</b> thì kết nối mất</li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> QUIC chạy trên UDP để vượt qua ba giới hạn này thế nào?</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>QUIC thay TLS và TCP, chạy trên UDP, thiết lập trong một vòng</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Trái: HTTP/2 chạy trên TLS, TLS trên TCP, TCP trên IP; kết nối mới cần một vòng cho bắt tay TCP và một vòng cho TLS 1.3 trước khi gửi request. Phải: HTTP/3 chạy trên QUIC, QUIC gồm cả TLS 1.3, stream và truyền lại, chạy trên UDP và IP; kết nối mới cần một vòng, kết nối lại tới server đã biết gửi được dữ liệu ngay, 0-RTT.">
+
+  <!-- ① HTTP/2 trên TLS, TCP -->
+  <g data-s="1">
+    <text x="330" y="44" text-anchor="middle" font-size="24" font-weight="500" fill="#051A53">HTTP/2</text>
+    <g stroke-width="2.5">
+      <rect x="160" y="64" width="340" height="64" rx="4" fill="#EEF2FB" stroke="#051A53"/>
+      <rect x="160" y="128" width="340" height="64" rx="4" fill="#FFF6DD" stroke="#8A6508"/>
+      <rect x="160" y="192" width="340" height="64" rx="4" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="160" y="256" width="340" height="64" rx="4" fill="#F4F5F8" stroke="#9AA3B8"/>
+    </g>
+    <g font-size="22" text-anchor="middle">
+      <text x="330" y="104" fill="#051A53">HTTP/2</text>
+      <text x="330" y="168" fill="#6B4E06">TLS 1.3</text>
+      <text x="330" y="232" fill="#22603F">TCP</text>
+      <text x="330" y="296" fill="#5B6478">IP</text>
+    </g>
+    <text x="330" y="372" text-anchor="middle" font-size="21" fill="#373D4E">kết nối mới: bắt tay TCP 1 vòng</text>
+    <text x="330" y="404" text-anchor="middle" font-size="21" fill="#373D4E">+ handshake TLS 1 vòng = 2 vòng</text>
+    <text x="330" y="436" text-anchor="middle" font-size="21" fill="#373D4E">rồi mới gửi request</text>
+  </g>
+
+  <!-- ② HTTP/3 trên QUIC, UDP -->
+  <g data-s="2">
+    <text x="1040" y="44" text-anchor="middle" font-size="24" font-weight="500" fill="#051A53">HTTP/3</text>
+    <g stroke-width="2.5">
+      <rect x="870" y="64" width="340" height="64" rx="4" fill="#EEF2FB" stroke="#051A53"/>
+      <rect x="870" y="128" width="340" height="128" rx="4" fill="#FDF0E6" stroke="#BC5A26"/>
+      <rect x="870" y="256" width="340" height="64" rx="4" fill="#F4F5F8" stroke="#9AA3B8"/>
+    </g>
+    <g font-size="22" text-anchor="middle">
+      <text x="1040" y="104" fill="#051A53">HTTP/3</text>
+      <text x="1040" y="176" fill="#8A3A12" font-weight="500">QUIC</text>
+      <text x="1040" y="210" fill="#8A3A12" font-size="20">TLS 1.3, stream, truyền lại</text>
+      <text x="1040" y="236" fill="#8A3A12" font-size="20">chạy trên UDP</text>
+      <text x="1040" y="296" fill="#5B6478">UDP / IP</text>
+    </g>
+    <path d="M520,160 L850,160" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="6 5"/>
+    <path d="M520,224 L850,224" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="6 5"/>
+    <text x="685" y="150" text-anchor="middle" font-size="20" fill="#5B6478">QUIC làm phần việc</text>
+    <text x="685" y="250" text-anchor="middle" font-size="20" fill="#5B6478">của TLS và TCP</text>
+  </g>
+
+  <!-- ③ số vòng trước khi gửi request -->
+  <g data-s="3">
+    <text x="1040" y="372" text-anchor="middle" font-size="21" fill="#22603F">kết nối mới: 1 vòng (1-RTT),</text>
+    <text x="1040" y="404" text-anchor="middle" font-size="21" fill="#22603F">vừa thiết lập vừa mã hóa</text>
+    <text x="1040" y="436" text-anchor="middle" font-size="21" fill="#22603F">kết nối lại: gửi request ngay (0-RTT)</text>
+    <rect x="1290" y="64" width="430" height="256" rx="6" fill="#F4F5F8" stroke="#9AA3B8" stroke-width="2"/>
+    <text x="1310" y="104" font-size="21" fill="#051A53">một vòng (RTT) = thời gian</text>
+    <text x="1310" y="136" font-size="21" fill="#051A53">gửi đi và nhận về một lượt</text>
+    <text x="1310" y="196" font-size="21" fill="#373D4E">ví dụ của phần đo được</text>
+    <text x="1310" y="228" font-size="21" fill="#373D4E">khoảng 30 ms mỗi vòng;</text>
+    <text x="1310" y="260" font-size="21" fill="#373D4E">bớt một vòng là bớt chờ</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>QUIC</b>: giao thức giao vận trên UDP, tự truyền lại, giữ thứ tự, mã hóa bằng TLS 1.3; kết nối mới <b><span style="white-space:nowrap">1-RTT</span></b>, kết nối lại <b><span style="white-space:nowrap">0-RTT</span></b>.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Stream độc lập: mất gói chỉ làm chậm stream chứa gói đó</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Năm gói QUIC trong UDP datagram mang dữ liệu của stream 1, 3 và 5. Gói 2, mang dữ liệu của stream 3, bị mất. Bên nhận QUIC giao ngay dữ liệu của stream 1 và stream 5; chỉ stream 3 chờ gói được gửi lại.">
+  <defs>
+    <marker id="sd-net" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#5B6478"/></marker>
+  </defs>
+
+  <!-- ① năm gói QUIC trong UDP datagram -->
+  <g data-s="1">
+    <rect x="40" y="70" width="180" height="100" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="130" y="128" text-anchor="middle" font-size="22" fill="#051A53">server</text>
+    <line x1="220" y1="120" x2="1090" y2="120" stroke="#5B6478" stroke-width="2" marker-end="url(#sd-net)"/>
+    <g stroke-width="2.5">
+      <rect x="250" y="88" width="150" height="64" rx="4" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="415" y="88" width="150" height="64" rx="4" fill="#FFF6DD" stroke="#8A6508"/>
+      <rect x="580" y="88" width="150" height="64" rx="4" fill="#EEF2FB" stroke="#1F5FA8"/>
+      <rect x="745" y="88" width="150" height="64" rx="4" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="910" y="88" width="150" height="64" rx="4" fill="#FFF6DD" stroke="#8A6508"/>
+    </g>
+    <g font-size="20" text-anchor="middle">
+      <text x="325" y="127" fill="#22603F">gói 1 · s1</text>
+      <text x="490" y="127" fill="#6B4E06">gói 2 · s3</text>
+      <text x="655" y="127" fill="#1F5FA8">gói 3 · s5</text>
+      <text x="820" y="127" fill="#22603F">gói 4 · s1</text>
+      <text x="985" y="127" fill="#6B4E06">gói 5 · s3</text>
+    </g>
+    <text x="250" y="206" font-size="20" fill="#5B6478">một kết nối QUIC: mỗi gói đi trong một UDP datagram</text>
+    <rect x="1110" y="40" width="610" height="380" rx="8" fill="none" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1136" y="78" font-size="22" font-weight="500" fill="#051A53">bên nhận (QUIC)</text>
+    <text x="1136" y="112" font-size="20" fill="#5B6478">thứ tự được giữ riêng trong từng stream</text>
+  </g>
+
+  <!-- ② gói 2 mất -->
+  <g data-s="2">
+    <rect x="415" y="88" width="150" height="64" rx="4" fill="none" stroke="#BC2626" stroke-width="2.5" stroke-dasharray="7 5"/>
+    <path d="M478,52 L502,76 M502,52 L478,76" stroke="#BC2626" stroke-width="4"/>
+    <text x="490" y="250" text-anchor="middle" font-size="21" fill="#BC2626">gói 2 mất</text>
+  </g>
+
+  <!-- ③ chỉ stream 3 chờ -->
+  <g data-s="3">
+    <text x="1136" y="170" font-size="21" fill="#22603F">giao ngay cho ứng dụng:</text>
+    <g stroke-width="2.5">
+      <rect x="1136" y="188" width="270" height="56" rx="4" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="1420" y="188" width="270" height="56" rx="4" fill="#EEF2FB" stroke="#1F5FA8"/>
+    </g>
+    <g font-size="20" text-anchor="middle">
+      <text x="1271" y="223" fill="#22603F">stream 1: gói 1, 4</text>
+      <text x="1555" y="223" fill="#1F5FA8">stream 5: gói 3</text>
+    </g>
+    <text x="1136" y="300" font-size="21" fill="#BC2626">chỉ stream 3 chờ gói 2 được gửi lại</text>
+    <text x="1136" y="336" font-size="20" fill="#6B4E06">(gói 5 của stream 3 giữ lại tới khi đủ)</text>
+    <text x="880" y="470" text-anchor="middle" font-size="22" fill="#051A53">mất một gói của stream 3 → chỉ stream 3 chờ: không còn head-of-line blocking giữa các stream</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Stream độc lập</b>: QUIC giữ thứ tự trong từng stream; mất gói chỉ làm chậm stream chứa gói đó.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Connection ID giữ kết nối khi điện thoại đổi mạng</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Điện thoại đang tải qua Wi-Fi với địa chỉ 192.168.1.171; kết nối QUIC có connection ID C7. Điện thoại chuyển sang 4G, địa chỉ IP và port đổi. Với TCP, 4-tuple đổi nên kết nối cũ không dùng được, phải kết nối và handshake lại. Với QUIC, gói từ địa chỉ mới vẫn mang connection ID C7, server nhận ra kết nối cũ và tải tiếp.">
+  <defs>
+    <marker id="cm-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+    <marker id="cm-err" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#BC2626"/></marker>
+  </defs>
+
+  <!-- ① điện thoại tải qua Wi-Fi, kết nối có connection ID -->
+  <g data-s="1">
+    <rect x="1440" y="180" width="280" height="140" rx="8" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1580" y="242" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">server</text>
+    <text x="1580" y="276" text-anchor="middle" font-size="20" fill="#373D4E">port UDP 443</text>
+    <rect x="40" y="60" width="300" height="120" rx="8" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="190" y="104" text-anchor="middle" font-size="22" font-weight="500" fill="#22603F">điện thoại · Wi-Fi</text>
+    <text x="190" y="140" text-anchor="middle" font-size="20" fill="#22603F" font-family="Consolas, monospace">192.168.1.171:52814</text>
+    <line x1="340" y1="120" x2="1432" y2="230" stroke="#2F855A" stroke-width="3" marker-end="url(#cm-ok)"/>
+    <rect x="760" y="120" width="230" height="44" rx="22" fill="#FFF6DD" stroke="#8A6508" stroke-width="2"/>
+    <text x="875" y="149" text-anchor="middle" font-size="20" fill="#6B4E06">connection ID C7</text>
+  </g>
+
+  <!-- ② chuyển sang 4G: địa chỉ đổi; TCP mất kết nối -->
+  <g data-s="2">
+    <rect x="40" y="340" width="300" height="120" rx="8" fill="#FDF0E6" stroke="#BC5A26" stroke-width="2.5"/>
+    <text x="190" y="384" text-anchor="middle" font-size="22" font-weight="500" fill="#8A3A12">điện thoại · 4G</text>
+    <text x="190" y="420" text-anchor="middle" font-size="20" fill="#8A3A12" font-family="Consolas, monospace">198.51.100.23:41007</text>
+    <path d="M190,184 L190,334" stroke="#8A3A12" stroke-width="2.5" stroke-dasharray="7 5"/>
+    <text x="206" y="266" font-size="20" fill="#8A3A12">đổi mạng: IP và port đổi</text>
+    <text x="420" y="480" font-size="21" fill="#BC2626">TCP: 4-tuple đổi → kết nối cũ mất, phải kết nối và handshake lại</text>
+  </g>
+
+  <!-- ③ QUIC: connection ID giữ nguyên, tải tiếp -->
+  <g data-s="3">
+    <line x1="340" y1="400" x2="1432" y2="290" stroke="#2F855A" stroke-width="3" marker-end="url(#cm-ok)"/>
+    <rect x="760" y="330" width="230" height="44" rx="22" fill="#FFF6DD" stroke="#8A6508" stroke-width="2"/>
+    <text x="875" y="359" text-anchor="middle" font-size="20" fill="#6B4E06">connection ID C7</text>
+    <text x="1060" y="420" font-size="21" fill="#22603F">QUIC: cùng connection ID → server nhận ra kết nối cũ, tải tiếp</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Connection migration</b>: kết nối QUIC định danh bằng <b>connection ID</b>, không bằng <span style="white-space:nowrap">4-tuple</span>, nên giữ được khi đổi mạng.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Server báo có HTTP/3 bằng header <span style="white-space:nowrap">Alt-Svc</span></h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">HttpClient</span> client = <span class="hl-t">HttpClient</span>.<span class="hl-m">newHttpClient</span>();       <span class="hl-c">// mặc định ưu tiên HTTP/2</span>
+<span class="hl-t">HttpResponse</span>&lt;<span class="hl-t">String</span>&gt; response = client.<span class="hl-m">send</span>(<span class="hl-t">HttpRequest</span>.<span class="hl-m">newBuilder</span>(uri).<span class="hl-m">build</span>(),
+        <span class="hl-t">HttpResponse</span>.<span class="hl-t">BodyHandlers</span>.<span class="hl-m">ofString</span>());
+<span class="hl-t">System</span>.out.<span class="hl-m">printf</span>(<span class="hl-s">"</span><span class="hl-s">%s: status %d, version %s%n</span><span class="hl-s">"</span>, uri, response.<span class="hl-m">statusCode</span>(), response.<span class="hl-m">version</span>());
+<span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">alt-svc: </span><span class="hl-s">"</span> + response.<span class="hl-m">headers</span>().<span class="hl-m">firstValue</span>(<span class="hl-s">"</span><span class="hl-s">alt-svc</span><span class="hl-s">"</span>).<span class="hl-m">orElse</span>(<span class="hl-s">"</span><span class="hl-s">(none)</span><span class="hl-s">"</span>));  <span class="hl-c">// h3 = HTTP/3</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>https://cloudflare-quic.com/: status 200, version HTTP_2
+alt-svc: h3=":443"; ma=86400</pre></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>Request HTTP/3 thật qua QUIC: 69 UDP datagram, QUIC tự gửi lại gói mất</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">HttpClient</span> client = <span class="hl-t">Http3Client</span>.<span class="hl-m">newHttpClient</span>();     <span class="hl-c">// cùng API HttpClient, bên dưới là QUIC trên UDP</span>
+<span class="hl-t">HttpResponse</span>&lt;<span class="hl-t">String</span>&gt; response = client.<span class="hl-m">send</span>(<span class="hl-t">HttpRequest</span>.<span class="hl-m">newBuilder</span>(uri).<span class="hl-m">build</span>(),
+        <span class="hl-t">HttpResponse</span>.<span class="hl-t">BodyHandlers</span>.<span class="hl-m">ofString</span>());
+<span class="hl-t">Statistics</span> stats = ((<span class="hl-t">Http3Client</span>) client).<span class="hl-m">getConnectionStatistics</span>();
+<span class="hl-t">System</span>.out.<span class="hl-m">printf</span>(<span class="hl-s">"</span><span class="hl-s">QUIC: %d UDP datagrams sent, %d packets lost (resent by QUIC), smoothed RTT %d ms%n</span><span class="hl-s">"</span>,
+        stats.<span class="hl-m">datagramsSent</span>(), stats.<span class="hl-m">lostPackets</span>(), stats.<span class="hl-m">smoothedRtt</span>());
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>https://cloudflare-quic.com/ over HTTP/3: status 200, 125905 bytes
+QUIC: 69 UDP datagrams sent, 2 packets lost (resent by QUIC), smoothed RTT 29 ms</pre></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S07"><header><h1><span style="white-space:nowrap">0-RTT</span> có thể bị phát lại, và mạng chặn UDP thì quay về HTTP/2</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1"><b><span style="white-space:nowrap">0-RTT</span></b>: dữ liệu ở gói đầu có thể bị <b>phát lại</b>; chỉ dùng cho request gửi lặp lại không đổi dữ liệu, như GET</li><li data-s="2">Mạng chặn UDP port 443: client quay về <b>HTTP/2 trên TCP</b></li></ul><div class="khung" data-s="3"><b>Lưu ý:</b> HTTP/3 là lựa chọn nhanh hơn khi có, không thay hẳn HTTP/2.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Vì sao QUIC chạy trên UDP thay vì chạy trực tiếp trên IP như TCP?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Vì thiết bị mạng trên đường đi và hệ điều hành chỉ quen TCP và UDP; chạy trên UDP, QUIC đi qua được mạng hiện có và cài được ngay trong ứng dụng.</div></div><div class=""><span>B</span><div>Vì UDP tự truyền lại gói bị mất.</div></div><div class=""><span>C</span><div>Vì UDP có sẵn mã hóa.</div></div><div class=""><span>D</span><div>Vì IP không cho phép giao thức giao vận nào khác ngoài TCP.</div></div></div><div class="giai-thich">UDP không truyền lại, không mã hóa; QUIC tự làm các việc đó. QUIC dùng UDP như lớp vỏ để đi qua thiết bị mạng và hệ điều hành hiện có, và để cài đặt trong ứng dụng thay vì trong nhân hệ điều hành.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Vì sao QUIC chạy trên UDP thay vì chạy trực tiếp trên IP như TCP?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Vì thiết bị mạng trên đường đi và hệ điều hành chỉ quen TCP và UDP; chạy trên UDP, QUIC đi qua được mạng hiện có và cài được ngay trong ứng dụng.</div></div><div class=""><span>B</span><div>Vì UDP tự truyền lại gói bị mất.</div></div><div class=""><span>C</span><div>Vì UDP có sẵn mã hóa.</div></div><div class=""><span>D</span><div>Vì IP không cho phép giao thức giao vận nào khác ngoài TCP.</div></div></div><div class="giai-thich">UDP không truyền lại, không mã hóa; QUIC tự làm các việc đó. QUIC dùng UDP như lớp vỏ để đi qua thiết bị mạng và hệ điều hành hiện có, và để cài đặt trong ứng dụng thay vì trong nhân hệ điều hành.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Client kết nối lại tới một server đã biết và có thể gửi dữ liệu bằng <span style="white-space:nowrap">0-RTT</span>. Request nào an toàn để gửi bằng <span style="white-space:nowrap">0-RTT</span>?</div></div><div class="lua-chon"><div class=""><span>A</span><div>POST chuyển tiền.</div></div><div class=""><span>B</span><div>POST đặt hàng.</div></div><div class="dung"><span>C</span><div>GET đọc một trang tin.</div></div><div class=""><span>D</span><div>POST gửi bình luận.</div></div></div><div class="giai-thich">Dữ liệu <span style="white-space:nowrap">0-RTT</span> có thể bị phát lại. GET đọc trang gửi lặp lại không thay đổi dữ liệu nên an toàn; ba request POST còn lại, nếu bị phát lại, sẽ chuyển tiền, đặt hàng hay đăng bình luận thêm lần nữa.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Client kết nối lại tới một server đã biết và có thể gửi dữ liệu bằng <span style="white-space:nowrap">0-RTT</span>. Request nào an toàn để gửi bằng <span style="white-space:nowrap">0-RTT</span>?</div></div><div class="lua-chon"><div class=""><span>A</span><div>POST chuyển tiền.</div></div><div class=""><span>B</span><div>POST đặt hàng.</div></div><div class="dung"><span>C</span><div>GET đọc một trang tin.</div></div><div class=""><span>D</span><div>POST gửi bình luận.</div></div></div><div class="giai-thich">Dữ liệu <span style="white-space:nowrap">0-RTT</span> có thể bị phát lại. GET đọc trang gửi lặp lại không thay đổi dữ liệu nên an toàn; ba request POST còn lại, nếu bị phát lại, sẽ chuyển tiền, đặt hàng hay đăng bình luận thêm lần nữa.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>HTTP/3</b> chạy trên <b>QUIC</b>, QUIC chạy trên UDP: tự truyền lại, giữ thứ tự, mã hóa bằng TLS 1.3</div></div><div class="the" data-s="2"><span class="so">2</span><div>Kết nối mới <span style="white-space:nowrap">1-RTT</span>, kết nối lại <b><span style="white-space:nowrap">0-RTT</span></b> (chỉ cho request không đổi dữ liệu)</div></div><div class="the" data-s="3"><span class="so">3</span><div><b>Stream độc lập</b>: mất gói chỉ chậm stream đó; <b>connection migration</b> nhờ <b>connection ID</b></div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>QUIC</span><span>HTTP/3</span><span>stream độc lập</span><span>0-RTT</span><span>connection migration</span><span>connection ID</span></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>Thư viện QUIC cho Java (Netty incubator, Kwik)</li><li>Kiểm soát tắc nghẽn trong QUIC</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Lập bảng so sánh HTTP/1.1, HTTP/2, HTTP/3 (tầng giao vận, số kết nối, <span style="white-space:nowrap">head-of-line</span> blocking, thời gian thiết lập); tìm một trang web dùng HTTP/3 và chứng minh bằng công cụ.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TKC"><header><h1>Tổng kết chương 3</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>UDP</b>: datagram giữ ranh giới, không kết nối; tự đặt timeout, cấp buffer đủ lớn</div></div><div class="the" data-s="2"><span class="so">2</span><div><b>Multicast</b>: một lần gửi cho cả nhóm; tham gia nhóm trên đúng network interface; video đánh số thứ tự</div></div><div class="the" data-s="3"><span class="so">3</span><div><b>WebSocket</b>: nâng cấp từ HTTP, frame hai chiều; phòng chat với tập phiên an toàn đồng thời</div></div><div class="the" data-s="4"><span class="so">4</span><div><b>HTTP/2 → HTTP/3</b>: nhiều stream trên một kết nối TCP, rồi QUIC trên UDP với stream độc lập</div></div></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">RPC: lời gọi thủ tục từ xa và Java RMI</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. HTTP/2 đưa nhiều request lên một kết nối, nhưng vẫn bị TCP làm chậm mỗi khi mất gói. HTTP/3 giải quyết bằng cách bỏ hẳn TCP và chạy trên UDP. Vì sao lại chọn UDP, và giao thức QUIC phải làm thêm những gì?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:18</span>
+      <h3>Slide 1. Ba giới hạn nằm trong chính TCP</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Mất một segment TCP: **mọi stream** trên kết nối HTTP/2 phải chờ</li><li>Kết nối mới: bắt tay TCP rồi handshake TLS, **2 vòng** trước request đầu tiên</li><li>Kết nối TCP gắn với 4-tuple: điện thoại **đổi mạng** thì kết nối mất</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** QUIC chạy trên UDP để vượt qua ba giới hạn này thế nào?</div></div>
+    <div class="kb-thoai"><p>Phần trước kết thúc ở head-of-line blocking: trên kết nối HTTP/2, mất một segment TCP làm mọi stream phải chờ. Ngoài giới hạn đó, TCP còn hai giới hạn khác. Một kết nối mới phải qua bắt tay ba bước của TCP rồi handshake TLS, nên request đầu tiên chỉ đi được sau hai vòng gửi và nhận. Và kết nối TCP gắn với 4-tuple, nên khi điện thoại chuyển từ Wi-Fi sang 4G, địa chỉ đổi và kết nối mất. Các giới hạn này nằm trong chính TCP, mà TCP được cài trong nhân hệ điều hành, rất khó thay đổi. Phần cuối của chương trả lời câu hỏi: QUIC, giao thức chạy trên UDP, vượt qua ba giới hạn đó thế nào?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Phần trước kết thúc”; bước 2 khi đọc “Một kết nối mới”; bước 3 khi đọc “Và kết nối TCP gắn với”; bước 4 khi đọc “Phần cuối của chương”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:59</span>
+      <h3>Slide 2. QUIC thay TLS và TCP, chạy trên UDP, thiết lập trong một vòng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**QUIC**: giao thức giao vận trên UDP, tự truyền lại, giữ thứ tự, mã hóa bằng TLS 1.3; kết nối mới **1-RTT**, kết nối lại **0-RTT**.</li></ul></div></div>
+    <div class="kb-thoai"><p>Với HTTP/2, chồng giao thức gồm HTTP/2 đứng trên TLS và TCP. HTTP/3 thay cả hai lớp đó bằng QUIC, một giao thức giao vận chạy trên UDP. QUIC tự làm các việc mà bản tra cứu UDP ở đầu chương chưa có: truyền lại gói mất, giữ thứ tự, và tích hợp luôn TLS 1.3 để mã hóa. Vì bắt tay và mã hóa diễn ra cùng lúc, kết nối mới của QUIC chỉ cần một vòng gửi đi và nhận về, gọi là 1-RTT, với RTT là viết tắt của round-trip time. Ví dụ của phần đo được khoảng 30 mili giây mỗi vòng. Đó là lời giải cho giới hạn thứ hai. Khi kết nối lại tới server đã biết, client gửi request ngay trong gói đầu tiên, gọi là 0-RTT. QUIC chọn UDP vì các thiết bị mạng trên đường đi và hệ điều hành chỉ quen TCP và UDP. Chạy trên UDP, QUIC đi qua được mạng hiện có, và được cài đặt ngay trong ứng dụng thay vì chờ nâng cấp nhân hệ điều hành.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình chong-giao-thuc: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Với HTTP/2”; bước 2 khi đọc “HTTP/3 thay cả hai lớp”; bước 3 khi đọc “Vì bắt tay và mã hóa”; bước 4 khi đọc “QUIC chọn UDP”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:00</span>
+      <h3>Slide 3. Stream độc lập: mất gói chỉ làm chậm stream chứa gói đó</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Stream độc lập**: QUIC giữ thứ tự trong từng stream; mất gói chỉ làm chậm stream chứa gói đó.</li></ul></div></div>
+    <div class="kb-thoai"><p>Giới hạn đầu tiên, head-of-line blocking, được giải bằng stream độc lập. Kết nối QUIC cũng mang nhiều stream, nhưng QUIC giữ thứ tự riêng cho từng stream, chứ không cho cả kết nối như TCP. Khi gói 2, mang dữ liệu của stream 3, bị mất, bên nhận vẫn giao ngay dữ liệu của stream 1 và stream 5 cho ứng dụng. Riêng gói 5, cũng thuộc stream 3, được giữ lại tới khi gói 2 được gửi lại, vì thứ tự bên trong stream 3 vẫn phải đúng. Nhờ vậy, mất gói chỉ làm chậm stream chứa gói đó, và head-of-line blocking giữa các stream không còn.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình stream-doc-lap: ba bước của hình, bước 4 là ô kết luận. Đặt cạnh hình head-of-line blocking của phần HTTP/2 nếu cần so sánh.
+Hiện dần: bước 1 khi đọc “Kết nối QUIC cũng mang”; bước 2 khi đọc “Khi gói 2”; bước 3 khi đọc “bên nhận vẫn giao ngay”; bước 4 khi đọc “Nhờ vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:36</span>
+      <h3>Slide 4. Connection ID giữ kết nối khi điện thoại đổi mạng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Connection migration**: kết nối QUIC định danh bằng **connection ID**, không bằng 4-tuple, nên giữ được khi đổi mạng.</li></ul></div></div>
+    <div class="kb-thoai"><p>Giới hạn thứ ba là kết nối gắn với địa chỉ. Điện thoại đang tải qua Wi-Fi. Khi thiết lập kết nối QUIC, hai bên chọn một connection ID, ở đây là C7, và mọi gói đều mang định danh này. Khi điện thoại chuyển sang 4G, địa chỉ IP và port đổi. Với TCP, 4-tuple đổi nghĩa là kết nối cũ không dùng được nữa, phải kết nối và handshake lại từ đầu. Với QUIC, gói từ địa chỉ mới vẫn mang connection ID C7, nên server nhận ra kết nối cũ và tải tiếp. Khả năng này gọi là connection migration.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình connection-migration: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Điện thoại đang tải”; bước 2 khi đọc “Khi điện thoại chuyển sang 4G”; bước 3 khi đọc “Với QUIC, gói từ địa chỉ mới”; bước 4 khi đọc “Khả năng này gọi là”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:14</span>
+      <h3>Slide 5. Server báo có HTTP/3 bằng header Alt-Svc</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/h3/AltSvcProbe.java</span><pre><code>HttpClient client = HttpClient.newHttpClient();       // mặc định ưu tiên HTTP/2
+HttpResponse&lt;String&gt; response = client.send(HttpRequest.newBuilder(uri).build(),
+        HttpResponse.BodyHandlers.ofString());
+System.out.printf(&quot;%s: status %d, version %s%n&quot;, uri, response.statusCode(), response.version());
+System.out.println(&quot;alt-svc: &quot; + response.headers().firstValue(&quot;alt-svc&quot;).orElse(&quot;(none)&quot;));  // h3 = HTTP/3</code></pre></div></div>
+    <div class="kb-thoai"><p>Vậy client biết server có HTTP/3 bằng cách nào? Mình gửi request tới trang thử nghiệm QUIC của Cloudflare bằng HttpClient của JDK 21. Kết nối đi qua TLS, và cơ chế ALPN trong handshake TLS chọn HTTP/2. Kết quả: response là HTTP/2, kèm header Alt-Svc với giá trị h3 ở port 443. Qua header này, server báo rằng cùng tài nguyên còn được phục vụ bằng HTTP/3 ở port UDP 443. Trình duyệt ghi nhớ thông tin đó, và dùng HTTP/3 từ các lần kết nối sau.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới (chạy ngày 2026-10-24 tới https://cloudflare-quic.com/).
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:01</span>
+      <h3>Slide 6. Request HTTP/3 thật qua QUIC: 69 UDP datagram, QUIC tự gửi lại gói mất</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/h3/Http3Get.java</span><pre><code>HttpClient client = Http3Client.newHttpClient();     // cùng API HttpClient, bên dưới là QUIC trên UDP
+HttpResponse&lt;String&gt; response = client.send(HttpRequest.newBuilder(uri).build(),
+        HttpResponse.BodyHandlers.ofString());
+Statistics stats = ((Http3Client) client).getConnectionStatistics();
+System.out.printf(&quot;QUIC: %d UDP datagrams sent, %d packets lost (resent by QUIC), smoothed RTT %d ms%n&quot;,
+        stats.datagramsSent(), stats.lostPackets(), stats.smoothedRtt());</code></pre></div></div>
+    <div class="kb-thoai"><p>HttpClient của JDK 21 chưa gửi được HTTP/3; tính năng này có từ JDK 26. Với Java 21, mình dùng Flupke, một client HTTP/3 viết bằng Java trên thư viện QUIC Kwik. Lớp Http3Client của Flupke kế thừa HttpClient, nên mã gửi request giữ nguyên, chỉ khác cách tạo client, và sau request, chương trình in thống kê của kết nối QUIC. Kết quả: status 200 qua HTTP/3, và toàn bộ trao đổi phía client đi trong 69 UDP datagram. Hai gói bị mất trên đường, và QUIC tự gửi lại mà chương trình không phải làm gì: việc truyền lại giờ nằm trong QUIC, trên nền UDP.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới (chạy ngày 2026-10-24, cùng trang thử nghiệm). Số datagram và số gói mất thay đổi giữa các lần chạy.
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:50</span>
+      <h3>Slide 7. 0-RTT có thể bị phát lại, và mạng chặn UDP thì quay về HTTP/2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**0-RTT**: dữ liệu ở gói đầu có thể bị **phát lại**; chỉ dùng cho request gửi lặp lại không đổi dữ liệu, như GET</li><li>Mạng chặn UDP port 443: client quay về **HTTP/2 trên TCP**</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Lưu ý:** HTTP/3 là lựa chọn nhanh hơn khi có, không thay hẳn HTTP/2.</div></div>
+    <div class="kb-thoai"><p>0-RTT đổi tốc độ lấy một rủi ro: dữ liệu trong gói đầu tiên có thể bị kẻ tấn công ghi lại và gửi lại cho server, gọi là phát lại, hay replay. Vì thế, 0-RTT chỉ nên dùng cho request mà gửi lặp lại không thay đổi dữ liệu, như GET đọc một trang, không dùng cho request chuyển tiền hay đặt hàng. Ngoài ra, một số mạng doanh nghiệp chặn UDP port 443, nên HTTP/3 không đi được. Khi đó, client quay về HTTP/2 trên TCP, như trình duyệt vẫn làm. Nói gọn, HTTP/3 là lựa chọn nhanh hơn khi có, chứ không thay hẳn HTTP/2.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hai ý hiện lần lượt, khung lưu ý hiện cuối.
+Hiện dần: bước 1 khi đọc “0-RTT đổi tốc độ”; bước 2 khi đọc “Ngoài ra, một số mạng”; bước 3 khi đọc “Nói gọn”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:27</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Các bạn thử giải thích lại lựa chọn nền tảng của QUIC.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Vì sao QUIC chạy trên UDP thay vì chạy trực tiếp trên IP như TCP?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Vì thiết bị mạng trên đường đi và hệ điều hành chỉ quen TCP và UDP; chạy trên UDP, QUIC đi qua được mạng hiện có và cài được ngay trong ứng dụng.</li>
+      <li><b>B.</b> Vì UDP tự truyền lại gói bị mất.</li>
+      <li><b>C.</b> Vì UDP có sẵn mã hóa.</li>
+      <li><b>D.</b> Vì IP không cho phép giao thức giao vận nào khác ngoài TCP.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: A</b> — <span>UDP không truyền lại, không mã hóa; QUIC tự làm các việc đó. QUIC dùng UDP như lớp vỏ để đi qua thiết bị mạng và hệ điều hành hiện có, và để cài đặt trong ứng dụng thay vì trong nhân hệ điều hành.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là A. Phương án B và C gán cho UDP những việc mà chính QUIC làm: UDP không truyền lại và không mã hóa. QUIC chỉ dùng UDP như một lớp vỏ để đi qua mạng hiện có.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án A được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:50</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu cuối của chương xoay quanh rủi ro của 0-RTT.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Client kết nối lại tới một server đã biết và có thể gửi dữ liệu bằng 0-RTT. Request nào an toàn để gửi bằng 0-RTT?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> POST chuyển tiền.</li>
+      <li><b>B.</b> POST đặt hàng.</li>
+      <li><b>C.</b> GET đọc một trang tin.</li>
+      <li><b>D.</b> POST gửi bình luận.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: C</b> — <span>Dữ liệu 0-RTT có thể bị phát lại. GET đọc trang gửi lặp lại không thay đổi dữ liệu nên an toàn; ba request POST còn lại, nếu bị phát lại, sẽ chuyển tiền, đặt hàng hay đăng bình luận thêm lần nữa.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là C. Ba phương án còn lại đều thay đổi dữ liệu: nếu bị phát lại, tiền bị chuyển hai lần, đơn hàng hay bình luận bị tạo hai lần.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án C.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:09</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**HTTP/3** chạy trên **QUIC**, QUIC chạy trên UDP: tự truyền lại, giữ thứ tự, mã hóa bằng TLS 1.3</li><li>Kết nối mới 1-RTT, kết nối lại **0-RTT** (chỉ cho request không đổi dữ liệu)</li><li>**Stream độc lập**: mất gói chỉ chậm stream đó; **connection migration** nhờ **connection ID**</li></ul></div>
+    <div class="kb-thoai"><p>HTTP/3 chạy trên QUIC, và QUIC chạy trên UDP: QUIC tự truyền lại, giữ thứ tự và mã hóa bằng TLS 1.3. QUIC thiết lập kết nối mới trong một vòng, và kết nối lại bằng 0-RTT, chỉ cho request không thay đổi dữ liệu. Hai cơ chế còn lại giải hai giới hạn của TCP: stream độc lập, nên mất gói chỉ làm chậm stream chứa gói đó; và connection migration, nhờ connection ID không phụ thuộc địa chỉ. Phần cuối của chương có sáu từ khóa: QUIC, HTTP/3, stream độc lập, 0-RTT, connection migration và connection ID.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “HTTP/3 chạy trên QUIC”; bước 2 khi đọc “QUIC thiết lập”; bước 3 khi đọc “Hai cơ chế còn lại”; bước 4 khi đọc “Phần cuối của chương có sáu từ khóa”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:45</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Muốn tự lập trình QUIC trong Java, các bạn có thể tìm hiểu Kwik, thư viện QUIC mà Flupke dùng, và bộ QUIC của Netty, cùng với cách QUIC kiểm soát tắc nghẽn. Bài tập mở rộng là lập bảng so sánh HTTP/1.1, HTTP/2 và HTTP/3 theo tầng giao vận, số kết nối, head-of-line blocking và thời gian thiết lập, rồi tìm một trang web dùng HTTP/3 và chứng minh bằng công cụ.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Muốn tự lập trình”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-12" data-index="12">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:10</span>
+      <h3>Tổng kết chương</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(12)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(12, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**UDP**: datagram giữ ranh giới, không kết nối; tự đặt timeout, cấp buffer đủ lớn</li><li>**Multicast**: một lần gửi cho cả nhóm; tham gia nhóm trên đúng network interface; video đánh số thứ tự</li><li>**WebSocket**: nâng cấp từ HTTP, frame hai chiều; phòng chat với tập phiên an toàn đồng thời</li><li>**HTTP/2 → HTTP/3**: nhiều stream trên một kết nối TCP, rồi QUIC trên UDP với stream độc lập</li></ul></div>
+    <div class="kb-thoai"><p>Chương 3 đi ra ngoài mô hình một kết nối TCP, mỗi lượt một yêu cầu. Nhóm UDP cho thấy datagram giữ ranh giới và không cần kết nối, đổi lại chương trình tự đặt thời gian chờ và cấp buffer đủ lớn. Nhóm Multicast gửi một lần cho cả nhóm máy nhận, với điều kiện tham gia nhóm trên đúng network interface, và áp dụng vào truyền video bằng số thứ tự. Nhóm WebSocket nâng cấp một kết nối HTTP thành kênh frame hai chiều, rồi dựng phòng chat với tập phiên an toàn khi nhiều thread truy cập. Hai nhóm cuối đi theo dòng tiến hóa của HTTP: HTTP/2 ghép nhiều stream trên một kết nối TCP, rồi HTTP/3 chuyển sang QUIC trên UDP để các stream độc lập với nhau, khép lại chương ở chính giao thức UDP mà chương mở đầu.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Infographic tổng kết chương: bốn thẻ hiện lần lượt theo lời đọc.
+Hiện dần: bước 1 khi đọc “Nhóm UDP cho thấy”; bước 2 khi đọc “Nhóm Multicast”; bước 3 khi đọc “Nhóm WebSocket”; bước 4 khi đọc “Hai nhóm cuối”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-13" data-index="13">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:54</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(13)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(13, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chương 3 dừng ở các giao thức chuyển dữ liệu. Chương 4 đi lên một tầng, với kỹ thuật lập trình phân tán, mở đầu bằng RPC: lời gọi thủ tục từ xa và Java RMI.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V21", "tieu_de": "HTTP/3: QUIC và giao thức trên UDP", "giong": "vi-VN-NamMinhNeural", "tong": 486.61, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/b06b0e5383b9a7b1.mp3", "dur": 17.45, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.732, "HTTP/2", 1], [2.85, "đưa", 1], [3.013, "nhiều", 1], [3.25, "request", 1], [3.475, "lên", 1], [3.675, "một", 1], [3.837, "kết", 1], [4.0, "nối,", 1], [4.525, "nhưng", 1], [4.838, "vẫn", 1], [5.025, "bị", 1], [5.406, "TCP", 1], [5.787, "làm", 1], [6.025, "chậm", 1], [6.263, "mỗi", 1], [6.475, "khi", 1], [6.625, "mất", 1], [6.8, "gói.", 1], [7.863, "HTTP/3", 2], [8.925, "giải", 2], [9.113, "quyết", 2], [9.375, "bằng", 2], [9.6, "cách", 2], [9.775, "bỏ", 2], [9.975, "hẳn", 2], [10.4, "TCP", 2], [10.825, "và", 2], [10.975, "chạy", 2], [11.238, "trên", 2], [12.075, "UDP.", 2], [12.912, "Vì", 3], [13.15, "sao", 3], [13.387, "lại", 3], [13.537, "chọn", 3], [14.094, "UDP,", 3], [14.65, "và", 3], [14.912, "giao", 3], [15.113, "thức", 3], [15.288, "QUIC", 3], [15.463, "phải", 3], [15.637, "làm", 3], [15.85, "thêm", 3], [16.087, "những", 3], [16.3, "gì?", 3]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Ba giới hạn nằm trong chính TCP", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Phần trước kết thúc”; bước 2 khi đọc “Một kết nối mới”; bước 3 khi đọc “Và kết nối TCP gắn với”; bước 4 khi đọc “Phần cuối của chương”.", "start": 18.05, "audio": "audio/246fd87fca323e21.mp3", "dur": 40.97, "words": [[0.1, "Phần", 0], [0.388, "trước", 0], [0.575, "kết", 0], [0.738, "thúc", 0], [0.988, "ở", 0], [1.113, "head-of-line", 0], [1.8, "blocking:", 0], [2.525, "trên", 0], [2.812, "kết", 0], [3.025, "nối", 0], [3.756, "HTTP/2,", 0], [4.487, "mất", 0], [4.713, "một", 0], [4.875, "segment", 0], [5.412, "TCP", 0], [5.95, "làm", 0], [6.175, "mọi", 0], [6.325, "stream", 0], [6.675, "phải", 0], [6.85, "chờ.", 0], [8.0, "Ngoài", 1], [8.275, "giới", 1], [8.5, "hạn", 1], [8.713, "đó,", 1], [9.331, "TCP", 1], [9.95, "còn", 1], [10.2, "hai", 1], [10.387, "giới", 1], [10.613, "hạn", 1], [10.812, "khác.", 1], [11.938, "Một", 2], [12.287, "kết", 2], [12.475, "nối", 2], [12.625, "mới", 2], [12.875, "phải", 2], [13.062, "qua", 2], [13.262, "bắt", 2], [13.463, "tay", 2], [13.675, "ba", 2], [13.85, "bước", 2], [14.1, "của", 2], [14.488, "TCP", 2], [14.875, "rồi", 2], [15.075, "handshake", 2], [15.75, "TLS,", 2], [16.425, "nên", 2], [16.7, "request", 2], [16.875, "đầu", 2], [17.05, "tiên", 2], [17.325, "chỉ", 2], [17.475, "đi", 2], [17.613, "được", 2], [17.762, "sau", 2], [18.0, "hai", 2], [18.175, "vòng", 2], [18.387, "gửi", 2], [18.625, "và", 2], [18.75, "nhận.", 2], [19.938, "Và", 3], [20.25, "kết", 3], [20.475, "nối", 3], [20.869, "TCP", 3], [21.262, "gắn", 3], [21.538, "với", 3], [22.075, "4-tuple,", 3], [22.613, "nên", 3], [22.9, "khi", 3], [23.1, "điện", 3], [23.275, "thoại", 3], [23.438, "chuyển", 3], [23.738, "từ", 3], [23.913, "Wi-Fi", 3], [24.363, "sang", 3], [24.625, "4G,", 3], [25.375, "địa", 3], [25.587, "chỉ", 3], [25.788, "đổi", 3], [26.062, "và", 3], [26.212, "kết", 3], [26.45, "nối", 3], [26.613, "mất.", 3], [27.7, "Các", 4], [27.9, "giới", 4], [28.087, "hạn", 4], [28.288, "này", 4], [28.5, "nằm", 4], [28.738, "trong", 4], [28.95, "chính", 4], [29.487, "TCP,", 4], [30.025, "mà", 4], [30.45, "TCP", 4], [30.875, "được", 4], [31.025, "cài", 4], [31.25, "trong", 4], [31.425, "nhân", 4], [31.625, "hệ", 4], [31.8, "điều", 4], [31.975, "hành,", 4], [32.45, "rất", 4], [32.65, "khó", 4], [32.938, "thay", 4], [33.1, "đổi.", 4], [34.312, "Phần", 5], [34.612, "cuối", 5], [34.8, "của", 5], [34.938, "chương", 5], [35.188, "trả", 5], [35.375, "lời", 5], [35.538, "câu", 5], [35.725, "hỏi:", 5], [36.231, "QUIC,", 5], [36.737, "giao", 5], [36.987, "thức", 5], [37.175, "chạy", 5], [37.388, "trên", 5], [37.919, "UDP,", 5], [38.45, "vượt", 5], [38.712, "qua", 5], [38.875, "ba", 5], [39.062, "giới", 5], [39.263, "hạn", 5], [39.487, "đó", 5], [39.688, "thế", 5], [39.812, "nào?", 5]], "cues": [0.1, 11.938, 19.938, 34.312], "lang": 0.6}, {"ten": "Slide 2. QUIC thay TLS và TCP, chạy trên UDP, thiết lập trong một vòng", "loai": "slide", "slide": "S02", "dung": "Hình chong-giao-thuc: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Với HTTP/2”; bước 2 khi đọc “HTTP/3 thay cả hai lớp”; bước 3 khi đọc “Vì bắt tay và mã hóa”; bước 4 khi đọc “QUIC chọn UDP”.", "start": 59.62, "audio": "audio/f58253838931f3c4.mp3", "dur": 57.82, "words": [[0.1, "Với", 0], [0.868, "HTTP/2,", 0], [1.637, "chồng", 0], [1.887, "giao", 0], [2.062, "thức", 0], [2.25, "gồm", 0], [2.844, "HTTP/2", 0], [3.438, "đứng", 0], [3.65, "trên", 0], [4.119, "TLS", 0], [4.588, "và", 0], [4.59, "TCP.", 0], [4.593, "HTTP/3", 1], [4.595, "thay", 1], [4.597, "cả", 1], [4.599, "hai", 1], [4.602, "lớp", 1], [4.604, "đó", 1], [4.606, "bằng", 1], [4.608, "QUIC,", 1], [4.611, "một", 1], [4.613, "giao", 1], [4.615, "thức", 1], [4.617, "giao", 1], [4.62, "vận", 1], [4.622, "chạy", 1], [4.624, "trên", 1], [4.626, "UDP.", 1], [4.629, "QUIC", 2], [4.631, "tự", 2], [4.633, "làm", 2], [4.635, "các", 2], [4.638, "việc", 2], [4.64, "mà", 2], [4.642, "bản", 2], [4.644, "tra", 2], [4.647, "cứu", 2], [4.649, "UDP", 2], [4.651, "ở", 2], [4.653, "đầu", 2], [4.656, "chương", 2], [4.658, "chưa", 2], [4.66, "có:", 2], [4.662, "truyền", 2], [4.665, "lại", 2], [4.667, "gói", 2], [4.669, "mất,", 2], [4.671, "giữ", 2], [4.674, "thứ", 2], [4.676, "tự,", 2], [4.678, "và", 2], [4.68, "tích", 2], [4.683, "hợp", 2], [4.685, "luôn", 2], [4.687, "TLS", 2], [4.689, "1.3", 2], [4.692, "để", 2], [4.694, "mã", 2], [4.696, "hóa.", 2], [4.698, "Vì", 3], [4.701, "bắt", 3], [4.703, "tay", 3], [4.705, "và", 3], [4.707, "mã", 3], [4.71, "hóa", 3], [4.712, "diễn", 3], [4.714, "ra", 3], [4.716, "cùng", 3], [4.719, "lúc,", 3], [4.721, "kết", 3], [4.723, "nối", 3], [4.725, "mới", 3], [4.728, "của", 3], [4.73, "QUIC", 3], [4.732, "chỉ", 3], [4.734, "cần", 3], [4.737, "một", 3], [4.739, "vòng", 3], [4.741, "gửi", 3], [4.743, "đi", 3], [4.746, "và", 3], [4.748, "nhận", 3], [4.75, "về,", 3], [4.752, "gọi", 3], [4.755, "là", 3], [4.757, "1-RTT,", 3], [4.759, "với", 3], [4.761, "RTT", 3], [4.764, "là", 3], [4.766, "viết", 3], [4.768, "tắt", 3], [4.77, "của", 3], [4.773, "round-trip", 3], [4.775, "time.", 3], [4.775, "Ví", 4], [4.775, "dụ", 4], [4.775, "của", 4], [4.775, "phần", 4], [4.775, "đo", 4], [4.775, "được", 4], [4.775, "khoảng", 4], [4.775, "30", 4], [4.775, "mili", 4], [4.775, "giây", 4], [4.775, "mỗi", 4], [4.775, "vòng.", 4], [4.775, "Đó", 5], [4.775, "là", 5], [4.775, "lời", 5], [4.775, "giải", 5], [4.775, "cho", 5], [4.775, "giới", 5], [4.775, "hạn", 5], [4.775, "thứ", 5], [4.775, "hai.", 5], [4.775, "Khi", 6], [4.775, "kết", 6], [4.775, "nối", 6], [4.775, "lại", 6], [4.775, "tới", 6], [4.775, "server", 6], [4.775, "đã", 6], [4.775, "biết,", 6], [4.775, "client", 6], [4.775, "gửi", 6], [4.775, "request", 6], [4.775, "ngay", 6], [4.775, "trong", 6], [4.775, "gói", 6], [4.775, "đầu", 6], [4.775, "tiên,", 6], [4.775, "gọi", 6], [4.775, "là", 6], [4.775, "0-RTT.", 6], [4.775, "QUIC", 7], [4.775, "chọn", 7], [4.775, "UDP", 7], [4.775, "vì", 7], [4.775, "các", 7], [4.775, "thiết", 7], [4.775, "bị", 7], [4.775, "mạng", 7], [4.775, "trên", 7], [4.775, "đường", 7], [4.775, "đi", 7], [4.775, "và", 7], [4.775, "hệ", 7], [4.775, "điều", 7], [4.775, "hành", 7], [4.775, "chỉ", 7], [4.775, "quen", 7], [4.775, "TCP", 7], [4.775, "và", 7], [4.775, "UDP.", 7], [4.775, "Chạy", 8], [4.775, "trên", 8], [4.775, "UDP,", 8], [4.775, "QUIC", 8], [4.775, "đi", 8], [4.775, "qua", 8], [4.775, "được", 8], [4.775, "mạng", 8], [4.775, "hiện", 8], [4.775, "có,", 8], [4.775, "và", 8], [4.775, "được", 8], [4.775, "cài", 8], [4.775, "đặt", 8], [4.775, "ngay", 8], [4.775, "trong", 8], [4.775, "ứng", 8], [4.775, "dụng", 8], [4.775, "thay", 8], [4.775, "vì", 8], [4.775, "chờ", 8], [4.775, "nâng", 8], [4.775, "cấp", 8], [4.775, "nhân", 8], [4.775, "hệ", 8], [4.775, "điều", 8], [4.775, "hành.", 8]], "cues": [0.1, 4.593, 4.698, 4.775], "lang": 2.6}, {"ten": "Slide 3. Stream độc lập: mất gói chỉ làm chậm stream chứa gói đó", "loai": "slide", "slide": "S03", "dung": "Hình stream-doc-lap: ba bước của hình, bước 4 là ô kết luận. Đặt cạnh hình head-of-line blocking của phần HTTP/2 nếu cần so sánh.\nHiện dần: bước 1 khi đọc “Kết nối QUIC cũng mang”; bước 2 khi đọc “Khi gói 2”; bước 3 khi đọc “bên nhận vẫn giao ngay”; bước 4 khi đọc “Nhờ vậy”.", "start": 120.04, "audio": "audio/c4e41216b3f4c975.mp3", "dur": 33.67, "words": [[0.1, "Giới", 0], [0.388, "hạn", 0], [0.613, "đầu", 0], [0.775, "tiên,", 0], [1.325, "head-of-line", 0], [2.087, "blocking,", 0], [2.875, "được", 0], [3.1, "giải", 0], [3.375, "bằng", 0], [3.612, "stream", 0], [3.95, "độc", 0], [4.125, "lập.", 0], [5.162, "Kết", 1], [5.438, "nối", 1], [5.644, "QUIC", 1], [5.85, "cũng", 1], [6.075, "mang", 1], [6.237, "nhiều", 1], [6.425, "stream,", 1], [7.013, "nhưng", 1], [7.244, "QUIC", 1], [7.475, "giữ", 1], [7.662, "thứ", 1], [7.85, "tự", 1], [8.062, "riêng", 1], [8.3, "cho", 1], [8.425, "từng", 1], [8.625, "stream,", 1], [9.162, "chứ", 1], [9.4, "không", 1], [9.662, "cho", 1], [9.787, "cả", 1], [9.95, "kết", 1], [10.175, "nối", 1], [10.387, "như", 1], [11.262, "TCP.", 1], [12.137, "Khi", 2], [12.387, "gói", 2], [12.588, "2,", 2], [13.113, "mang", 2], [13.4, "dữ", 2], [13.562, "liệu", 2], [13.787, "của", 2], [13.925, "stream", 2], [14.188, "3,", 2], [14.662, "bị", 2], [14.875, "mất,", 2], [15.338, "bên", 2], [15.525, "nhận", 2], [15.812, "vẫn", 2], [16.0, "giao", 2], [16.175, "ngay", 2], [16.363, "dữ", 2], [16.55, "liệu", 2], [16.775, "của", 2], [16.913, "stream", 2], [17.137, "1", 2], [17.35, "và", 2], [17.525, "stream", 2], [17.863, "5", 2], [18.087, "cho", 2], [18.288, "ứng", 2], [18.438, "dụng.", 2], [19.6, "Riêng", 3], [19.962, "gói", 3], [20.15, "5,", 3], [20.562, "cũng", 3], [20.75, "thuộc", 3], [20.913, "stream", 3], [21.2, "3,", 3], [21.688, "được", 3], [21.887, "giữ", 3], [22.1, "lại", 3], [22.312, "tới", 3], [22.512, "khi", 3], [22.7, "gói", 3], [22.875, "2", 3], [23.087, "được", 3], [23.225, "gửi", 3], [23.413, "lại,", 3], [23.975, "vì", 3], [24.188, "thứ", 3], [24.35, "tự", 3], [24.55, "bên", 3], [24.788, "trong", 3], [24.975, "stream", 3], [25.25, "3", 3], [25.462, "vẫn", 3], [25.65, "phải", 3], [25.837, "đúng.", 3], [27.0, "Nhờ", 4], [27.275, "vậy,", 4], [27.725, "mất", 4], [27.938, "gói", 4], [28.15, "chỉ", 4], [28.312, "làm", 4], [28.525, "chậm", 4], [28.762, "stream", 4], [29.075, "chứa", 4], [29.312, "gói", 4], [29.512, "đó,", 4], [30.062, "và", 4], [30.337, "head-of-line", 4], [31.1, "blocking", 4], [31.637, "giữa", 4], [31.837, "các", 4], [31.975, "stream", 4], [32.275, "không", 4], [32.513, "còn.", 4]], "cues": [5.162, 12.137, 15.338, 27.0], "lang": 2.6}, {"ten": "Slide 4. Connection ID giữ kết nối khi điện thoại đổi mạng", "loai": "slide", "slide": "S04", "dung": "Hình connection-migration: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Điện thoại đang tải”; bước 2 khi đọc “Khi điện thoại chuyển sang 4G”; bước 3 khi đọc “Với QUIC, gói từ địa chỉ mới”; bước 4 khi đọc “Khả năng này gọi là”.", "start": 156.31, "audio": "audio/88ac20207e1d5bdc.mp3", "dur": 35.95, "words": [[0.1, "Giới", 0], [0.4, "hạn", 0], [0.625, "thứ", 0], [0.812, "ba", 0], [1.2, "là", 0], [1.387, "kết", 0], [1.625, "nối", 0], [1.8, "gắn", 0], [2.062, "với", 0], [2.188, "địa", 0], [2.35, "chỉ.", 0], [3.625, "Điện", 1], [3.938, "thoại", 1], [4.213, "đang", 1], [4.45, "tải", 1], [4.7, "qua", 1], [4.975, "Wi-Fi.", 1], [6.35, "Khi", 2], [6.6, "thiết", 2], [6.8, "lập", 2], [6.975, "kết", 2], [7.175, "nối", 2], [7.494, "QUIC,", 2], [7.812, "hai", 2], [8.012, "bên", 2], [8.2, "chọn", 2], [8.45, "một", 2], [8.637, "connection", 2], [9.319, "ID,", 2], [10.0, "ở", 2], [10.213, "đây", 2], [10.387, "là", 2], [10.512, "C7,", 2], [11.287, "và", 2], [11.475, "mọi", 2], [11.688, "gói", 2], [11.938, "đều", 2], [12.075, "mang", 2], [12.325, "định", 2], [12.525, "danh", 2], [12.7, "này.", 2], [13.775, "Khi", 3], [14.0, "điện", 3], [14.188, "thoại", 3], [14.387, "chuyển", 3], [14.637, "sang", 3], [14.912, "4G,", 3], [15.7, "địa", 3], [15.95, "chỉ", 3], [16.331, "IP", 3], [16.712, "và", 3], [16.837, "port", 3], [17.075, "đổi.", 3], [18.3, "Với", 4], [18.925, "TCP,", 4], [19.55, "4-tuple", 4], [20.175, "đổi", 4], [20.387, "nghĩa", 4], [20.65, "là", 4], [20.812, "kết", 4], [21.038, "nối", 4], [21.212, "cũ", 4], [21.488, "không", 4], [21.725, "dùng", 4], [21.913, "được", 4], [22.062, "nữa,", 4], [22.625, "phải", 4], [22.812, "kết", 4], [23.025, "nối", 4], [23.275, "và", 4], [23.438, "handshake", 4], [23.938, "lại", 4], [24.113, "từ", 4], [24.288, "đầu.", 4], [25.4, "Với", 5], [25.756, "QUIC,", 5], [26.113, "gói", 5], [26.35, "từ", 5], [26.525, "địa", 5], [26.712, "chỉ", 5], [26.9, "mới", 5], [27.163, "vẫn", 5], [27.35, "mang", 5], [27.562, "connection", 5], [28.05, "ID", 5], [28.538, "C7,", 5], [29.337, "nên", 5], [29.625, "server", 5], [30.025, "nhận", 5], [30.325, "ra", 5], [30.462, "kết", 5], [30.688, "nối", 5], [30.863, "cũ", 5], [31.15, "và", 5], [31.288, "tải", 5], [31.525, "tiếp.", 5], [32.625, "Khả", 6], [32.85, "năng", 6], [33.062, "này", 6], [33.25, "gọi", 6], [33.475, "là", 6], [33.612, "connection", 6], [34.337, "migration.", 6]], "cues": [3.625, 13.775, 25.4, 32.625], "lang": 2.6}, {"ten": "Slide 5. Server báo có HTTP/3 bằng header Alt-Svc", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, kết quả phía dưới (chạy ngày 2026-10-24 tới https://cloudflare-quic.com/).\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 194.86, "audio": "audio/aebce0af1df57412.mp3", "dur": 36.58, "words": [[0.1, "Vậy", 0], [0.4, "client", 0], [0.75, "biết", 0], [0.938, "server", 0], [1.312, "có", 0], [1.837, "HTTP/3", 0], [2.362, "bằng", 0], [2.575, "cách", 0], [2.763, "nào?", 0], [3.913, "Mình", 1], [4.275, "gửi", 1], [4.463, "request", 1], [4.65, "tới", 1], [4.85, "trang", 1], [5.075, "thử", 1], [5.237, "nghiệm", 1], [5.469, "QUIC", 1], [5.7, "của", 1], [5.963, "Cloudflare", 1], [6.338, "bằng", 1], [6.562, "HttpClient", 1], [7.55, "của", 1], [7.912, "JDK", 1], [8.275, "21.", 1], [9.688, "Kết", 2], [9.95, "nối", 2], [10.162, "đi", 2], [10.287, "qua", 2], [10.819, "TLS,", 2], [11.35, "và", 2], [11.588, "cơ", 2], [11.787, "chế", 2], [12.356, "ALPN", 2], [12.925, "trong", 2], [13.113, "handshake", 2], [13.688, "TLS", 2], [14.262, "chọn", 2], [15.331, "HTTP/2.", 2], [16.4, "Kết", 3], [16.6, "quả:", 3], [17.2, "response", 3], [17.887, "là", 3], [18.587, "HTTP/2,", 3], [19.288, "kèm", 3], [19.575, "header", 3], [19.938, "Alt-Svc", 3], [20.788, "với", 3], [21.0, "giá", 3], [21.2, "trị", 3], [21.532, "h3", 3], [21.863, "ở", 3], [22.012, "port", 3], [22.925, "443.", 3], [23.837, "Qua", 4], [24.075, "header", 4], [24.413, "này,", 4], [24.812, "server", 4], [25.212, "báo", 4], [25.462, "rằng", 4], [25.688, "cùng", 4], [25.9, "tài", 4], [26.05, "nguyên", 4], [26.337, "còn", 4], [26.5, "được", 4], [26.625, "phục", 4], [26.788, "vụ", 4], [27.025, "bằng", 4], [27.618, "HTTP/3", 4], [28.212, "ở", 4], [28.337, "port", 4], [28.768, "UDP", 4], [29.2, "443.", 4], [31.1, "Trình", 5], [31.425, "duyệt", 5], [31.65, "ghi", 5], [31.825, "nhớ", 5], [32.062, "thông", 5], [32.263, "tin", 5], [32.45, "đó,", 5], [32.938, "và", 5], [33.125, "dùng", 5], [33.731, "HTTP/3", 5], [34.337, "từ", 5], [34.575, "các", 5], [34.775, "lần", 5], [34.987, "kết", 5], [35.225, "nối", 5], [35.4, "sau.", 5]], "cues": [16.4], "lang": 9.6}, {"ten": "Slide 6. Request HTTP/3 thật qua QUIC: 69 UDP datagram, QUIC tự gửi lại gói mất", "loai": "slide", "slide": "S06", "dung": "Mã phía trên, kết quả phía dưới (chạy ngày 2026-10-24, cùng trang thử nghiệm). Số datagram và số gói mất thay đổi giữa các lần chạy.\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 241.04, "audio": "audio/82236cd9a3adf17c.mp3", "dur": 40.2, "words": [[0.1, "HttpClient", 0], [1.212, "của", 0], [1.569, "JDK", 0], [1.925, "21", 0], [2.45, "chưa", 0], [2.663, "gửi", 0], [2.913, "được", 0], [3.644, "HTTP/3;", 0], [4.375, "tính", 0], [4.575, "năng", 0], [4.75, "này", 0], [4.925, "có", 0], [5.075, "từ", 0], [5.438, "JDK", 0], [5.8, "26.", 0], [7.325, "Với", 1], [7.65, "Java", 1], [8.05, "21,", 1], [8.863, "mình", 1], [9.088, "dùng", 1], [9.312, "Flupke,", 1], [9.938, "một", 1], [10.175, "client", 1], [10.775, "HTTP/3", 1], [11.375, "viết", 1], [11.562, "bằng", 1], [11.775, "Java", 1], [12.213, "trên", 1], [12.412, "thư", 1], [12.588, "viện", 1], [12.8, "QUIC", 1], [13.012, "Kwik.", 1], [14.088, "Lớp", 2], [14.4, "Http3Client", 2], [15.738, "của", 2], [16.0, "Flupke", 2], [16.387, "kế", 2], [16.613, "thừa", 2], [16.812, "HttpClient,", 2], [17.962, "nên", 2], [18.225, "mã", 2], [18.425, "gửi", 2], [18.637, "request", 2], [18.85, "giữ", 2], [19.012, "nguyên,", 2], [19.587, "chỉ", 2], [19.825, "khác", 2], [20.038, "cách", 2], [20.212, "tạo", 2], [20.462, "client,", 2], [21.05, "và", 2], [21.275, "sau", 2], [21.5, "request,", 2], [21.938, "chương", 2], [22.2, "trình", 2], [22.438, "in", 2], [22.587, "thống", 2], [22.788, "kê", 2], [22.988, "của", 2], [23.15, "kết", 2], [23.387, "nối", 2], [24.018, "QUIC.", 2], [24.65, "Kết", 3], [24.85, "quả:", 3], [25.375, "status", 3], [26.0, "200", 3], [26.413, "qua", 3], [27.107, "HTTP/3,", 3], [27.8, "và", 3], [27.988, "toàn", 3], [28.212, "bộ", 3], [28.375, "trao", 3], [28.525, "đổi", 3], [28.7, "phía", 3], [28.925, "client", 3], [29.288, "đi", 3], [29.475, "trong", 3], [29.688, "69", 3], [30.262, "UDP", 3], [30.837, "datagram.", 3], [32.4, "Hai", 4], [32.663, "gói", 4], [32.875, "bị", 4], [33.0, "mất", 4], [33.2, "trên", 4], [33.438, "đường,", 4], [33.9, "và", 4], [34.112, "QUIC", 4], [34.325, "tự", 4], [34.5, "gửi", 4], [34.7, "lại", 4], [34.975, "mà", 4], [35.112, "chương", 4], [35.35, "trình", 4], [35.55, "không", 4], [35.763, "phải", 4], [35.913, "làm", 4], [36.087, "gì:", 4], [36.587, "việc", 4], [36.825, "truyền", 4], [37.062, "lại", 4], [37.225, "giờ", 4], [37.45, "nằm", 4], [37.675, "trong", 4], [37.969, "QUIC,", 4], [38.263, "trên", 4], [38.513, "nền", 4], [38.513, "UDP.", 4]], "cues": [24.65], "lang": 9.6}, {"ten": "Slide 7. 0-RTT có thể bị phát lại, và mạng chặn UDP thì quay về HTTP/2", "loai": "slide", "slide": "S07", "dung": "Hai ý hiện lần lượt, khung lưu ý hiện cuối.\nHiện dần: bước 1 khi đọc “0-RTT đổi tốc độ”; bước 2 khi đọc “Ngoài ra, một số mạng”; bước 3 khi đọc “Nói gọn”.", "start": 290.84, "audio": "audio/58e8850cefc6760e.mp3", "dur": 36.38, "words": [[0.912, "0-RTT", 0], [0.912, "đổi", 0], [1.1, "tốc", 0], [1.288, "độ", 0], [1.5, "lấy", 0], [1.65, "một", 0], [1.812, "rủi", 0], [2.013, "ro:", 0], [2.538, "dữ", 0], [2.75, "liệu", 0], [3.0, "trong", 0], [3.188, "gói", 0], [3.325, "đầu", 0], [3.5, "tiên", 0], [3.788, "có", 0], [3.888, "thể", 0], [4.05, "bị", 0], [4.188, "kẻ", 0], [4.4, "tấn", 0], [4.65, "công", 0], [4.825, "ghi", 0], [4.987, "lại", 0], [5.25, "và", 0], [5.375, "gửi", 0], [5.562, "lại", 0], [5.812, "cho", 0], [5.95, "server,", 0], [6.662, "gọi", 0], [6.963, "là", 0], [7.075, "phát", 0], [7.287, "lại,", 0], [7.8, "hay", 0], [8.025, "replay.", 0], [9.375, "Vì", 1], [9.613, "thế,", 1], [10.262, "0-RTT", 1], [10.912, "chỉ", 1], [11.05, "nên", 1], [11.25, "dùng", 1], [11.463, "cho", 1], [11.613, "request", 1], [11.887, "mà", 1], [12.162, "gửi", 1], [12.363, "lặp", 1], [12.562, "lại", 1], [12.762, "không", 1], [12.95, "thay", 1], [13.062, "đổi", 1], [13.25, "dữ", 1], [13.438, "liệu,", 1], [14.0, "như", 1], [14.4, "GET", 1], [14.8, "đọc", 1], [14.963, "một", 1], [15.15, "trang,", 1], [15.65, "không", 1], [15.9, "dùng", 1], [16.113, "cho", 1], [16.225, "request", 1], [16.4, "chuyển", 1], [16.65, "tiền", 1], [16.925, "hay", 1], [17.075, "đặt", 1], [17.238, "hàng.", 1], [18.375, "Ngoài", 2], [18.65, "ra,", 2], [19.087, "một", 2], [19.262, "số", 2], [19.438, "mạng", 2], [19.675, "doanh", 2], [19.837, "nghiệp", 2], [20.062, "chặn", 2], [20.456, "UDP", 2], [20.85, "port", 2], [21.462, "443,", 2], [22.075, "nên", 2], [22.669, "HTTP/3", 2], [23.262, "không", 2], [23.488, "đi", 2], [23.6, "được.", 2], [24.675, "Khi", 3], [24.913, "đó,", 3], [25.425, "client", 3], [25.788, "quay", 3], [26.0, "về", 3], [26.519, "HTTP/2", 3], [27.038, "trên", 3], [27.601, "TCP,", 3], [28.163, "như", 3], [28.438, "trình", 3], [28.688, "duyệt", 3], [28.863, "vẫn", 3], [29.062, "làm.", 3], [30.188, "Nói", 4], [30.562, "gọn,", 4], [31.281, "HTTP/3", 4], [32.0, "là", 4], [32.125, "lựa", 4], [32.312, "chọn", 4], [32.575, "nhanh", 4], [32.775, "hơn", 4], [32.975, "khi", 4], [33.125, "có,", 4], [33.675, "chứ", 4], [33.9, "không", 4], [34.125, "thay", 4], [34.275, "hẳn", 4], [34.275, "HTTP/2.", 4]], "cues": [0.912, 18.375, 30.188], "lang": 0.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án A được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 327.82, "audio": "audio/bf38b19ffe0ea90c.mp3", "dur": 3.58, "words": [[0.1, "Các", 0], [0.3, "bạn", 0], [0.5, "thử", 0], [0.7, "giải", 0], [0.912, "thích", 0], [1.125, "lại", 0], [1.325, "lựa", 0], [1.512, "chọn", 0], [1.825, "nền", 0], [2.05, "tảng", 0], [2.337, "của", 0], [2.337, "QUIC.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/c9c46836bb1fcc5f.mp3", "dur2": 12.14, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.662, "là", 0], [0.85, "A.", 0], [1.2, "Phương", 1], [1.562, "án", 1], [1.725, "B", 1], [1.925, "và", 1], [2.075, "C", 1], [2.288, "gán", 1], [2.575, "cho", 1], [2.925, "UDP", 1], [3.275, "những", 1], [3.5, "việc", 1], [3.688, "mà", 1], [3.812, "chính", 1], [4.024, "QUIC", 1], [4.237, "làm:", 1], [4.762, "UDP", 1], [5.287, "không", 1], [5.513, "truyền", 1], [5.737, "lại", 1], [5.987, "và", 1], [6.112, "không", 1], [6.325, "mã", 1], [6.487, "hóa.", 1], [7.231, "QUIC", 2], [7.975, "chỉ", 2], [8.175, "dùng", 2], [8.637, "UDP", 2], [9.1, "như", 2], [9.275, "một", 2], [9.463, "lớp", 2], [9.662, "vỏ", 2], [10.0, "để", 2], [10.125, "đi", 2], [10.275, "qua", 2], [10.488, "mạng", 2], [10.738, "hiện", 2], [10.938, "có.", 2]], "dap_an": "A", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án C.", "start": 350.14, "audio": "audio/c91eb3f962654df1.mp3", "dur": 3.74, "words": [[0.1, "Câu", 0], [0.312, "cuối", 0], [0.537, "của", 0], [0.7, "chương", 0], [0.975, "xoay", 0], [1.175, "quanh", 0], [1.413, "rủi", 0], [1.613, "ro", 0], [1.825, "của", 0], [1.825, "0-RTT.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/88a27ff640c4c464.mp3", "dur2": 8.69, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.688, "là", 0], [0.787, "C.", 0], [1.163, "Ba", 1], [1.387, "phương", 1], [1.637, "án", 1], [1.837, "còn", 1], [2.038, "lại", 1], [2.263, "đều", 1], [2.4, "thay", 1], [2.55, "đổi", 1], [2.75, "dữ", 1], [2.938, "liệu:", 1], [3.462, "nếu", 1], [3.737, "bị", 1], [3.888, "phát", 1], [4.112, "lại,", 1], [4.612, "tiền", 1], [4.838, "bị", 1], [4.975, "chuyển", 1], [5.225, "hai", 1], [5.425, "lần,", 1], [5.888, "đơn", 1], [6.15, "hàng", 1], [6.375, "hay", 1], [6.525, "bình", 1], [6.713, "luận", 1], [6.963, "bị", 1], [7.1, "tạo", 1], [7.362, "hai", 1], [7.55, "lần.", 1]], "dap_an": "C", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “HTTP/3 chạy trên QUIC”; bước 2 khi đọc “QUIC thiết lập”; bước 3 khi đọc “Hai cơ chế còn lại”; bước 4 khi đọc “Phần cuối của chương có sáu từ khóa”.", "start": 369.17, "audio": "audio/edc0d8769984947f.mp3", "dur": 36.12, "words": [[1.038, "HTTP/3", 0], [1.038, "chạy", 0], [1.288, "trên", 0], [1.587, "QUIC,", 0], [1.887, "và", 0], [2.093, "QUIC", 0], [2.3, "chạy", 0], [2.5, "trên", 0], [2.908, "UDP:", 0], [3.317, "QUIC", 0], [3.725, "tự", 0], [3.913, "truyền", 0], [4.15, "lại,", 0], [4.662, "giữ", 0], [4.862, "thứ", 0], [5.025, "tự", 0], [5.3, "và", 0], [5.425, "mã", 0], [5.625, "hóa", 0], [5.9, "bằng", 0], [6.4, "TLS", 0], [6.9, "1.3.", 0], [7.769, "QUIC", 1], [8.637, "thiết", 1], [8.863, "lập", 1], [9.062, "kết", 1], [9.262, "nối", 1], [9.425, "mới", 1], [9.688, "trong", 1], [9.85, "một", 1], [10.0, "vòng,", 1], [10.475, "và", 1], [10.7, "kết", 1], [10.925, "nối", 1], [11.113, "lại", 1], [11.275, "bằng", 1], [11.913, "0-RTT,", 1], [12.55, "chỉ", 1], [12.812, "cho", 1], [12.975, "request", 1], [13.188, "không", 1], [13.45, "thay", 1], [13.575, "đổi", 1], [13.787, "dữ", 1], [13.988, "liệu.", 1], [15.15, "Hai", 2], [15.375, "cơ", 2], [15.55, "chế", 2], [15.787, "còn", 2], [16.025, "lại", 2], [16.175, "giải", 2], [16.387, "hai", 2], [16.562, "giới", 2], [16.75, "hạn", 2], [16.988, "của", 2], [17.475, "TCP:", 2], [17.962, "stream", 2], [18.275, "độc", 2], [18.438, "lập,", 2], [18.887, "nên", 2], [19.15, "mất", 2], [19.312, "gói", 2], [19.512, "chỉ", 2], [19.675, "làm", 2], [19.887, "chậm", 2], [20.113, "stream", 2], [20.413, "chứa", 2], [20.625, "gói", 2], [20.812, "đó;", 2], [21.363, "và", 2], [21.613, "connection", 2], [22.337, "migration,", 2], [23.375, "nhờ", 2], [23.675, "connection", 2], [24.218, "ID", 2], [24.762, "không", 2], [25.0, "phụ", 2], [25.175, "thuộc", 2], [25.363, "địa", 2], [25.538, "chỉ.", 2], [26.8, "Phần", 3], [27.1, "cuối", 3], [27.275, "của", 3], [27.413, "chương", 3], [27.675, "có", 3], [27.775, "sáu", 3], [28.012, "từ", 3], [28.2, "khóa:", 3], [28.2, "QUIC,", 3], [28.2, "HTTP/3,", 3], [28.2, "stream", 3], [28.2, "độc", 3], [28.2, "lập,", 3], [28.2, "0-RTT,", 3], [28.2, "connection", 3], [28.2, "migration", 3], [28.2, "và", 3], [28.2, "connection", 3], [28.2, "ID.", 3]], "cues": [1.038, 7.769, 15.15, 26.8], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Muốn tự lập trình”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 405.89, "audio": "audio/e31ba758a5914fc2.mp3", "dur": 23.74, "words": [[0.1, "Muốn", 0], [0.5, "tự", 0], [0.688, "lập", 0], [0.912, "trình", 0], [1.119, "QUIC", 0], [1.325, "trong", 0], [1.562, "Java,", 0], [2.237, "các", 0], [2.413, "bạn", 0], [2.612, "có", 0], [2.712, "thể", 0], [2.862, "tìm", 0], [3.1, "hiểu", 0], [3.275, "Kwik,", 0], [3.763, "thư", 0], [3.95, "viện", 0], [4.181, "QUIC", 0], [4.412, "mà", 0], [4.688, "Flupke", 0], [5.013, "dùng,", 0], [5.525, "và", 0], [5.725, "bộ", 0], [5.918, "QUIC", 0], [6.112, "của", 0], [6.263, "Netty,", 0], [6.963, "cùng", 0], [7.213, "với", 0], [7.325, "cách", 0], [7.482, "QUIC", 0], [7.638, "kiểm", 0], [7.875, "soát", 0], [8.125, "tắc", 0], [8.312, "nghẽn.", 0], [9.525, "Bài", 1], [9.762, "tập", 1], [9.963, "mở", 1], [10.162, "rộng", 1], [10.438, "là", 1], [10.588, "lập", 1], [10.762, "bảng", 1], [11.037, "so", 1], [11.213, "sánh", 1], [11.257, "HTTP/1.1,", 1], [11.301, "HTTP/2", 1], [11.345, "và", 1], [11.389, "HTTP/3", 1], [11.433, "theo", 1], [11.477, "tầng", 1], [11.521, "giao", 1], [11.565, "vận,", 1], [11.609, "số", 1], [11.653, "kết", 1], [11.697, "nối,", 1], [11.741, "head-of-line", 1], [11.785, "blocking", 1], [11.829, "và", 1], [11.873, "thời", 1], [11.917, "gian", 1], [11.961, "thiết", 1], [12.005, "lập,", 1], [12.049, "rồi", 1], [12.093, "tìm", 1], [12.137, "một", 1], [12.137, "trang", 1], [12.137, "web", 1], [12.137, "dùng", 1], [12.137, "HTTP/3", 1], [12.137, "và", 1], [12.137, "chứng", 1], [12.137, "minh", 1], [12.137, "bằng", 1], [12.137, "công", 1], [12.137, "cụ.", 1]], "cues": [0.1, 9.525], "lang": 0.6}, {"ten": "Tổng kết chương", "loai": "ket-chuong", "slide": "TKC", "dung": "Infographic tổng kết chương: bốn thẻ hiện lần lượt theo lời đọc.\nHiện dần: bước 1 khi đọc “Nhóm UDP cho thấy”; bước 2 khi đọc “Nhóm Multicast”; bước 3 khi đọc “Nhóm WebSocket”; bước 4 khi đọc “Hai nhóm cuối”.", "start": 430.23, "audio": "audio/0160b927366c40a2.mp3", "dur": 43.54, "words": [[0.1, "Chương", 0], [0.463, "3", 0], [0.637, "đi", 0], [0.762, "ra", 0], [0.887, "ngoài", 0], [1.113, "mô", 0], [1.312, "hình", 0], [1.512, "một", 0], [1.688, "kết", 0], [1.887, "nối", 0], [2.45, "TCP,", 0], [3.013, "mỗi", 0], [3.237, "lượt", 0], [3.475, "một", 0], [3.737, "yêu", 0], [3.862, "cầu.", 0], [5.013, "Nhóm", 1], [5.476, "UDP", 1], [5.938, "cho", 1], [6.088, "thấy", 1], [6.325, "datagram", 1], [7.025, "giữ", 1], [7.213, "ranh", 1], [7.425, "giới", 1], [7.7, "và", 1], [7.838, "không", 1], [8.037, "cần", 1], [8.238, "kết", 1], [8.425, "nối,", 1], [8.938, "đổi", 1], [9.113, "lại", 1], [9.3, "chương", 1], [9.512, "trình", 1], [9.713, "tự", 1], [9.875, "đặt", 1], [10.05, "thời", 1], [10.188, "gian", 1], [10.425, "chờ", 1], [10.7, "và", 1], [10.812, "cấp", 1], [11.025, "buffer", 1], [11.463, "đủ", 1], [11.675, "lớn.", 1], [12.875, "Nhóm", 2], [13.287, "Multicast", 2], [13.9, "gửi", 2], [14.062, "một", 2], [14.262, "lần", 2], [14.5, "cho", 2], [14.637, "cả", 2], [14.8, "nhóm", 2], [15.062, "máy", 2], [15.225, "nhận,", 2], [15.738, "với", 2], [15.912, "điều", 2], [16.038, "kiện", 2], [16.3, "tham", 2], [16.512, "gia", 2], [16.675, "nhóm", 2], [17.012, "trên", 2], [17.175, "đúng", 2], [17.375, "network", 2], [17.85, "interface,", 2], [18.575, "và", 2], [18.812, "áp", 2], [19.0, "dụng", 2], [19.275, "vào", 2], [19.4, "truyền", 2], [19.637, "video", 2], [20.137, "bằng", 2], [20.363, "số", 2], [20.6, "thứ", 2], [20.75, "tự.", 2], [21.913, "Nhóm", 3], [22.262, "WebSocket", 3], [22.962, "nâng", 3], [23.163, "cấp", 3], [23.375, "một", 3], [23.538, "kết", 3], [23.738, "nối", 3], [24.206, "HTTP", 3], [24.675, "thành", 3], [24.9, "kênh", 3], [25.1, "frame", 3], [25.387, "hai", 3], [25.562, "chiều,", 3], [26.113, "rồi", 3], [26.312, "dựng", 3], [26.525, "phòng", 3], [26.725, "chat", 3], [26.988, "với", 3], [27.1, "tập", 3], [27.288, "phiên", 3], [27.525, "an", 3], [27.7, "toàn", 3], [27.962, "khi", 3], [28.125, "nhiều", 3], [28.337, "thread", 3], [28.575, "truy", 3], [28.725, "cập.", 3], [29.812, "Hai", 4], [30.05, "nhóm", 4], [30.363, "cuối", 4], [30.525, "đi", 4], [30.637, "theo", 4], [30.8, "dòng", 4], [31.025, "tiến", 4], [31.262, "hóa", 4], [31.475, "của", 4], [31.475, "HTTP:", 4], [31.475, "HTTP/2", 4], [31.475, "ghép", 4], [31.475, "nhiều", 4], [31.475, "stream", 4], [31.475, "trên", 4], [31.475, "một", 4], [31.475, "kết", 4], [31.475, "nối", 4], [31.475, "TCP,", 4], [31.475, "rồi", 4], [31.475, "HTTP/3", 4], [31.475, "chuyển", 4], [31.475, "sang", 4], [31.475, "QUIC", 4], [31.475, "trên", 4], [31.475, "UDP", 4], [31.475, "để", 4], [31.475, "các", 4], [31.475, "stream", 4], [31.475, "độc", 4], [31.475, "lập", 4], [31.475, "với", 4], [31.475, "nhau,", 4], [31.475, "khép", 4], [31.475, "lại", 4], [31.475, "chương", 4], [31.475, "ở", 4], [31.475, "chính", 4], [31.475, "giao", 4], [31.475, "thức", 4], [31.475, "UDP", 4], [31.475, "mà", 4], [31.475, "chương", 4], [31.475, "mở", 4], [31.475, "đầu.", 4]], "cues": [5.013, 12.875, 21.913, 29.812], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 474.37, "audio": "audio/4cc90220c237edbf.mp3", "dur": 11.64, "words": [[0.1, "Chương", 0], [0.463, "3", 0], [0.625, "dừng", 0], [0.925, "ở", 0], [0.988, "các", 0], [1.163, "giao", 0], [1.35, "thức", 0], [1.55, "chuyển", 0], [1.825, "dữ", 0], [2.038, "liệu.", 0], [3.212, "Chương", 1], [3.575, "4", 1], [3.812, "đi", 1], [3.913, "lên", 1], [4.1, "một", 1], [4.287, "tầng,", 1], [4.75, "với", 1], [4.95, "kỹ", 1], [5.1, "thuật", 1], [5.275, "lập", 1], [5.487, "trình", 1], [5.7, "phân", 1], [5.925, "tán,", 1], [6.463, "mở", 1], [6.7, "đầu", 1], [6.875, "bằng", 1], [7.456, "RPC:", 1], [8.037, "lời", 1], [8.287, "gọi", 1], [8.463, "thủ", 1], [8.662, "tục", 1], [8.887, "từ", 1], [9.062, "xa", 1], [9.363, "và", 1], [9.512, "Java", 1], [9.512, "RMI.", 1]], "cues": [], "lang": 0.6}], "video_sau": "RPC: lời gọi thủ tục từ xa và Java RMI"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

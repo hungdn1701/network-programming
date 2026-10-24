@@ -1,0 +1,435 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V16 — Multicast: nhóm multicast, network interface và TTL · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-3/02-multicast">Mã</a>
+<h1>V16 · Multicast: nhóm multicast, network interface và TTL</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 3</div><div class="ten">Multicast: nhóm multicast, network interface và TTL</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Một nguồn, nhiều máy nhận: unicast nhân bản dữ liệu, multicast gửi một lần</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Một nguồn, nhiều máy nhận: gửi <b>unicast</b> tới từng máy thì số bản sao tăng theo số máy nhận</li><li data-s="2"><b>Multicast</b>: gửi <b>một lần</b> tới một nhóm; mạng chuyển tới các máy đã tham gia</li><li data-s="3">Máy nhận phải <b>tham gia nhóm</b> trên đúng network interface; phạm vi phát giới hạn bằng <b>TTL</b></li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> gửi và nhận multicast bằng Java thế nào, và điều gì quyết định máy nào nhận được?</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Unicast nhân bản, broadcast gửi mọi máy, multicast một bản cho cả nhóm</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Ba cách gửi trong một mạng có bốn máy, ba máy cần dữ liệu. Unicast: nguồn gửi ba bản sao, mỗi bản tới một máy. Broadcast: nguồn gửi một bản tới mọi máy, kể cả máy không cần. Multicast: nguồn gửi một bản tới địa chỉ nhóm 239.1.2.3, chỉ ba máy đã tham gia nhóm nhận.">
+  <defs>
+    <marker id="bc-net" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#1F5FA8"/></marker>
+    <marker id="bc-err" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#BC2626"/></marker>
+  </defs>
+
+  <!-- ① unicast -->
+  <g data-s="1">
+    <text x="300" y="40" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Unicast</text>
+    <rect x="220" y="64" width="160" height="60" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="300" y="102" text-anchor="middle" font-size="22" fill="#051A53">nguồn</text>
+    <g stroke="#1F5FA8" stroke-width="3">
+      <line x1="250" y1="124" x2="98" y2="300" marker-end="url(#bc-net)"/>
+      <line x1="290" y1="124" x2="232" y2="300" marker-end="url(#bc-net)"/>
+      <line x1="330" y1="124" x2="368" y2="300" marker-end="url(#bc-net)"/>
+    </g>
+    <text x="400" y="196" font-size="21" fill="#1F5FA8">3 bản sao</text>
+    <g fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5">
+      <rect x="40" y="306" width="110" height="60" rx="4"/><rect x="175" y="306" width="110" height="60" rx="4"/><rect x="310" y="306" width="110" height="60" rx="4"/>
+    </g>
+    <rect x="445" y="306" width="110" height="60" rx="4" fill="#F4F5F8" stroke="#9AA3B8" stroke-width="2"/>
+    <g font-size="21" text-anchor="middle"><text x="95" y="343" fill="#22603F">A</text><text x="230" y="343" fill="#22603F">B</text><text x="365" y="343" fill="#22603F">C</text><text x="500" y="343" fill="#5B6478">D</text></g>
+    <text x="300" y="420" text-anchor="middle" font-size="21" fill="#373D4E">số bản sao tăng theo số máy nhận</text>
+  </g>
+
+  <!-- ② broadcast -->
+  <g data-s="2">
+    <text x="880" y="40" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Broadcast</text>
+    <rect x="800" y="64" width="160" height="60" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="880" y="102" text-anchor="middle" font-size="22" fill="#051A53">nguồn</text>
+    <line x1="880" y1="124" x2="880" y2="210" stroke="#1F5FA8" stroke-width="3"/>
+    <line x1="675" y1="210" x2="1085" y2="210" stroke="#1F5FA8" stroke-width="3"/>
+    <g stroke="#1F5FA8" stroke-width="3">
+      <line x1="675" y1="210" x2="675" y2="298" marker-end="url(#bc-net)"/>
+      <line x1="810" y1="210" x2="810" y2="298" marker-end="url(#bc-net)"/>
+      <line x1="945" y1="210" x2="945" y2="298" marker-end="url(#bc-net)"/>
+    </g>
+    <line x1="1085" y1="210" x2="1085" y2="298" stroke="#BC2626" stroke-width="3" marker-end="url(#bc-err)"/>
+    <text x="896" y="170" font-size="21" fill="#1F5FA8">1 bản, tới mọi máy</text>
+    <g fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5">
+      <rect x="620" y="306" width="110" height="60" rx="4"/><rect x="755" y="306" width="110" height="60" rx="4"/><rect x="890" y="306" width="110" height="60" rx="4"/>
+    </g>
+    <rect x="1030" y="306" width="110" height="60" rx="4" fill="#FFFFFF" stroke="#BC2626" stroke-width="2.5"/>
+    <g font-size="21" text-anchor="middle"><text x="675" y="343" fill="#22603F">A</text><text x="810" y="343" fill="#22603F">B</text><text x="945" y="343" fill="#22603F">C</text><text x="1085" y="343" fill="#BC2626">D</text></g>
+    <text x="880" y="420" text-anchor="middle" font-size="21" fill="#373D4E">máy không cần (D) cũng phải nhận rồi bỏ</text>
+  </g>
+
+  <!-- ③ multicast -->
+  <g data-s="3">
+    <text x="1460" y="40" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Multicast</text>
+    <rect x="1380" y="64" width="160" height="60" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1460" y="102" text-anchor="middle" font-size="22" fill="#051A53">nguồn</text>
+    <line x1="1460" y1="124" x2="1460" y2="210" stroke="#1F5FA8" stroke-width="3"/>
+    <line x1="1255" y1="210" x2="1525" y2="210" stroke="#1F5FA8" stroke-width="3"/>
+    <g stroke="#1F5FA8" stroke-width="3">
+      <line x1="1255" y1="210" x2="1255" y2="298" marker-end="url(#bc-net)"/>
+      <line x1="1390" y1="210" x2="1390" y2="298" marker-end="url(#bc-net)"/>
+      <line x1="1525" y1="210" x2="1525" y2="298" marker-end="url(#bc-net)"/>
+    </g>
+    <text x="1476" y="170" font-size="21" fill="#1F5FA8">1 bản, tới nhóm 239.1.2.3</text>
+    <g fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5">
+      <rect x="1200" y="306" width="110" height="60" rx="4"/><rect x="1335" y="306" width="110" height="60" rx="4"/><rect x="1470" y="306" width="110" height="60" rx="4"/>
+    </g>
+    <rect x="1605" y="306" width="110" height="60" rx="4" fill="#F4F5F8" stroke="#9AA3B8" stroke-width="2"/>
+    <g font-size="21" text-anchor="middle"><text x="1255" y="343" fill="#22603F">A</text><text x="1390" y="343" fill="#22603F">B</text><text x="1525" y="343" fill="#22603F">C</text><text x="1660" y="343" fill="#5B6478">D</text></g>
+    <text x="1460" y="420" text-anchor="middle" font-size="21" fill="#373D4E">chỉ máy đã tham gia nhóm nhận</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Multicast</b>: một datagram gửi tới <b>nhóm multicast</b> (IPv4: byte đầu từ 224 đến 239); chỉ máy đã tham gia nhóm mới nhận.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Tham gia nhóm trên một network interface; TTL giới hạn số router</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 540" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Máy nhận có card Wi-Fi và card mạng ảo. Chương trình gọi joinGroup 239.1.2.3 trên card Wi-Fi. Nguồn trong cùng mạng gửi tới nhóm; datagram đến qua card Wi-Fi và tới socket; card mạng ảo không tham gia nên không nhận gì. Router giảm TTL đi một; datagram có TTL 1 không đi sang mạng khác.">
+  <defs>
+    <marker id="tg-net" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#1F5FA8"/></marker>
+    <marker id="tg-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+    <marker id="tg-err" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#BC2626"/></marker>
+  </defs>
+
+  <!-- ① máy nhận tham gia nhóm trên card Wi-Fi -->
+  <g data-s="1">
+    <rect x="40" y="40" width="620" height="420" rx="8" fill="none" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="60" y="74" font-size="22" fill="#5B6478">máy nhận</text>
+    <rect x="160" y="100" width="380" height="110" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="350" y="144" text-anchor="middle" font-size="22" fill="#051A53" font-family="Consolas, monospace">MulticastSocket :9300</text>
+    <text x="350" y="182" text-anchor="middle" font-size="21" fill="#373D4E" font-family="Consolas, monospace">joinGroup(239.1.2.3, Wi-Fi)</text>
+    <rect x="80" y="320" width="240" height="90" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="200" y="360" text-anchor="middle" font-size="22" font-weight="500" fill="#22603F">card Wi-Fi</text>
+    <text x="200" y="392" text-anchor="middle" font-size="20" fill="#22603F">đã tham gia nhóm</text>
+    <rect x="380" y="320" width="240" height="90" rx="6" fill="#F4F5F8" stroke="#9AA3B8" stroke-width="2"/>
+    <text x="500" y="360" text-anchor="middle" font-size="22" font-weight="500" fill="#5B6478">card mạng ảo</text>
+    <text x="500" y="392" text-anchor="middle" font-size="20" fill="#5B6478">không tham gia</text>
+    <line x1="260" y1="210" x2="210" y2="312" stroke="#051A53" stroke-width="2.5" stroke-dasharray="7 5"/>
+  </g>
+
+  <!-- ② nguồn cùng mạng gửi tới nhóm: tới socket qua Wi-Fi -->
+  <g data-s="2">
+    <line x1="80" y1="490" x2="1160" y2="490" stroke="#1F5FA8" stroke-width="4"/>
+    <text x="900" y="526" text-anchor="middle" font-size="21" fill="#1F5FA8">mạng cục bộ (Wi-Fi)</text>
+    <line x1="200" y1="490" x2="200" y2="410" stroke="#1F5FA8" stroke-width="3"/>
+    <rect x="760" y="320" width="220" height="90" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="870" y="360" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">nguồn</text>
+    <text x="870" y="392" text-anchor="middle" font-size="20" fill="#373D4E">gửi tới 239.1.2.3</text>
+    <line x1="870" y1="410" x2="870" y2="490" stroke="#1F5FA8" stroke-width="3"/>
+    <path d="M290,320 C275,275 290,245 326,218" fill="none" stroke="#2F855A" stroke-width="3" marker-end="url(#tg-ok)"/>
+    <text x="310" y="272" font-size="20" fill="#22603F">tới socket</text>
+  </g>
+
+  <!-- ③ router và TTL -->
+  <g data-s="3">
+    <rect x="1160" y="420" width="200" height="90" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="1260" y="460" text-anchor="middle" font-size="22" font-weight="500" fill="#6B4E06">router</text>
+    <text x="1260" y="492" text-anchor="middle" font-size="20" fill="#6B4E06">TTL − 1</text>
+    <line x1="1360" y1="465" x2="1600" y2="465" stroke="#BC2626" stroke-width="3" marker-end="url(#tg-err)"/>
+    <path d="M1460,445 L1490,485 M1490,445 L1460,485" stroke="#BC2626" stroke-width="4"/>
+    <text x="1620" y="458" font-size="21" fill="#BC2626">mạng khác</text>
+    <text x="1260" y="300" text-anchor="middle" font-size="22" fill="#051A53">TTL = số router tối đa được đi qua</text>
+    <text x="1260" y="336" text-anchor="middle" font-size="22" fill="#051A53">TTL 1: dừng ở router đầu tiên</text>
+    <text x="1260" y="372" text-anchor="middle" font-size="20" fill="#5B6478">router chỉ chuyển tới mạng có máy tham gia nhóm</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Tham gia nhóm</b> gắn với một network interface; <b>TTL</b> là số router tối đa datagram được đi qua.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Nguồn phát gửi mỗi datagram một lần tới địa chỉ nhóm, với TTL 1</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">InetAddress</span> group = <span class="hl-t">InetAddress</span>.<span class="hl-m">getByName</span>(<span class="hl-s">"</span><span class="hl-s">239.1.2.3</span><span class="hl-s">"</span>);  <span class="hl-c">// địa chỉ nhóm multicast</span>
+<span class="hl-k">try</span> (<span class="hl-t">MulticastSocket</span> socket = <span class="hl-k">new</span> <span class="hl-m">MulticastSocket</span>()) {
+    socket.<span class="hl-m">setTimeToLive</span>(<span class="hl-n">1</span>);  <span class="hl-c">// TTL 1: không qua router nào</span>
+    <span class="hl-k">for</span> (<span class="hl-k">int</span> i = <span class="hl-n">1</span>; i &lt;= <span class="hl-n">5</span>; i++) {
+        <span class="hl-k">byte</span>[] data = (<span class="hl-s">"</span><span class="hl-s">tick </span><span class="hl-s">"</span> + i).<span class="hl-m">getBytes</span>(<span class="hl-t">UTF_8</span>);
+        socket.<span class="hl-m">send</span>(<span class="hl-k">new</span> <span class="hl-m">DatagramPacket</span>(data, data.length, group, <span class="hl-n">9300</span>));  <span class="hl-c">// gửi một lần cho cả nhóm</span>
+    <span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">sent </span><span class="hl-s">\"</span><span class="hl-s">tick </span><span class="hl-s">"</span> + i + <span class="hl-s">"</span><span class="hl-s">\"</span><span class="hl-s"> to 239.1.2.3:9300</span><span class="hl-s">"</span>);
+    <span class="hl-t">Thread</span>.<span class="hl-m">sleep</span>(<span class="hl-n">500</span>);
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>sent "tick 1" to 239.1.2.3:9300
+sent "tick 2" to 239.1.2.3:9300
+sent "tick 3" to 239.1.2.3:9300
+sent "tick 4" to 239.1.2.3:9300
+sent "tick 5" to 239.1.2.3:9300</pre></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Ba máy nhận cùng tham gia nhóm và cùng nhận đủ năm datagram</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">try</span> (<span class="hl-t">MulticastSocket</span> socket = <span class="hl-k">new</span> <span class="hl-m">MulticastSocket</span>(<span class="hl-n">9300</span>)) {  <span class="hl-c">// nhiều máy nhận cùng port: MulticastSocket cho phép</span>
+    socket.<span class="hl-m">joinGroup</span>(group, nic);  <span class="hl-c">// tham gia nhóm trên đúng một network interface</span>
+    socket.<span class="hl-m">setSoTimeout</span>(<span class="hl-n">3_000</span>);
+    <span class="hl-k">while</span> (<span class="hl-k">true</span>) {
+        <span class="hl-t">DatagramPacket</span> p = <span class="hl-k">new</span> <span class="hl-m">DatagramPacket</span>(<span class="hl-k">new</span> <span class="hl-k">byte</span>[<span class="hl-n">512</span>], <span class="hl-n">512</span>);
+        socket.<span class="hl-m">receive</span>(p);
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>r1: joined 239.1.2.3 on wireless_32768 (Intel(R) Wireless-AC 9560 160MHz)
+r1: "tick 1" from 192.168.1.171
+r1: "tick 2" from 192.168.1.171
+r1: "tick 3" from 192.168.1.171
+r1: "tick 4" from 192.168.1.171
+r1: "tick 5" from 192.168.1.171
+r1: no datagram for 3 s, stop</pre></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>Tham gia nhóm trên sai network interface thì không nhận được gì, và không có lỗi</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span>socket.<span class="hl-m">joinGroup</span>(group, nic);  <span class="hl-c">// tham gia nhóm trên đúng một network interface</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>r4: joined 239.1.2.3 on ethernet_32775 (Hyper-V Virtual Ethernet Adapter)
+r4: no datagram for 3 s, stop</pre></div><ul class="y-nho"><li data-s="2">Datagram của nguồn đi qua card <span style="white-space:nowrap">Wi-Fi</span>: interface khác <b>không nhận</b>, <b>không có ngoại lệ</b></li><li data-s="3">Không nhận được gì: kiểm tra <b>interface đã tham gia nhóm</b> trước, rồi đến TTL của nguồn</li></ul></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Nguồn phát multicast gọi setTimeToLive(1). Điều này có nghĩa gì?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Datagram chỉ được gửi một lần, không gửi lại.</div></div><div class=""><span>B</span><div>Datagram tồn tại được 1 giây rồi bị hủy.</div></div><div class="dung"><span>C</span><div>Datagram không đi qua router nào, chỉ tới các máy trong cùng mạng cục bộ.</div></div><div class=""><span>D</span><div>Chỉ máy nhận đầu tiên nhận được datagram.</div></div></div><div class="giai-thich">TTL là số router tối đa datagram được đi qua; mỗi router giảm TTL đi một và bỏ datagram khi TTL về 0. TTL 1 giữ datagram trong mạng cục bộ. TTL không đo bằng giây.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Nguồn phát multicast gọi setTimeToLive(1). Điều này có nghĩa gì?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Datagram chỉ được gửi một lần, không gửi lại.</div></div><div class=""><span>B</span><div>Datagram tồn tại được 1 giây rồi bị hủy.</div></div><div class="dung"><span>C</span><div>Datagram không đi qua router nào, chỉ tới các máy trong cùng mạng cục bộ.</div></div><div class=""><span>D</span><div>Chỉ máy nhận đầu tiên nhận được datagram.</div></div></div><div class="giai-thich">TTL là số router tối đa datagram được đi qua; mỗi router giảm TTL đi một và bỏ datagram khi TTL về 0. TTL 1 giữ datagram trong mạng cục bộ. TTL không đo bằng giây.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Một máy nhận gọi joinGroup thành công nhưng không nhận được datagram nào, cũng không có ngoại lệ. Máy có card <span style="white-space:nowrap">Wi-Fi</span>, một card VPN và một card mạng ảo. Nên kiểm tra điều gì trước?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Network interface mà máy nhận đã dùng để tham gia nhóm.</div></div><div class=""><span>B</span><div>Kích thước buffer nhận.</div></div><div class=""><span>C</span><div>Port nguồn của máy phát.</div></div><div class=""><span>D</span><div>Chuyển sang TCP vì multicast không tin cậy.</div></div></div><div class="giai-thich">Tham gia nhóm gắn với một network interface; tham gia trên network interface không nhận được lưu lượng của nguồn thì không có datagram nào và Java không báo lỗi. Buffer nhỏ gây cắt dữ liệu, không làm mất hẳn datagram; port nguồn không ảnh hưởng việc nhận.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Một máy nhận gọi joinGroup thành công nhưng không nhận được datagram nào, cũng không có ngoại lệ. Máy có card <span style="white-space:nowrap">Wi-Fi</span>, một card VPN và một card mạng ảo. Nên kiểm tra điều gì trước?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Network interface mà máy nhận đã dùng để tham gia nhóm.</div></div><div class=""><span>B</span><div>Kích thước buffer nhận.</div></div><div class=""><span>C</span><div>Port nguồn của máy phát.</div></div><div class=""><span>D</span><div>Chuyển sang TCP vì multicast không tin cậy.</div></div></div><div class="giai-thich">Tham gia nhóm gắn với một network interface; tham gia trên network interface không nhận được lưu lượng của nguồn thì không có datagram nào và Java không báo lỗi. Buffer nhỏ gây cắt dữ liệu, không làm mất hẳn datagram; port nguồn không ảnh hưởng việc nhận.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>Multicast</b>: gửi một lần tới <b>nhóm multicast</b>; chỉ máy đã tham gia mới nhận</div></div><div class="the" data-s="2"><span class="so">2</span><div><b>Tham gia nhóm</b> bằng <code>joinGroup</code> trên một <b>NetworkInterface</b>; sai interface thì không nhận, không báo lỗi</div></div><div class="the" data-s="3"><span class="so">3</span><div><b>TTL</b> giới hạn số router datagram đi qua; TTL 1 giữ datagram trong mạng cục bộ</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>multicast</span><span>nhóm multicast</span><span>tham gia nhóm</span><span>MulticastSocket</span><span>NetworkInterface</span><span>TTL</span></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>IGMP và multicast trong mạng doanh nghiệp</li><li><span style="white-space:nowrap">Source-specific</span> multicast</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Viết máy nhận liệt kê các network interface hỗ trợ multicast và cho người dùng chọn interface để tham gia nhóm.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Bài toán ứng dụng: truyền video theo nhóm multicast</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Khi một nguồn cần gửi cùng dữ liệu tới nhiều máy nhận, gửi riêng cho từng máy là lãng phí. Làm sao gửi một lần mà cả nhóm máy nhận đều nhận được, và giới hạn dữ liệu đó trong phạm vi mong muốn?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:14</span>
+      <h3>Slide 1. Một nguồn, nhiều máy nhận: unicast nhân bản dữ liệu, multicast gửi một lần</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Một nguồn, nhiều máy nhận: gửi **unicast** tới từng máy thì số bản sao tăng theo số máy nhận</li><li>**Multicast**: gửi **một lần** tới một nhóm; mạng chuyển tới các máy đã tham gia</li><li>Máy nhận phải **tham gia nhóm** trên đúng network interface; phạm vi phát giới hạn bằng **TTL**</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** gửi và nhận multicast bằng Java thế nào, và điều gì quyết định máy nào nhận được?</div></div>
+    <div class="kb-thoai"><p>Ở phần về datagram và DatagramSocket, mỗi datagram đi tới đúng một endpoint. Giả sử một nguồn cần phát cùng một dữ liệu, như video, tới mười máy nhận: gửi riêng cho từng máy, gọi là unicast, thì nguồn phải gửi mười bản sao, và lưu lượng tăng theo số máy nhận. Multicast giải quyết khác: nguồn gửi một lần tới một nhóm, và mạng chuyển datagram tới các máy đã tham gia nhóm. Muốn vậy, máy nhận phải tham gia nhóm trên đúng network interface, còn nguồn phải giới hạn phạm vi phát. Từ đó, câu hỏi đặt ra là: gửi và nhận multicast bằng Java thế nào, và điều gì quyết định máy nào nhận được?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Ở phần về datagram”; bước 2 khi đọc “Multicast giải quyết khác”; bước 3 khi đọc “Muốn vậy”; bước 4 khi đọc “câu hỏi đặt ra”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:52</span>
+      <h3>Slide 2. Unicast nhân bản, broadcast gửi mọi máy, multicast một bản cho cả nhóm</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Multicast**: một datagram gửi tới **nhóm multicast** (IPv4: byte đầu từ 224 đến 239); chỉ máy đã tham gia nhóm mới nhận.</li></ul></div></div>
+    <div class="kb-thoai"><p>Để thấy multicast khác gì, mình so sánh ba cách gửi trong một mạng có bốn máy, trong đó ba máy cần dữ liệu. Với unicast, nguồn gửi ba bản sao, mỗi bản tới một máy. Còn với broadcast, nguồn gửi một bản tới mọi máy trong mạng, kể cả máy không cần, và máy đó phải nhận rồi bỏ đi. Multicast nằm giữa hai cách trên: nguồn gửi một bản tới một địa chỉ nhóm, gọi là nhóm multicast, hay multicast group, và chỉ các máy đã tham gia nhóm mới nhận. Địa chỉ nhóm của IPv4 có byte đầu từ 224 đến 239. Ví dụ của phần dùng nhóm 239.1.2.3, thuộc dải dành cho phạm vi một tổ chức.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình ba-cach-gui: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Với unicast”; bước 2 khi đọc “Còn với broadcast”; bước 3 khi đọc “Multicast nằm giữa”; bước 4 khi đọc “Địa chỉ nhóm của IPv4”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:36</span>
+      <h3>Slide 3. Tham gia nhóm trên một network interface; TTL giới hạn số router</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Tham gia nhóm** gắn với một network interface; **TTL** là số router tối đa datagram được đi qua.</li></ul></div></div>
+    <div class="kb-thoai"><p>Máy nhận không tự động nhận multicast. Chương trình phải tham gia nhóm bằng phương thức joinGroup, và việc tham gia gắn với một network interface cụ thể, trong hình là card Wi-Fi. Hệ điều hành báo cho mạng rằng interface này muốn nhận nhóm 239.1.2.3. Khi nguồn trong cùng mạng gửi tới nhóm, datagram đến qua card Wi-Fi và được chuyển cho socket đã tham gia. Card mạng ảo còn lại của máy không tham gia, nên không nhận gì. Đó là phía nhận. Còn ở phía nguồn, phạm vi phát do TTL quyết định. TTL, hay Time To Live, là số router tối đa mà datagram được đi qua: mỗi router giảm TTL đi một và bỏ datagram khi TTL về 0, nên TTL bằng 1 giữ datagram trong mạng cục bộ.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình tham-gia-nhom: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Chương trình phải tham gia nhóm”; bước 2 khi đọc “Khi nguồn trong cùng mạng gửi”; bước 3 khi đọc “Phạm vi phát do TTL quyết định”; bước 4 khi đọc “nên TTL bằng 1”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:25</span>
+      <h3>Slide 4. Nguồn phát gửi mỗi datagram một lần tới địa chỉ nhóm, với TTL 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/multicast/MulticastSender.java</span><pre><code>InetAddress group = InetAddress.getByName(&quot;239.1.2.3&quot;);  // địa chỉ nhóm multicast
+try (MulticastSocket socket = new MulticastSocket()) {
+    socket.setTimeToLive(1);  // TTL 1: không qua router nào
+    for (int i = 1; i &lt;= 5; i++) {
+        byte[] data = (&quot;tick &quot; + i).getBytes(UTF_8);
+        socket.send(new DatagramPacket(data, data.length, group, 9300));  // gửi một lần cho cả nhóm
+    System.out.println(&quot;sent \&quot;tick &quot; + i + &quot;\&quot; to 239.1.2.3:9300&quot;);
+    Thread.sleep(500);</code></pre></div></div>
+    <div class="kb-thoai"><p>Mã nguồn phát rất giống client UDP ở phần trước. Khác biệt nằm ở đích đến: thay cho endpoint của một máy, datagram gửi tới địa chỉ nhóm 239.1.2.3, port 9300. Nguồn dùng MulticastSocket, lớp con của DatagramSocket, để đặt TTL bằng 1 qua phương thức setTimeToLive. Mỗi 500 mili giây, nguồn gửi một datagram tick, tổng cộng năm lần. Log của nguồn cho thấy mỗi datagram chỉ được gửi đúng một lần, dù có bao nhiêu máy nhận.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, log phía dưới. Highlight dòng 239.1.2.3, dòng setTimeToLive(1) theo lời đọc.
+Hiện dần: bước 1 khi đọc “Log của nguồn”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:06</span>
+      <h3>Slide 5. Ba máy nhận cùng tham gia nhóm và cùng nhận đủ năm datagram</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/multicast/MulticastReceiver.java</span><pre><code>try (MulticastSocket socket = new MulticastSocket(9300)) {  // nhiều máy nhận cùng port: MulticastSocket cho phép
+    socket.joinGroup(group, nic);  // tham gia nhóm trên đúng một network interface
+    socket.setSoTimeout(3_000);
+    while (true) {
+        DatagramPacket p = new DatagramPacket(new byte[512], 512);
+        socket.receive(p);</code></pre></div></div>
+    <div class="kb-thoai"><p>Phía máy nhận, MulticastSocket mở port 9300. Lớp này cho phép nhiều socket cùng dùng một port, nên ba chương trình nhận chạy được trên cùng một máy. Lời gọi joinGroup nhận địa chỉ nhóm và biến nic, network interface được chọn để tham gia. Khi người chạy không truyền tên interface, chương trình chọn interface của đường đi mặc định, ở máy chạy thử là card Wi-Fi. Sau đó máy nhận gọi phương thức receive như với DatagramSocket ở phần trước. Mình chạy ba máy nhận r1, r2, r3, rồi chạy nguồn phát. Kết quả ở r1: đủ năm datagram tick, từ địa chỉ của nguồn. Hai máy nhận còn lại in đúng năm dòng như vậy: một lần gửi, ba nơi nhận.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả của r1 phía dưới. Có thể đặt ba terminal r1, r2, r3 cạnh nhau (results/MulticastReceiver-r1.txt, -r2.txt, -r3.txt).
+Hiện dần: bước 1 khi đọc “Kết quả ở r1”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:01</span>
+      <h3>Slide 6. Tham gia nhóm trên sai network interface thì không nhận được gì, và không có lỗi</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Datagram của nguồn đi qua card Wi-Fi: interface khác **không nhận**, **không có ngoại lệ**</li><li>Không nhận được gì: kiểm tra **interface đã tham gia nhóm** trước, rồi đến TTL của nguồn</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/multicast/MulticastReceiver.java</span><pre><code>socket.joinGroup(group, nic);  // tham gia nhóm trên đúng một network interface</code></pre></div></div>
+    <div class="kb-thoai"><p>Lỗi khó tìm nhất của multicast là tham gia nhóm trên sai network interface. Máy chạy thử có ba interface hỗ trợ multicast: card Wi-Fi, card mạng ảo của Hyper-V và card VPN của Tailscale. Mình chạy thêm máy nhận thứ tư, tham gia nhóm trên card mạng ảo, rồi phát lại. Trước khi xem kết quả, các bạn hãy dự đoán máy nhận thứ tư sẽ in ra gì. Kết quả: máy nhận tham gia thành công, nhưng không nhận được datagram nào, và không có ngoại lệ nào báo lỗi. Datagram của nguồn đi qua card Wi-Fi, nên interface khác không nhận được. Vì vậy, khi máy nhận không nhận được gì, việc đầu tiên là kiểm tra network interface đã dùng để tham gia nhóm, rồi mới đến TTL của nguồn.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã một dòng phía trên, kết quả phía dưới. Sau câu &quot;sẽ in ra gì&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện. Danh sách interface của máy chạy thử ở results/ListInterfaces.txt.
+Hiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Datagram của nguồn đi qua”; bước 3 khi đọc “Vì vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:55</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Tham số đầu tiên cần hiểu đúng là TTL của nguồn phát.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Nguồn phát multicast gọi setTimeToLive(1). Điều này có nghĩa gì?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Datagram chỉ được gửi một lần, không gửi lại.</li>
+      <li><b>B.</b> Datagram tồn tại được 1 giây rồi bị hủy.</li>
+      <li><b>C.</b> Datagram không đi qua router nào, chỉ tới các máy trong cùng mạng cục bộ.</li>
+      <li><b>D.</b> Chỉ máy nhận đầu tiên nhận được datagram.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: C</b> — <span>TTL là số router tối đa datagram được đi qua; mỗi router giảm TTL đi một và bỏ datagram khi TTL về 0. TTL 1 giữ datagram trong mạng cục bộ. TTL không đo bằng giây.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là C. Phương án B dễ được chọn vì tên Time To Live gợi đến thời gian. Nhưng với IP, TTL là số router tối đa datagram được đi qua. Mỗi router giảm TTL đi một, về 0 thì datagram bị bỏ.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án C được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:21</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu tiếp theo đặt các bạn vào vai người tìm lỗi.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Một máy nhận gọi joinGroup thành công nhưng không nhận được datagram nào, cũng không có ngoại lệ. Máy có card Wi-Fi, một card VPN và một card mạng ảo. Nên kiểm tra điều gì trước?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Network interface mà máy nhận đã dùng để tham gia nhóm.</li>
+      <li><b>B.</b> Kích thước buffer nhận.</li>
+      <li><b>C.</b> Port nguồn của máy phát.</li>
+      <li><b>D.</b> Chuyển sang TCP vì multicast không tin cậy.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: A</b> — <span>Tham gia nhóm gắn với một network interface; tham gia trên network interface không nhận được lưu lượng của nguồn thì không có datagram nào và Java không báo lỗi. Buffer nhỏ gây cắt dữ liệu, không làm mất hẳn datagram; port nguồn không ảnh hưởng việc nhận.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là A. Phương án B là nguyên nhân của dữ liệu bị cắt, không phải của việc không nhận được gì. Với máy có nhiều interface, tham gia nhóm trên sai network interface là nguyên nhân thường gặp nhất, và Java không báo lỗi trong trường hợp này.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án A.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:46</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**Multicast**: gửi một lần tới **nhóm multicast**; chỉ máy đã tham gia mới nhận</li><li>**Tham gia nhóm** bằng `joinGroup` trên một **NetworkInterface**; sai interface thì không nhận, không báo lỗi</li><li>**TTL** giới hạn số router datagram đi qua; TTL 1 giữ datagram trong mạng cục bộ</li></ul></div>
+    <div class="kb-thoai"><p>Với multicast, một nguồn gửi mỗi datagram một lần tới một nhóm multicast, và chỉ các máy đã tham gia nhóm mới nhận. Trong Java, máy nhận dùng MulticastSocket và gọi phương thức joinGroup trên một NetworkInterface cụ thể. Chọn sai interface thì không nhận được gì mà cũng không có lỗi. Phía nguồn, TTL giới hạn số router datagram được đi qua, và TTL bằng 1 giữ dữ liệu trong mạng cục bộ. Phần này có sáu từ khóa: multicast, nhóm multicast, tham gia nhóm, MulticastSocket, NetworkInterface và TTL.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “Với multicast”; bước 2 khi đọc “Trong Java, máy nhận”; bước 3 khi đọc “Phía nguồn, TTL”; bước 4 khi đọc “Phần này có sáu từ khóa”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:22</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Việc đăng ký nhận nhóm với router do giao thức IGMP đảm nhận, và các bạn có thể đọc thêm về IGMP cùng cách router chuyển multicast giữa các mạng. Khi chỉ muốn nhận từ một nguồn cụ thể trong nhóm, các bạn có thể tìm hiểu source-specific multicast. Bài tập mở rộng là viết máy nhận liệt kê các network interface hỗ trợ multicast, rồi cho người dùng chọn interface để tham gia nhóm.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Việc đăng ký nhận nhóm”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:46</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Multicast đã gửi được dữ liệu tới cả nhóm, nhưng dữ liệu thật như video có thể mất gói, và máy nhận có thể vào giữa chừng. Phần tiếp theo là bài toán ứng dụng: truyền video theo nhóm multicast.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V16", "tieu_de": "Multicast: nhóm multicast, network interface và TTL", "giong": "vi-VN-NamMinhNeural", "tong": 419.44, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/37d702975d61e7d6.mp3", "dur": 13.49, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Khi", 1], [2.112, "một", 1], [2.3, "nguồn", 1], [2.538, "cần", 1], [2.763, "gửi", 1], [2.95, "cùng", 1], [3.175, "dữ", 1], [3.337, "liệu", 1], [3.575, "tới", 1], [3.763, "nhiều", 1], [3.975, "máy", 1], [4.175, "nhận,", 1], [4.713, "gửi", 1], [4.963, "riêng", 1], [5.225, "cho", 1], [5.35, "từng", 1], [5.588, "máy", 1], [5.8, "là", 1], [5.912, "lãng", 1], [6.112, "phí.", 1], [7.3, "Làm", 2], [7.65, "sao", 2], [7.875, "gửi", 2], [8.025, "một", 2], [8.225, "lần", 2], [8.488, "mà", 2], [8.625, "cả", 2], [8.787, "nhóm", 2], [9.05, "máy", 2], [9.225, "nhận", 2], [9.488, "đều", 2], [9.613, "nhận", 2], [9.863, "được,", 2], [10.312, "và", 2], [10.512, "giới", 2], [10.675, "hạn", 2], [10.9, "dữ", 2], [11.05, "liệu", 2], [11.262, "đó", 2], [11.5, "trong", 2], [11.675, "phạm", 2], [11.925, "vi", 2], [12.088, "mong", 2], [12.3, "muốn?", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Một nguồn, nhiều máy nhận: unicast nhân bản dữ liệu, multicast gửi một lần", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Ở phần về datagram”; bước 2 khi đọc “Multicast giải quyết khác”; bước 3 khi đọc “Muốn vậy”; bước 4 khi đọc “câu hỏi đặt ra”.", "start": 14.09, "audio": "audio/6fc2d821bf0ee2c5.mp3", "dur": 38.02, "words": [[0.1, "Ở", 0], [0.275, "phần", 0], [0.55, "về", 0], [0.725, "datagram", 0], [1.425, "và", 0], [1.55, "DatagramSocket,", 0], [2.938, "mỗi", 0], [3.225, "datagram", 0], [3.938, "đi", 0], [4.062, "tới", 0], [4.3, "đúng", 0], [4.513, "một", 0], [4.75, "endpoint.", 0], [6.025, "Giả", 1], [6.312, "sử", 1], [6.525, "một", 1], [6.725, "nguồn", 1], [6.963, "cần", 1], [7.138, "phát", 1], [7.35, "cùng", 1], [7.525, "một", 1], [7.688, "dữ", 1], [7.875, "liệu,", 1], [8.412, "như", 1], [8.675, "video,", 1], [9.45, "tới", 1], [9.637, "mười", 1], [9.812, "máy", 1], [10.012, "nhận:", 1], [10.55, "gửi", 1], [10.8, "riêng", 1], [11.05, "cho", 1], [11.175, "từng", 1], [11.375, "máy,", 1], [11.912, "gọi", 1], [12.175, "là", 1], [12.4, "unicast,", 1], [13.225, "thì", 1], [13.387, "nguồn", 1], [13.625, "phải", 1], [13.75, "gửi", 1], [13.95, "mười", 1], [14.137, "bản", 1], [14.338, "sao,", 1], [14.863, "và", 1], [15.062, "lưu", 1], [15.238, "lượng", 1], [15.5, "tăng", 1], [15.713, "theo", 1], [15.875, "số", 1], [16.1, "máy", 1], [16.325, "nhận.", 1], [17.512, "Multicast", 2], [18.312, "giải", 2], [18.488, "quyết", 2], [18.688, "khác:", 2], [19.188, "nguồn", 2], [19.438, "gửi", 2], [19.625, "một", 2], [19.812, "lần", 2], [20.038, "tới", 2], [20.225, "một", 2], [20.425, "nhóm,", 2], [20.938, "và", 2], [21.125, "mạng", 2], [21.363, "chuyển", 2], [21.613, "datagram", 2], [22.275, "tới", 2], [22.438, "các", 2], [22.613, "máy", 2], [22.812, "đã", 2], [22.938, "tham", 2], [23.175, "gia", 2], [23.35, "nhóm.", 2], [24.562, "Muốn", 3], [24.95, "vậy,", 3], [25.375, "máy", 3], [25.575, "nhận", 3], [25.825, "phải", 3], [25.95, "tham", 3], [26.163, "gia", 3], [26.325, "nhóm", 3], [26.675, "trên", 3], [26.863, "đúng", 3], [27.075, "network", 3], [27.562, "interface,", 3], [28.325, "còn", 3], [28.562, "nguồn", 3], [28.788, "phải", 3], [28.925, "giới", 3], [29.113, "hạn", 3], [29.325, "phạm", 3], [29.6, "vi", 3], [29.75, "phát.", 3], [30.875, "Từ", 4], [31.15, "đó,", 4], [31.65, "câu", 4], [31.837, "hỏi", 4], [32.013, "đặt", 4], [32.188, "ra", 4], [32.375, "là:", 4], [32.862, "gửi", 4], [33.138, "và", 4], [33.263, "nhận", 4], [33.513, "multicast", 4], [34.15, "bằng", 4], [34.413, "Java", 4], [34.812, "thế", 4], [34.95, "nào,", 4], [35.425, "và", 4], [35.612, "điều", 4], [35.763, "gì", 4], [35.95, "quyết", 4], [36.138, "định", 4], [36.337, "máy", 4], [36.525, "nào", 4], [36.725, "nhận", 4], [36.938, "được?", 4]], "cues": [0.1, 17.512, 24.562, 31.65], "lang": 0.6}, {"ten": "Slide 2. Unicast nhân bản, broadcast gửi mọi máy, multicast một bản cho cả nhóm", "loai": "slide", "slide": "S02", "dung": "Hình ba-cach-gui: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Với unicast”; bước 2 khi đọc “Còn với broadcast”; bước 3 khi đọc “Multicast nằm giữa”; bước 4 khi đọc “Địa chỉ nhóm của IPv4”.", "start": 52.71, "audio": "audio/1fbfec8853517fe2.mp3", "dur": 40.94, "words": [[0.1, "Để", 0], [0.312, "thấy", 0], [0.537, "multicast", 0], [1.175, "khác", 0], [1.387, "gì,", 0], [1.875, "mình", 0], [2.112, "so", 0], [2.3, "sánh", 0], [2.525, "ba", 0], [2.675, "cách", 0], [2.875, "gửi", 0], [3.112, "trong", 0], [3.275, "một", 0], [3.425, "mạng", 0], [3.65, "có", 0], [3.763, "bốn", 0], [3.975, "máy,", 0], [4.5, "trong", 0], [4.725, "đó", 0], [4.912, "ba", 0], [5.112, "máy", 0], [5.325, "cần", 0], [5.575, "dữ", 0], [5.737, "liệu.", 0], [6.9, "Với", 1], [7.287, "unicast,", 1], [8.137, "nguồn", 1], [8.412, "gửi", 1], [8.65, "ba", 1], [8.838, "bản", 1], [9.037, "sao,", 1], [9.588, "mỗi", 1], [9.8, "bản", 1], [10.05, "tới", 1], [10.262, "một", 1], [10.463, "máy.", 1], [11.65, "Còn", 2], [11.938, "với", 2], [12.113, "broadcast,", 2], [12.938, "nguồn", 2], [13.175, "gửi", 2], [13.375, "một", 2], [13.562, "bản", 2], [13.8, "tới", 2], [13.975, "mọi", 2], [14.188, "máy", 2], [14.387, "trong", 2], [14.575, "mạng,", 2], [15.075, "kể", 2], [15.238, "cả", 2], [15.387, "máy", 2], [15.6, "không", 2], [15.825, "cần,", 2], [16.3, "và", 2], [16.5, "máy", 2], [16.688, "đó", 2], [16.9, "phải", 2], [17.05, "nhận", 2], [17.337, "rồi", 2], [17.525, "bỏ", 2], [17.762, "đi.", 2], [18.863, "Multicast", 3], [19.712, "nằm", 3], [19.988, "giữa", 3], [20.175, "hai", 3], [20.325, "cách", 3], [20.525, "trên:", 3], [21.062, "nguồn", 3], [21.288, "gửi", 3], [21.462, "một", 3], [21.65, "bản", 3], [21.9, "tới", 3], [22.038, "một", 3], [22.212, "địa", 3], [22.4, "chỉ", 3], [22.6, "nhóm,", 3], [23.15, "gọi", 3], [23.413, "là", 3], [23.512, "nhóm", 3], [23.837, "multicast,", 3], [24.675, "hay", 3], [24.887, "multicast", 3], [25.45, "group,", 3], [26.025, "và", 3], [26.275, "chỉ", 3], [26.438, "các", 3], [26.613, "máy", 3], [26.812, "đã", 3], [26.913, "tham", 3], [27.15, "gia", 3], [27.337, "nhóm", 3], [27.637, "mới", 3], [27.812, "nhận.", 3], [28.988, "Địa", 4], [29.238, "chỉ", 4], [29.45, "nhóm", 4], [29.762, "của", 4], [30.294, "IPv4", 4], [30.825, "có", 4], [30.925, "byte", 4], [31.087, "đầu", 4], [31.3, "từ", 4], [31.512, "224", 4], [32.513, "đến", 4], [32.712, "239.", 4], [34.625, "Ví", 5], [34.913, "dụ", 5], [35.138, "của", 5], [35.288, "phần", 5], [35.525, "dùng", 5], [35.737, "nhóm", 5], [35.89, "239.1.2.3,", 5], [36.043, "thuộc", 5], [36.196, "dải", 5], [36.35, "dành", 5], [36.503, "cho", 5], [36.656, "phạm", 5], [36.809, "vi", 5], [36.962, "một", 5], [36.962, "tổ", 5], [36.962, "chức.", 5]], "cues": [6.9, 11.65, 18.863, 28.988], "lang": 2.6}, {"ten": "Slide 3. Tham gia nhóm trên một network interface; TTL giới hạn số router", "loai": "slide", "slide": "S03", "dung": "Hình tham-gia-nhom: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Chương trình phải tham gia nhóm”; bước 2 khi đọc “Khi nguồn trong cùng mạng gửi”; bước 3 khi đọc “Phạm vi phát do TTL quyết định”; bước 4 khi đọc “nên TTL bằng 1”.", "start": 96.25, "audio": "audio/43a5c4284fa84083.mp3", "dur": 46.87, "words": [[0.1, "Máy", 0], [0.463, "nhận", 0], [0.762, "không", 0], [1.012, "tự", 0], [1.188, "động", 0], [1.413, "nhận", 0], [1.675, "multicast.", 0], [3.212, "Chương", 1], [3.538, "trình", 1], [3.763, "phải", 1], [3.888, "tham", 1], [4.075, "gia", 1], [4.237, "nhóm", 1], [4.588, "bằng", 1], [4.763, "phương", 1], [4.95, "thức", 1], [5.138, "joinGroup,", 1], [5.888, "và", 1], [6.088, "việc", 1], [6.3, "tham", 1], [6.537, "gia", 1], [6.713, "gắn", 1], [6.987, "với", 1], [7.088, "một", 1], [7.287, "network", 1], [7.825, "interface", 1], [8.312, "cụ", 1], [8.512, "thể,", 1], [9.113, "trong", 1], [9.325, "hình", 1], [9.562, "là", 1], [9.675, "card", 1], [9.925, "Wi-Fi.", 1], [11.238, "Hệ", 2], [11.463, "điều", 2], [11.6, "hành", 2], [11.762, "báo", 2], [11.963, "cho", 2], [12.088, "mạng", 2], [12.325, "rằng", 2], [12.575, "interface", 2], [13.062, "này", 2], [13.35, "muốn", 2], [13.562, "nhận", 2], [13.787, "nhóm", 2], [13.804, "239.1.2.3.", 2], [13.82, "Khi", 3], [13.837, "nguồn", 3], [13.854, "trong", 3], [13.87, "cùng", 3], [13.887, "mạng", 3], [13.904, "gửi", 3], [13.92, "tới", 3], [13.937, "nhóm,", 3], [13.954, "datagram", 3], [13.97, "đến", 3], [13.987, "qua", 3], [14.004, "card", 3], [14.021, "Wi-Fi", 3], [14.037, "và", 3], [14.054, "được", 3], [14.071, "chuyển", 3], [14.087, "cho", 3], [14.104, "socket", 3], [14.121, "đã", 3], [14.137, "tham", 3], [14.154, "gia.", 3], [14.171, "Card", 4], [14.187, "mạng", 4], [14.204, "ảo", 4], [14.221, "còn", 4], [14.237, "lại", 4], [14.254, "của", 4], [14.271, "máy", 4], [14.287, "không", 4], [14.304, "tham", 4], [14.321, "gia,", 4], [14.337, "nên", 4], [14.354, "không", 4], [14.371, "nhận", 4], [14.387, "gì.", 4], [14.404, "Đó", 5], [14.421, "là", 5], [14.438, "phía", 5], [14.454, "nhận.", 5], [14.471, "Còn", 6], [14.488, "ở", 6], [14.504, "phía", 6], [14.521, "nguồn,", 6], [14.538, "phạm", 6], [14.554, "vi", 6], [14.571, "phát", 6], [14.588, "do", 6], [14.604, "TTL", 6], [14.621, "quyết", 6], [14.638, "định.", 6], [14.654, "TTL,", 7], [14.671, "hay", 7], [14.688, "Time", 7], [14.704, "To", 7], [14.721, "Live,", 7], [14.738, "là", 7], [14.754, "số", 7], [14.771, "router", 7], [14.788, "tối", 7], [14.805, "đa", 7], [14.821, "mà", 7], [14.838, "datagram", 7], [14.855, "được", 7], [14.871, "đi", 7], [14.888, "qua:", 7], [14.905, "mỗi", 7], [14.921, "router", 7], [14.938, "giảm", 7], [14.955, "TTL", 7], [14.971, "đi", 7], [14.988, "một", 7], [15.472, "và", 7], [15.957, "bỏ", 7], [16.441, "datagram", 7], [16.925, "khi", 7], [16.979, "TTL", 7], [17.032, "về", 7], [17.086, "0,", 7], [17.14, "nên", 7], [17.194, "TTL", 7], [17.247, "bằng", 7], [17.301, "1", 7], [17.355, "giữ", 7], [17.408, "datagram", 7], [17.462, "trong", 7], [17.837, "mạng", 7], [17.837, "cục", 7], [17.837, "bộ.", 7]], "cues": [3.212, 13.82, 14.538, 17.14], "lang": 2.6}, {"ten": "Slide 4. Nguồn phát gửi mỗi datagram một lần tới địa chỉ nhóm, với TTL 1", "loai": "slide", "slide": "S04", "dung": "Mã phía trên, log phía dưới. Highlight dòng 239.1.2.3, dòng setTimeToLive(1) theo lời đọc.\nHiện dần: bước 1 khi đọc “Log của nguồn”.", "start": 145.72, "audio": "audio/3eb43932e0e3d0a7.mp3", "dur": 31.18, "words": [[0.1, "Mã", 0], [0.45, "nguồn", 0], [0.662, "phát", 0], [0.9, "rất", 0], [1.075, "giống", 0], [1.35, "client", 0], [1.844, "UDP", 0], [2.337, "ở", 0], [2.45, "phần", 0], [2.688, "trước.", 0], [3.8, "Khác", 1], [4.075, "biệt", 1], [4.287, "nằm", 1], [4.55, "ở", 1], [4.625, "đích", 1], [4.812, "đến:", 1], [5.35, "thay", 1], [5.562, "cho", 1], [5.737, "endpoint", 1], [6.162, "của", 1], [6.287, "một", 1], [6.463, "máy,", 1], [7.013, "datagram", 1], [7.763, "gửi", 1], [7.938, "tới", 1], [8.1, "địa", 1], [8.275, "chỉ", 1], [8.463, "nhóm", 1], [8.508, "239.1.2.3,", 1], [8.552, "port", 1], [8.597, "9300.", 1], [8.642, "Nguồn", 2], [8.686, "dùng", 2], [8.731, "MulticastSocket,", 2], [8.776, "lớp", 2], [8.821, "con", 2], [8.865, "của", 2], [8.91, "DatagramSocket,", 2], [8.955, "để", 2], [8.999, "đặt", 2], [9.044, "TTL", 2], [9.089, "bằng", 2], [9.133, "1", 2], [9.178, "qua", 2], [9.223, "phương", 2], [9.267, "thức", 2], [9.312, "setTimeToLive.", 2], [9.357, "Mỗi", 3], [9.402, "500", 3], [9.446, "mili", 3], [9.491, "giây,", 3], [9.536, "nguồn", 3], [9.58, "gửi", 3], [9.625, "một", 3], [9.625, "datagram", 3], [9.625, "tick,", 3], [9.625, "tổng", 3], [9.625, "cộng", 3], [9.625, "năm", 3], [9.625, "lần.", 3], [9.625, "Log", 4], [9.625, "của", 4], [9.625, "nguồn", 4], [9.625, "cho", 4], [9.625, "thấy", 4], [9.625, "mỗi", 4], [9.625, "datagram", 4], [9.625, "chỉ", 4], [9.625, "được", 4], [9.625, "gửi", 4], [9.625, "đúng", 4], [9.625, "một", 4], [9.625, "lần,", 4], [9.625, "dù", 4], [9.625, "có", 4], [9.625, "bao", 4], [9.625, "nhiêu", 4], [9.625, "máy", 4], [9.625, "nhận.", 4]], "cues": [9.625], "lang": 9.6}, {"ten": "Slide 5. Ba máy nhận cùng tham gia nhóm và cùng nhận đủ năm datagram", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, kết quả của r1 phía dưới. Có thể đặt ba terminal r1, r2, r3 cạnh nhau (results/MulticastReceiver-r1.txt, -r2.txt, -r3.txt).\nHiện dần: bước 1 khi đọc “Kết quả ở r1”.", "start": 186.5, "audio": "audio/26d409c02d5b4689.mp3", "dur": 45.19, "words": [[0.1, "Phía", 0], [0.362, "máy", 0], [0.588, "nhận,", 0], [1.125, "MulticastSocket", 0], [2.5, "mở", 0], [2.75, "port", 0], [3.781, "9300.", 0], [4.812, "Lớp", 1], [5.1, "này", 1], [5.312, "cho", 1], [5.463, "phép", 1], [5.688, "nhiều", 1], [5.888, "socket", 1], [6.3, "cùng", 1], [6.5, "dùng", 1], [6.688, "một", 1], [6.838, "port,", 1], [7.35, "nên", 1], [7.65, "ba", 1], [7.838, "chương", 1], [8.062, "trình", 1], [8.238, "nhận", 1], [8.512, "chạy", 1], [8.725, "được", 1], [8.887, "trên", 1], [9.1, "cùng", 1], [9.3, "một", 1], [9.463, "máy.", 1], [10.637, "Lời", 2], [10.925, "gọi", 2], [11.162, "joinGroup", 2], [11.775, "nhận", 2], [12.05, "địa", 2], [12.225, "chỉ", 2], [12.438, "nhóm", 2], [12.787, "và", 2], [12.9, "biến", 2], [13.137, "nic,", 2], [13.575, "network", 2], [14.25, "interface", 2], [14.812, "được", 2], [14.988, "chọn", 2], [15.287, "để", 2], [15.4, "tham", 2], [15.6, "gia.", 2], [16.738, "Khi", 3], [17.0, "người", 3], [17.212, "chạy", 3], [17.438, "không", 3], [17.65, "truyền", 3], [17.875, "tên", 3], [18.15, "interface,", 3], [18.863, "chương", 3], [19.125, "trình", 3], [19.337, "chọn", 3], [19.613, "interface", 3], [20.137, "của", 3], [20.3, "đường", 3], [20.55, "đi", 3], [20.688, "mặc", 3], [20.875, "định,", 3], [21.375, "ở", 3], [21.538, "máy", 3], [21.725, "chạy", 3], [21.925, "thử", 3], [22.163, "là", 3], [22.3, "card", 3], [22.538, "Wi-Fi.", 3], [23.863, "Sau", 4], [24.15, "đó", 4], [24.35, "máy", 4], [24.525, "nhận", 4], [24.775, "gọi", 4], [24.975, "phương", 4], [25.175, "thức", 4], [25.35, "receive", 4], [25.975, "như", 4], [26.175, "với", 4], [26.337, "DatagramSocket", 4], [27.5, "ở", 4], [27.6, "phần", 4], [27.837, "trước.", 4], [28.95, "Mình", 5], [29.337, "chạy", 5], [29.525, "ba", 5], [29.7, "máy", 5], [29.9, "nhận", 5], [30.238, "r1,", 5], [31.012, "r2,", 5], [32.0, "r3,", 5], [32.862, "rồi", 5], [33.15, "chạy", 5], [33.388, "nguồn", 5], [33.638, "phát.", 5], [34.763, "Kết", 6], [34.975, "quả", 6], [35.275, "ở", 6], [35.5, "r1:", 6], [36.35, "đủ", 6], [36.575, "năm", 6], [36.837, "datagram", 6], [37.475, "tick,", 6], [37.913, "từ", 6], [38.1, "địa", 6], [38.288, "chỉ", 6], [38.575, "của", 6], [38.688, "nguồn.", 6], [39.875, "Hai", 7], [40.112, "máy", 7], [40.3, "nhận", 7], [40.587, "còn", 7], [40.8, "lại", 7], [41.025, "in", 7], [41.2, "đúng", 7], [41.413, "năm", 7], [41.587, "dòng", 7], [41.8, "như", 7], [41.962, "vậy:", 7], [42.487, "một", 7], [42.725, "lần", 7], [42.962, "gửi,", 7], [43.525, "ba", 7], [43.775, "nơi", 7], [43.975, "nhận.", 7]], "cues": [34.763], "lang": 9.6}, {"ten": "Slide 6. Tham gia nhóm trên sai network interface thì không nhận được gì, và không có lỗi", "loai": "slide", "slide": "S06", "dung": "Mã một dòng phía trên, kết quả phía dưới. Sau câu \"sẽ in ra gì\", dừng khoảng 2 giây trước khi khung kết quả hiện. Danh sách interface của máy chạy thử ở results/ListInterfaces.txt.\nHiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Datagram của nguồn đi qua”; bước 3 khi đọc “Vì vậy”.", "start": 241.29, "audio": "audio/9faad06806986db4.mp3", "dur": 44.64, "words": [[0.1, "Lỗi", 0], [0.362, "khó", 0], [0.625, "tìm", 0], [0.863, "nhất", 0], [1.062, "của", 0], [1.3, "multicast", 0], [2.225, "là", 0], [2.45, "tham", 0], [2.712, "gia", 0], [2.875, "nhóm", 0], [3.225, "trên", 0], [3.388, "sai", 0], [3.638, "network", 0], [4.188, "interface.", 0], [5.55, "Máy", 1], [5.938, "chạy", 1], [6.15, "thử", 1], [6.388, "có", 1], [6.513, "ba", 1], [6.725, "interface", 1], [7.25, "hỗ", 1], [7.463, "trợ", 1], [7.662, "multicast:", 1], [8.537, "card", 1], [8.775, "Wi-Fi,", 1], [9.488, "card", 1], [9.688, "mạng", 1], [9.938, "ảo", 1], [10.137, "của", 1], [10.325, "Hyper-V", 1], [10.9, "và", 1], [11.037, "card", 1], [11.462, "VPN", 1], [11.887, "của", 1], [12.075, "Tailscale.", 1], [13.45, "Mình", 2], [13.838, "chạy", 2], [14.037, "thêm", 2], [14.225, "máy", 2], [14.4, "nhận", 2], [14.625, "thứ", 2], [14.787, "tư,", 2], [15.312, "tham", 2], [15.588, "gia", 2], [15.762, "nhóm", 2], [16.113, "trên", 2], [16.3, "card", 2], [16.5, "mạng", 2], [16.75, "ảo,", 2], [17.262, "rồi", 2], [17.538, "phát", 2], [17.762, "lại.", 2], [18.938, "Trước", 3], [19.212, "khi", 3], [19.375, "xem", 3], [19.625, "kết", 3], [19.812, "quả,", 3], [20.387, "các", 3], [20.575, "bạn", 3], [20.837, "hãy", 3], [20.962, "dự", 3], [21.137, "đoán", 3], [21.375, "máy", 3], [21.55, "nhận", 3], [21.812, "thứ", 3], [21.988, "tư", 3], [22.25, "sẽ", 3], [22.462, "in", 3], [22.663, "ra", 3], [22.825, "gì.", 3], [23.962, "Kết", 4], [24.163, "quả:", 4], [24.75, "máy", 4], [24.988, "nhận", 4], [25.25, "tham", 4], [25.475, "gia", 4], [25.637, "thành", 4], [25.85, "công,", 4], [26.363, "nhưng", 4], [26.65, "không", 4], [26.875, "nhận", 4], [27.1, "được", 4], [27.25, "datagram", 4], [27.9, "nào,", 4], [28.363, "và", 4], [28.625, "không", 4], [28.85, "có", 4], [28.938, "ngoại", 4], [29.188, "lệ", 4], [29.387, "nào", 4], [29.613, "báo", 4], [29.8, "lỗi.", 4], [31.038, "Datagram", 5], [31.812, "của", 5], [31.938, "nguồn", 5], [32.163, "đi", 5], [32.3, "qua", 5], [32.5, "card", 5], [32.737, "Wi-Fi,", 5], [33.487, "nên", 5], [33.825, "interface", 5], [34.325, "khác", 5], [34.562, "không", 5], [34.75, "nhận", 5], [34.975, "được.", 5], [36.038, "Vì", 6], [36.288, "vậy,", 6], [36.675, "khi", 6], [36.875, "máy", 6], [37.038, "nhận", 6], [37.3, "không", 6], [37.487, "nhận", 6], [37.688, "được", 6], [37.825, "gì,", 6], [38.3, "việc", 6], [38.5, "đầu", 6], [38.675, "tiên", 6], [38.962, "là", 6], [39.075, "kiểm", 6], [39.312, "tra", 6], [39.513, "network", 6], [40.062, "interface", 6], [40.638, "đã", 6], [40.788, "dùng", 6], [41.025, "để", 6], [41.15, "tham", 6], [41.362, "gia", 6], [41.525, "nhóm,", 6], [42.087, "rồi", 6], [42.337, "mới", 6], [42.513, "đến", 6], [42.912, "TTL", 6], [43.312, "của", 6], [43.45, "nguồn.", 6]], "cues": [19.625, 31.038, 36.038], "lang": 9.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án C được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 295.53, "audio": "audio/e5239337c32a8e75.mp3", "dur": 3.96, "words": [[0.1, "Tham", 0], [0.35, "số", 0], [0.55, "đầu", 0], [0.713, "tiên", 0], [0.975, "cần", 0], [1.188, "hiểu", 0], [1.4, "đúng", 0], [1.637, "là", 0], [2.05, "TTL", 0], [2.462, "của", 0], [2.6, "nguồn", 0], [2.825, "phát.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/bd0a9bbce563b9e5.mp3", "dur2": 15.5, "words2": [[0.1, "Đáp", 0], [0.438, "án", 0], [0.637, "là", 0], [0.738, "C.", 0], [1.125, "Phương", 1], [1.462, "án", 1], [1.637, "B", 1], [1.775, "dễ", 1], [1.988, "được", 1], [2.15, "chọn", 1], [2.45, "vì", 1], [2.575, "tên", 1], [2.8, "Time", 1], [3.075, "To", 1], [3.263, "Live", 1], [3.45, "gợi", 1], [3.712, "đến", 1], [3.913, "thời", 1], [4.075, "gian.", 1], [5.275, "Nhưng", 2], [5.588, "với", 2], [6.105, "IP,", 2], [6.621, "TTL", 2], [7.138, "là", 2], [7.225, "số", 2], [7.475, "router", 2], [7.775, "tối", 2], [8.012, "đa", 2], [8.213, "datagram", 2], [8.912, "được", 2], [9.1, "đi", 2], [9.25, "qua.", 2], [10.438, "Mỗi", 3], [10.875, "router", 3], [11.262, "giảm", 3], [11.706, "TTL", 3], [12.15, "đi", 3], [12.262, "một,", 3], [12.725, "về", 3], [12.95, "0", 3], [13.188, "thì", 3], [13.35, "datagram", 3], [14.062, "bị", 3], [14.213, "bỏ.", 3]], "dap_an": "C", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án A.", "start": 321.59, "audio": "audio/2d83f66519a992f3.mp3", "dur": 3.34, "words": [[0.1, "Câu", 0], [0.312, "tiếp", 0], [0.575, "theo", 0], [0.75, "đặt", 0], [0.925, "các", 0], [1.075, "bạn", 0], [1.337, "vào", 0], [1.488, "vai", 0], [1.663, "người", 0], [1.863, "tìm", 0], [2.112, "lỗi.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/731efbb004eda0ce.mp3", "dur2": 14.71, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.662, "là", 0], [0.863, "A.", 0], [1.225, "Phương", 1], [1.575, "án", 1], [1.762, "B", 1], [1.988, "là", 1], [2.125, "nguyên", 1], [2.325, "nhân", 1], [2.562, "của", 1], [2.688, "dữ", 1], [2.875, "liệu", 1], [3.112, "bị", 1], [3.275, "cắt,", 1], [3.7, "không", 1], [3.962, "phải", 1], [4.188, "của", 1], [4.338, "việc", 1], [4.537, "không", 1], [4.737, "nhận", 1], [4.963, "được", 1], [5.1, "gì.", 1], [6.237, "Với", 2], [6.487, "máy", 2], [6.725, "có", 2], [6.838, "nhiều", 2], [7.1, "interface,", 2], [7.812, "tham", 2], [8.062, "gia", 2], [8.225, "nhóm", 2], [8.575, "trên", 2], [8.75, "sai", 2], [9.0, "network", 2], [9.537, "interface", 2], [10.25, "là", 2], [10.438, "nguyên", 2], [10.637, "nhân", 2], [10.863, "thường", 2], [11.113, "gặp", 2], [11.287, "nhất,", 2], [11.762, "và", 2], [12.0, "Java", 2], [12.438, "không", 2], [12.65, "báo", 2], [12.8, "lỗi", 2], [13.025, "trong", 2], [13.225, "trường", 2], [13.45, "hợp", 2], [13.625, "này.", 2]], "dap_an": "A", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “Với multicast”; bước 2 khi đọc “Trong Java, máy nhận”; bước 3 khi đọc “Phía nguồn, TTL”; bước 4 khi đọc “Phần này có sáu từ khóa”.", "start": 346.24, "audio": "audio/e782f44b84d0f565.mp3", "dur": 35.35, "words": [[0.1, "Với", 0], [0.4, "multicast,", 0], [1.288, "một", 0], [1.5, "nguồn", 0], [1.712, "gửi", 0], [1.875, "mỗi", 0], [2.125, "datagram", 0], [2.825, "một", 0], [3.0, "lần", 0], [3.225, "tới", 0], [3.388, "một", 0], [3.575, "nhóm", 0], [3.875, "multicast,", 0], [4.675, "và", 0], [4.925, "chỉ", 0], [5.088, "các", 0], [5.263, "máy", 0], [5.463, "đã", 0], [5.575, "tham", 0], [5.825, "gia", 0], [6.013, "nhóm", 0], [6.312, "mới", 0], [6.487, "nhận.", 0], [7.675, "Trong", 1], [8.025, "Java,", 1], [8.688, "máy", 1], [8.85, "nhận", 1], [9.1, "dùng", 1], [9.312, "MulticastSocket", 1], [10.375, "và", 1], [10.55, "gọi", 1], [10.775, "phương", 1], [10.975, "thức", 1], [11.162, "joinGroup", 1], [11.725, "trên", 1], [11.9, "một", 1], [12.1, "NetworkInterface", 1], [13.088, "cụ", 1], [13.3, "thể.", 1], [14.537, "Chọn", 2], [14.887, "sai", 2], [15.15, "interface", 2], [15.925, "thì", 2], [16.113, "không", 2], [16.312, "nhận", 2], [16.525, "được", 2], [16.688, "gì", 2], [16.938, "mà", 2], [17.137, "cũng", 2], [17.35, "không", 2], [17.55, "có", 2], [17.663, "lỗi.", 2], [18.913, "Phía", 3], [19.137, "nguồn,", 3], [19.744, "TTL", 3], [20.35, "giới", 3], [20.525, "hạn", 3], [20.7, "số", 3], [20.962, "router", 3], [21.35, "datagram", 3], [22.038, "được", 3], [22.2, "đi", 3], [22.325, "qua,", 3], [22.863, "và", 3], [23.276, "TTL", 3], [23.688, "bằng", 3], [23.85, "1", 3], [24.0, "giữ", 3], [24.2, "dữ", 3], [24.387, "liệu", 3], [24.637, "trong", 3], [24.837, "mạng", 3], [25.038, "cục", 3], [25.212, "bộ.", 3], [26.363, "Phần", 4], [26.613, "này", 4], [26.8, "có", 4], [26.938, "sáu", 4], [27.15, "từ", 4], [27.312, "khóa:", 4], [27.95, "multicast,", 4], [28.887, "nhóm", 4], [29.225, "multicast,", 4], [30.062, "tham", 4], [30.312, "gia", 4], [30.5, "nhóm,", 4], [31.062, "MulticastSocket,", 4], [32.4, "NetworkInterface", 4], [33.612, "và", 4], [33.612, "TTL.", 4]], "cues": [0.1, 7.675, 18.913, 26.363], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Việc đăng ký nhận nhóm”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 382.19, "audio": "audio/71a475d33caad297.mp3", "dur": 23.45, "words": [[0.1, "Việc", 0], [0.375, "đăng", 0], [0.575, "ký", 0], [0.75, "nhận", 0], [0.988, "nhóm", 0], [1.275, "với", 0], [1.413, "router", 0], [1.875, "do", 0], [2.05, "giao", 0], [2.212, "thức", 0], [2.694, "IGMP", 0], [3.175, "đảm", 0], [3.388, "nhận,", 0], [3.875, "và", 0], [4.062, "các", 0], [4.225, "bạn", 0], [4.425, "có", 0], [4.537, "thể", 0], [4.662, "đọc", 0], [4.825, "thêm", 0], [5.1, "về", 0], [5.575, "IGMP", 0], [6.05, "cùng", 0], [6.287, "cách", 0], [6.463, "router", 0], [6.888, "chuyển", 0], [7.175, "multicast", 0], [7.775, "giữa", 0], [7.963, "các", 0], [8.162, "mạng.", 0], [9.338, "Khi", 1], [9.613, "chỉ", 1], [9.775, "muốn", 1], [9.988, "nhận", 1], [10.238, "từ", 1], [10.375, "một", 1], [10.562, "nguồn", 1], [10.787, "cụ", 1], [10.963, "thể", 1], [11.15, "trong", 1], [11.338, "nhóm,", 1], [11.863, "các", 1], [12.088, "bạn", 1], [12.3, "có", 1], [12.4, "thể", 1], [12.562, "tìm", 1], [12.812, "hiểu", 1], [13.025, "source-specific", 1], [14.012, "multicast.", 1], [15.488, "Bài", 2], [15.725, "tập", 2], [15.938, "mở", 2], [16.125, "rộng", 2], [16.413, "là", 2], [16.55, "viết", 2], [16.762, "máy", 2], [16.938, "nhận", 2], [17.175, "liệt", 2], [17.375, "kê", 2], [17.562, "các", 2], [17.775, "network", 2], [18.262, "interface", 2], [18.775, "hỗ", 2], [18.975, "trợ", 2], [19.175, "multicast,", 2], [20.038, "rồi", 2], [20.312, "cho", 2], [20.45, "người", 2], [20.625, "dùng", 2], [20.85, "chọn", 2], [21.15, "interface", 2], [21.675, "để", 2], [21.85, "tham", 2], [22.075, "gia", 2], [22.238, "nhóm.", 2]], "cues": [0.1, 15.488], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 406.24, "audio": "audio/1d40d8014303606d.mp3", "dur": 12.6, "words": [[0.1, "Multicast", 0], [0.9, "đã", 0], [1.038, "gửi", 0], [1.25, "được", 0], [1.413, "dữ", 0], [1.587, "liệu", 0], [1.812, "tới", 0], [2.025, "cả", 0], [2.2, "nhóm,", 0], [2.75, "nhưng", 0], [3.05, "dữ", 0], [3.237, "liệu", 0], [3.438, "thật", 0], [3.663, "như", 0], [3.85, "video", 0], [4.388, "có", 0], [4.537, "thể", 0], [4.675, "mất", 0], [4.875, "gói,", 0], [5.425, "và", 0], [5.612, "máy", 0], [5.787, "nhận", 0], [6.037, "có", 0], [6.162, "thể", 0], [6.35, "vào", 0], [6.5, "giữa", 0], [6.725, "chừng.", 0], [7.875, "Phần", 1], [8.15, "tiếp", 1], [8.387, "theo", 1], [8.588, "là", 1], [8.688, "bài", 1], [8.85, "toán", 1], [9.137, "ứng", 1], [9.287, "dụng:", 1], [9.838, "truyền", 1], [10.125, "video", 1], [10.588, "theo", 1], [10.812, "nhóm", 1], [11.15, "multicast.", 1]], "cues": [], "lang": 0.6}], "video_sau": "Bài toán ứng dụng: truyền video theo nhóm multicast"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

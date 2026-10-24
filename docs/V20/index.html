@@ -1,0 +1,476 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V20 — HTTP/2: binary framing và multiplexing · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-3/06-http2">Mã</a>
+<h1>V20 · HTTP/2: binary framing và multiplexing</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 3</div><div class="ten">HTTP/2: binary framing và multiplexing</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Trang web cần hàng chục tài nguyên, HTTP/1.1 chỉ một request mỗi kết nối</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Một trang web cần <b>hàng chục tài nguyên</b> (ảnh, script, stylesheet) từ cùng một server</li><li data-s="2">HTTP/1.1: trên một kết nối, request sau <b>chờ response trước</b>; trình duyệt mở khoảng <b>6 kết nối</b> mỗi server</li><li data-s="3">Thêm kết nối: thêm bắt tay, thêm handshake TLS, mà vẫn chỉ 6 request cùng lúc</li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> làm sao chuyển nhiều request song song trên chỉ một kết nối TCP?</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>HTTP/1.1 cần 4 lượt cho 20 request, HTTP/2 chạy cả 20 stream trong một lượt</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 540" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Trên: HTTP/1.1 với 6 kết nối; mỗi kết nối xử lý request lần lượt, request sau chờ response trước; 20 request cần 4 lượt, khoảng 4 lần 200 ms. Dưới: HTTP/2 với một kết nối; 20 request là 20 stream chạy song song, xong trong khoảng 200 ms.">
+
+  <!-- ① HTTP/1.1: 6 kết nối, mỗi kết nối tuần tự -->
+  <g data-s="1">
+    <text x="40" y="40" font-size="24" font-weight="500" fill="#051A53">HTTP/1.1: 6 kết nối, mỗi kết nối một request tại một thời điểm</text>
+    <g font-size="20" fill="#5B6478">
+      <text x="40" y="92">kết nối 1</text><text x="40" y="136">kết nối 2</text><text x="40" y="180">kết nối 3</text>
+      <text x="40" y="224">kết nối 4</text><text x="40" y="268">kết nối 5</text><text x="40" y="312">kết nối 6</text>
+    </g>
+    <g fill="#EEF2FB" stroke="#1F5FA8" stroke-width="2">
+      <rect x="200" y="66" width="150" height="36" rx="3"/><rect x="360" y="66" width="150" height="36" rx="3"/><rect x="520" y="66" width="150" height="36" rx="3"/><rect x="680" y="66" width="150" height="36" rx="3"/>
+      <rect x="200" y="110" width="150" height="36" rx="3"/><rect x="360" y="110" width="150" height="36" rx="3"/><rect x="520" y="110" width="150" height="36" rx="3"/><rect x="680" y="110" width="150" height="36" rx="3"/>
+      <rect x="200" y="154" width="150" height="36" rx="3"/><rect x="360" y="154" width="150" height="36" rx="3"/><rect x="520" y="154" width="150" height="36" rx="3"/>
+      <rect x="200" y="198" width="150" height="36" rx="3"/><rect x="360" y="198" width="150" height="36" rx="3"/><rect x="520" y="198" width="150" height="36" rx="3"/>
+      <rect x="200" y="242" width="150" height="36" rx="3"/><rect x="360" y="242" width="150" height="36" rx="3"/><rect x="520" y="242" width="150" height="36" rx="3"/>
+      <rect x="200" y="286" width="150" height="36" rx="3"/><rect x="360" y="286" width="150" height="36" rx="3"/><rect x="520" y="286" width="150" height="36" rx="3"/>
+    </g>
+    <g font-size="20" fill="#1F5FA8" text-anchor="middle">
+      <text x="275" y="91">r1</text><text x="435" y="91">r7</text><text x="595" y="91">r13</text><text x="755" y="91">r19</text>
+      <text x="275" y="135">r2</text><text x="435" y="135">r8</text><text x="595" y="135">r14</text><text x="755" y="135">r20</text>
+      <text x="275" y="179">r3</text><text x="435" y="179">r9</text><text x="595" y="179">r15</text>
+      <text x="275" y="223">r4</text><text x="435" y="223">r10</text><text x="595" y="223">r16</text>
+      <text x="275" y="267">r5</text><text x="435" y="267">r11</text><text x="595" y="267">r17</text>
+      <text x="275" y="311">r6</text><text x="435" y="311">r12</text><text x="595" y="311">r18</text>
+    </g>
+    <path d="M836,56 L836,330" stroke="#BC2626" stroke-width="2.5" stroke-dasharray="7 5"/>
+    <text x="852" y="92" font-size="21" fill="#BC2626">4 lượt ≈ 4 × 200 ms</text>
+    <text x="852" y="130" font-size="20" fill="#5B6478">request sau chờ response trước</text>
+    <text x="852" y="164" font-size="20" fill="#5B6478">trên cùng kết nối</text>
+  </g>
+
+  <!-- ② HTTP/2: 1 kết nối, 20 stream song song -->
+  <g data-s="2">
+    <text x="40" y="392" font-size="24" font-weight="500" fill="#051A53">HTTP/2: 1 kết nối, 20 stream song song</text>
+    <text x="40" y="452" font-size="20" fill="#5B6478">kết nối 1</text>
+    <rect x="200" y="416" width="150" height="80" rx="3" fill="#EEF9F0" stroke="#2F855A" stroke-width="2"/>
+    <g stroke="#2F855A" stroke-width="2">
+      <line x1="210" y1="426" x2="210" y2="486"/><line x1="217" y1="426" x2="217" y2="486"/><line x1="224" y1="426" x2="224" y2="486"/><line x1="231" y1="426" x2="231" y2="486"/>
+      <line x1="238" y1="426" x2="238" y2="486"/><line x1="245" y1="426" x2="245" y2="486"/><line x1="252" y1="426" x2="252" y2="486"/><line x1="259" y1="426" x2="259" y2="486"/>
+      <line x1="266" y1="426" x2="266" y2="486"/><line x1="273" y1="426" x2="273" y2="486"/><line x1="280" y1="426" x2="280" y2="486"/><line x1="287" y1="426" x2="287" y2="486"/>
+      <line x1="294" y1="426" x2="294" y2="486"/><line x1="301" y1="426" x2="301" y2="486"/><line x1="308" y1="426" x2="308" y2="486"/><line x1="315" y1="426" x2="315" y2="486"/>
+      <line x1="322" y1="426" x2="322" y2="486"/><line x1="329" y1="426" x2="329" y2="486"/><line x1="336" y1="426" x2="336" y2="486"/><line x1="343" y1="426" x2="343" y2="486"/>
+    </g>
+    <path d="M356,406 L356,506" stroke="#2F855A" stroke-width="2.5" stroke-dasharray="7 5"/>
+    <text x="372" y="446" font-size="21" fill="#22603F">1 lượt ≈ 200 ms</text>
+    <text x="372" y="482" font-size="20" fill="#5B6478">r1 … r20 là 20 stream trên cùng kết nối</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="3"><p><b>Multiplexing</b>: nhiều <b>HTTP/2 stream</b> chạy song song trên một kết nối TCP; mỗi stream là một cặp request–response.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Binary framing: frame mang stream ID, frame các stream đi xen kẽ</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Header của frame HTTP/2 dài 9 byte: độ dài 3 byte, loại 1 byte, cờ 1 byte, stream ID 4 byte, rồi dữ liệu. Client gửi ba request là ba frame HEADERS của stream 1, 3, 5, header nén bằng HPACK. Server trả frame HEADERS và DATA của ba stream xen kẽ trên cùng kết nối; response nào xong trước gửi trước, bên nhận ghép lại theo stream ID.">
+  <defs>
+    <marker id="fx-net" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#5B6478"/></marker>
+  </defs>
+
+  <!-- ① header frame 9 byte -->
+  <g data-s="1">
+    <text x="40" y="48" font-size="22" font-weight="500" fill="#051A53">frame HTTP/2: header 9 byte</text>
+    <g stroke-width="2.5">
+      <rect x="40" y="66" width="220" height="70" fill="#EEF2FB" stroke="#051A53"/>
+      <rect x="260" y="66" width="150" height="70" fill="#EEF2FB" stroke="#051A53"/>
+      <rect x="410" y="66" width="150" height="70" fill="#EEF2FB" stroke="#051A53"/>
+      <rect x="560" y="66" width="230" height="70" fill="#FFF6DD" stroke="#8A6508"/>
+      <rect x="790" y="66" width="420" height="70" fill="#F4F5F8" stroke="#9AA3B8"/>
+    </g>
+    <g font-size="20" text-anchor="middle">
+      <text x="150" y="98" fill="#051A53">độ dài</text><text x="150" y="124" fill="#051A53">3 byte</text>
+      <text x="335" y="98" fill="#051A53">loại</text><text x="335" y="124" fill="#051A53">1 byte</text>
+      <text x="485" y="98" fill="#051A53">cờ</text><text x="485" y="124" fill="#051A53">1 byte</text>
+      <text x="675" y="98" fill="#6B4E06" font-weight="500">stream ID</text><text x="675" y="124" fill="#6B4E06">4 byte</text>
+      <text x="1000" y="110" fill="#5B6478">dữ liệu: header (HEADERS) hoặc body (DATA)</text>
+    </g>
+  </g>
+
+  <!-- ② client gửi HEADERS của ba stream -->
+  <g data-s="2">
+    <text x="40" y="202" font-size="21" fill="#051A53">client → server: ba request là ba stream, header nén bằng HPACK</text>
+    <line x1="40" y1="260" x2="1700" y2="260" stroke="#9AA3B8" stroke-width="2"/>
+    <line x1="1180" y1="260" x2="1690" y2="260" stroke="#5B6478" stroke-width="2" marker-end="url(#fx-net)"/>
+    <rect x="40" y="228" width="200" height="64" rx="4" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <rect x="260" y="228" width="200" height="64" rx="4" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <rect x="480" y="228" width="200" height="64" rx="4" fill="#EEF2FB" stroke="#1F5FA8" stroke-width="2.5"/>
+    <g font-size="20" text-anchor="middle">
+      <text x="140" y="267" fill="#22603F">HEADERS · 1</text>
+      <text x="360" y="267" fill="#6B4E06">HEADERS · 3</text>
+      <text x="580" y="267" fill="#1F5FA8">HEADERS · 5</text>
+    </g>
+  </g>
+
+  <!-- ③ server trả frame xen kẽ -->
+  <g data-s="3">
+    <text x="40" y="362" font-size="21" fill="#051A53">server → client: frame của các stream xen kẽ trên cùng kết nối</text>
+    <line x1="40" y1="420" x2="1700" y2="420" stroke="#9AA3B8" stroke-width="2"/>
+    <line x1="1380" y1="420" x2="1690" y2="420" stroke="#5B6478" stroke-width="2" marker-end="url(#fx-net)"/>
+    <g stroke-width="2.5">
+      <rect x="40" y="388" width="200" height="64" rx="4" fill="#FFF6DD" stroke="#8A6508"/>
+      <rect x="250" y="388" width="200" height="64" rx="4" fill="#FFF6DD" stroke="#8A6508"/>
+      <rect x="460" y="388" width="200" height="64" rx="4" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="670" y="388" width="200" height="64" rx="4" fill="#EEF2FB" stroke="#1F5FA8"/>
+      <rect x="880" y="388" width="200" height="64" rx="4" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="1090" y="388" width="200" height="64" rx="4" fill="#EEF2FB" stroke="#1F5FA8"/>
+    </g>
+    <g font-size="20" text-anchor="middle">
+      <text x="140" y="427" fill="#6B4E06">HEADERS · 3</text>
+      <text x="350" y="427" fill="#6B4E06">DATA · 3</text>
+      <text x="560" y="427" fill="#22603F">HEADERS · 1</text>
+      <text x="770" y="427" fill="#1F5FA8">HEADERS · 5</text>
+      <text x="980" y="427" fill="#22603F">DATA · 1</text>
+      <text x="1190" y="427" fill="#1F5FA8">DATA · 5</text>
+    </g>
+    <text x="40" y="496" font-size="21" fill="#373D4E">response nào xong trước gửi trước; bên nhận ghép frame lại theo stream ID</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Binary framing</b>: frame nhị phân mang stream ID; HEADERS chứa header nén bằng <b>HPACK</b>, DATA chứa body; frame các stream đi xen kẽ.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>HttpClient chọn HTTP/2: 20 request, một kết nối, khoảng 260 mili giây</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">HttpClient</span> client = <span class="hl-t">HttpClient</span>.<span class="hl-m">newBuilder</span>()
+        .<span class="hl-m">version</span>(http11 ? <span class="hl-t">HttpClient</span>.<span class="hl-t">Version</span>.<span class="hl-t">HTTP_1_1</span> : <span class="hl-t">HttpClient</span>.<span class="hl-t">Version</span>.<span class="hl-t">HTTP_2</span>)
+        .<span class="hl-m">build</span>();
+<span class="hl-m">get</span>(client, <span class="hl-s">"</span><span class="hl-s">/warmup</span><span class="hl-s">"</span>);                    <span class="hl-c">// request đầu: với h2c, kết nối được nâng cấp lên HTTP/2 ở đây</span>
+<span class="hl-k">try</span> (<span class="hl-t">ExecutorService</span> pool = <span class="hl-t">Executors</span>.<span class="hl-m">newVirtualThreadPerTaskExecutor</span>()) {
+    <span class="hl-k">for</span> (<span class="hl-k">int</span> i = <span class="hl-n">1</span>; i &lt;= <span class="hl-n">20</span>; i++) {
+        <span class="hl-t">String</span> path = <span class="hl-s">"</span><span class="hl-s">/r</span><span class="hl-s">"</span> + i;
+        pool.<span class="hl-m">submit</span>(() -&gt; {
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>HTTP/2, at most 20 at a time: 20 requests in 261 ms, response version [HTTP_2]
+server: 20 requests on 1 connection(s), protocol [HTTP/2.0]</pre></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Ép HTTP/1.1 với 6 kết nối: cùng 20 request, chậm hơn 3 lần</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">int</span> limit = args.length &gt; <span class="hl-n">1</span> ? <span class="hl-t">Integer</span>.<span class="hl-m">parseInt</span>(args[<span class="hl-n">1</span>]) : http11 ? <span class="hl-n">6</span> : <span class="hl-n">20</span>;
+<span class="hl-t">Semaphore</span> slots = <span class="hl-k">new</span> <span class="hl-m">Semaphore</span>(limit);    <span class="hl-c">// HTTP/1.1: mặc định 6 request cùng lúc, như trình duyệt</span>
+            slots.<span class="hl-m">acquire</span>();
+            <span class="hl-k">try</span> {
+                versions.<span class="hl-m">add</span>(<span class="hl-m">get</span>(client, path).<span class="hl-m">version</span>());
+            } <span class="hl-k">finally</span> {
+                slots.<span class="hl-m">release</span>();
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>HTTP/1.1, at most 6 at a time: 20 requests in 863 ms, response version [HTTP_1_1]
+server: 20 requests on 6 connection(s), protocol [HTTP/1.1]</pre></div><ul class="y-nho"><li data-s="2">Bỏ giới hạn (<code>ParallelFetch 1.1 20</code>): 267 ms, nhưng <b>20 kết nối</b></li></ul></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1><span style="white-space:nowrap">Head-of-line</span> blocking còn lại ở tầng TCP: mất một segment, mọi stream chờ</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Năm segment TCP mang frame của stream 1, 3 và 5 trên cùng một kết nối. Segment 2, mang dữ liệu của stream 3, bị mất. Bên nhận đã giao segment 1 cho ứng dụng, còn segment 3, 4, 5 phải giữ lại vì TCP chỉ giao byte theo đúng thứ tự; mọi stream chờ segment 2 được gửi lại.">
+  <defs>
+    <marker id="hl-net" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#5B6478"/></marker>
+  </defs>
+
+  <!-- ① năm segment trên một kết nối TCP -->
+  <g data-s="1">
+    <rect x="40" y="70" width="180" height="100" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="130" y="128" text-anchor="middle" font-size="22" fill="#051A53">server</text>
+    <line x1="220" y1="120" x2="1090" y2="120" stroke="#5B6478" stroke-width="2" marker-end="url(#hl-net)"/>
+    <g stroke-width="2.5">
+      <rect x="250" y="88" width="150" height="64" rx="4" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="415" y="88" width="150" height="64" rx="4" fill="#FFF6DD" stroke="#8A6508"/>
+      <rect x="580" y="88" width="150" height="64" rx="4" fill="#EEF2FB" stroke="#1F5FA8"/>
+      <rect x="745" y="88" width="150" height="64" rx="4" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="910" y="88" width="150" height="64" rx="4" fill="#FFF6DD" stroke="#8A6508"/>
+    </g>
+    <g font-size="20" text-anchor="middle">
+      <text x="325" y="127" fill="#22603F">seg 1 · s1</text>
+      <text x="490" y="127" fill="#6B4E06">seg 2 · s3</text>
+      <text x="655" y="127" fill="#1F5FA8">seg 3 · s5</text>
+      <text x="820" y="127" fill="#22603F">seg 4 · s1</text>
+      <text x="985" y="127" fill="#6B4E06">seg 5 · s3</text>
+    </g>
+    <text x="250" y="206" font-size="20" fill="#5B6478">một kết nối TCP: segment mang frame của stream 1, 3, 5</text>
+    <rect x="1110" y="40" width="610" height="380" rx="8" fill="none" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1136" y="78" font-size="22" font-weight="500" fill="#051A53">bên nhận (TCP)</text>
+    <text x="1136" y="112" font-size="20" fill="#5B6478">giao byte cho ứng dụng theo đúng thứ tự</text>
+  </g>
+
+  <!-- ② seg 2 mất: seg 3, 4, 5 bị giữ -->
+  <g data-s="2">
+    <rect x="415" y="88" width="150" height="64" rx="4" fill="none" stroke="#BC2626" stroke-width="2.5" stroke-dasharray="7 5"/>
+    <path d="M478,52 L502,76 M502,52 L478,76" stroke="#BC2626" stroke-width="4"/>
+    <text x="490" y="250" text-anchor="middle" font-size="21" fill="#BC2626">seg 2 mất</text>
+    <text x="1136" y="166" font-size="21" fill="#22603F">đã giao: seg 1</text>
+    <text x="1136" y="214" font-size="21" fill="#051A53">đang giữ, chưa giao:</text>
+    <g stroke-width="2.5">
+      <rect x="1136" y="232" width="170" height="56" rx="4" fill="#EEF2FB" stroke="#1F5FA8"/>
+      <rect x="1320" y="232" width="170" height="56" rx="4" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="1504" y="232" width="170" height="56" rx="4" fill="#FFF6DD" stroke="#8A6508"/>
+    </g>
+    <g font-size="20" text-anchor="middle">
+      <text x="1221" y="267" fill="#1F5FA8">seg 3 · s5</text>
+      <text x="1405" y="267" fill="#22603F">seg 4 · s1</text>
+      <text x="1589" y="267" fill="#6B4E06">seg 5 · s3</text>
+    </g>
+  </g>
+
+  <!-- ③ mọi stream chờ gửi lại -->
+  <g data-s="3">
+    <text x="1136" y="336" font-size="21" fill="#BC2626">chờ seg 2 được gửi lại</text>
+    <text x="1136" y="378" font-size="21" fill="#BC2626">stream 1 và 5 không thiếu gì, vẫn phải chờ</text>
+    <text x="880" y="470" text-anchor="middle" font-size="22" fill="#051A53">mất một segment của stream 3 → mọi stream trên kết nối phải chờ: head-of-line blocking ở tầng TCP</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b><span style="white-space:nowrap">Head-of-line</span> blocking</b> còn lại ở tầng TCP: mất một segment làm mọi HTTP/2 stream trên kết nối phải chờ.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Client gửi 20 request tới cùng một server bằng HTTP/2. Client mở bao nhiêu kết nối TCP?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Một kết nối; 20 request là 20 HTTP/2 stream trên kết nối đó.</div></div><div class=""><span>B</span><div>20 kết nối, mỗi request một kết nối.</div></div><div class=""><span>C</span><div>6 kết nối, như trình duyệt với HTTP/1.1.</div></div><div class=""><span>D</span><div>Số kết nối bằng số nhân CPU của client.</div></div></div><div class="giai-thich">HTTP/2 ghép nhiều stream trên một kết nối (multiplexing); mỗi request là một stream có stream ID riêng. Giới hạn 6 kết nối là cách trình duyệt bù cho HTTP/1.1.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Client gửi 20 request tới cùng một server bằng HTTP/2. Client mở bao nhiêu kết nối TCP?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Một kết nối; 20 request là 20 HTTP/2 stream trên kết nối đó.</div></div><div class=""><span>B</span><div>20 kết nối, mỗi request một kết nối.</div></div><div class=""><span>C</span><div>6 kết nối, như trình duyệt với HTTP/1.1.</div></div><div class=""><span>D</span><div>Số kết nối bằng số nhân CPU của client.</div></div></div><div class="giai-thich">HTTP/2 ghép nhiều stream trên một kết nối (multiplexing); mỗi request là một stream có stream ID riêng. Giới hạn 6 kết nối là cách trình duyệt bù cho HTTP/1.1.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Trên một kết nối HTTP/2, một segment TCP mang dữ liệu của stream 3 bị mất. Các stream khác bị ảnh hưởng thế nào?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Không ảnh hưởng, vì mỗi stream độc lập.</div></div><div class=""><span>B</span><div>Chỉ stream 3 chờ segment được gửi lại.</div></div><div class=""><span>C</span><div>Kết nối HTTP/2 bị đóng và mở lại.</div></div><div class="dung"><span>D</span><div>Mọi stream trên kết nối phải chờ, vì TCP chỉ giao byte cho ứng dụng theo đúng thứ tự.</div></div></div><div class="giai-thich">Các stream độc lập ở tầng HTTP/2 nhưng đi chung một byte stream TCP. TCP giữ các segment đến sau segment bị mất cho tới khi segment đó được gửi lại, nên mọi stream phải chờ: <span style="white-space:nowrap">head-of-line</span> blocking ở tầng TCP.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Trên một kết nối HTTP/2, một segment TCP mang dữ liệu của stream 3 bị mất. Các stream khác bị ảnh hưởng thế nào?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Không ảnh hưởng, vì mỗi stream độc lập.</div></div><div class=""><span>B</span><div>Chỉ stream 3 chờ segment được gửi lại.</div></div><div class=""><span>C</span><div>Kết nối HTTP/2 bị đóng và mở lại.</div></div><div class="dung"><span>D</span><div>Mọi stream trên kết nối phải chờ, vì TCP chỉ giao byte cho ứng dụng theo đúng thứ tự.</div></div></div><div class="giai-thich">Các stream độc lập ở tầng HTTP/2 nhưng đi chung một byte stream TCP. TCP giữ các segment đến sau segment bị mất cho tới khi segment đó được gửi lại, nên mọi stream phải chờ: <span style="white-space:nowrap">head-of-line</span> blocking ở tầng TCP.</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>HTTP/2</b>: một kết nối, nhiều <b>HTTP/2 stream</b> song song (<b>multiplexing</b>)</div></div><div class="the" data-s="2"><span class="so">2</span><div><b>Binary framing</b>: frame nhị phân mang stream ID; header nén bằng <b>HPACK</b></div></div><div class="the" data-s="3"><span class="so">3</span><div><b><span style="white-space:nowrap">Head-of-line</span> blocking</b> còn lại ở tầng TCP: mất một segment, mọi stream chờ</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>HTTP/2</span><span>binary framing</span><span>HTTP/2 stream</span><span>multiplexing</span><span>HPACK</span><span>head-of-line blocking</span></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>Server push và lý do trình duyệt bỏ hỗ trợ</li><li>Độ ưu tiên của stream</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Đo thời gian tải 50 tài nguyên nhỏ bằng HttpClient với HTTP/1.1 và HTTP/2; trình bày kết quả và giải thích.</p></div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">HTTP/3: QUIC và giao thức trên UDP</div></main><footer><span>Chương 3 · Lập trình UDP và giao thức ứng dụng hiện đại</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Một trang web thường cần hàng chục tài nguyên nhỏ từ cùng một server. Vì sao HTTP/1.1 tải chúng chậm, và HTTP/2 thay đổi điều gì để chuyển nhiều request song song trên một kết nối?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:14</span>
+      <h3>Slide 1. Trang web cần hàng chục tài nguyên, HTTP/1.1 chỉ một request mỗi kết nối</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Một trang web cần **hàng chục tài nguyên** (ảnh, script, stylesheet) từ cùng một server</li><li>HTTP/1.1: trên một kết nối, request sau **chờ response trước**; trình duyệt mở khoảng **6 kết nối** mỗi server</li><li>Thêm kết nối: thêm bắt tay, thêm handshake TLS, mà vẫn chỉ 6 request cùng lúc</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** làm sao chuyển nhiều request song song trên chỉ một kết nối TCP?</div></div>
+    <div class="kb-thoai"><p>Lấy một trang web làm ví dụ: trang cần hàng chục tài nguyên, như ảnh, script, stylesheet, từ cùng một server. Với HTTP/1.1, trên một kết nối, request sau phải chờ response trước xong, nên trình duyệt mở nhiều kết nối song song, thường khoảng 6 kết nối cho mỗi server. Mở thêm kết nối cũng tốn kém: mỗi kết nối cần một lần bắt tay ba bước, một lần handshake TLS và buffer riêng ở cả hai phía, mà vẫn chỉ được 6 request cùng lúc. Từ đó, câu hỏi cho HTTP/2 là: làm sao chuyển nhiều request song song trên chỉ một kết nối TCP?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Lấy một trang web”; bước 2 khi đọc “Với HTTP/1.1”; bước 3 khi đọc “Mở thêm kết nối”; bước 4 khi đọc “câu hỏi cho HTTP/2”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:49</span>
+      <h3>Slide 2. HTTP/1.1 cần 4 lượt cho 20 request, HTTP/2 chạy cả 20 stream trong một lượt</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Multiplexing**: nhiều **HTTP/2 stream** chạy song song trên một kết nối TCP; mỗi stream là một cặp request–response.</li></ul></div></div>
+    <div class="kb-thoai"><p>Để thấy khác biệt, mình xét một trường hợp cụ thể: giả sử mỗi tài nguyên mất 200 mili giây ở server. Với HTTP/1.1 và 6 kết nối, mỗi kết nối xử lý từng request một, nên 20 request cần 4 lượt, khoảng 4 lần 200 mili giây. HTTP/2 làm khác: mọi request đi trên một kết nối, mỗi request là một HTTP/2 stream, và các stream chạy song song. Cả 20 request vì thế xong trong khoảng một lượt. Cách ghép nhiều stream trên cùng một kết nối gọi là multiplexing.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình http1-http2: hai bước của hình, bước 3 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Với HTTP/1.1 và 6 kết nối”; bước 2 khi đọc “HTTP/2 làm khác”; bước 3 khi đọc “Cách ghép nhiều stream”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:23</span>
+      <h3>Slide 3. Binary framing: frame mang stream ID, frame các stream đi xen kẽ</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Binary framing**: frame nhị phân mang stream ID; HEADERS chứa header nén bằng **HPACK**, DATA chứa body; frame các stream đi xen kẽ.</li></ul></div></div>
+    <div class="kb-thoai"><p>Để ghép được như vậy, HTTP/2 không gửi văn bản theo dòng như HTTP/1.1 nữa, mà đóng gói mọi thứ thành frame nhị phân. Header của mỗi frame dài 9 byte, trong đó quan trọng nhất là stream ID, cho biết frame thuộc stream nào. Khi client gửi ba request, client gửi ba frame HEADERS với stream ID 1, 3 và 5. Các header HTTP của request nằm trong frame đó và được nén bằng HPACK, nên những header lặp lại giữa các request chỉ tốn vài byte. Phía server, response nào xong trước thì gửi trước: frame HEADERS và DATA của các stream đi xen kẽ trên cùng kết nối, và bên nhận ghép chúng lại theo stream ID. Cơ chế này gọi là binary framing, nền tảng của multiplexing.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình frame-xen-ke: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Để ghép được như vậy”; bước 2 khi đọc “Khi client gửi ba request”; bước 3 khi đọc “Phía server”; bước 4 khi đọc “Cơ chế này gọi là”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:10</span>
+      <h3>Slide 4. HttpClient chọn HTTP/2: 20 request, một kết nối, khoảng 260 mili giây</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/h2/ParallelFetch.java</span><pre><code>HttpClient client = HttpClient.newBuilder()
+        .version(http11 ? HttpClient.Version.HTTP_1_1 : HttpClient.Version.HTTP_2)
+        .build();
+get(client, &quot;/warmup&quot;);                    // request đầu: với h2c, kết nối được nâng cấp lên HTTP/2 ở đây
+try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
+    for (int i = 1; i &lt;= 20; i++) {
+        String path = &quot;/r&quot; + i;
+        pool.submit(() -&gt; {</code></pre></div></div>
+    <div class="kb-thoai"><p>Để kiểm chứng, mình dùng một server viết bằng Jetty, nhận cả HTTP/1.1 và HTTP/2 ở port 9402. Mỗi tài nguyên trả sau 200 mili giây, và server đếm request theo port của client, tức theo kết nối. Phía client là HttpClient của JDK, chọn HTTP/2 qua phương thức version của builder. Trên TLS, client và server chọn HTTP/2 ngay trong handshake bằng ALPN. Ví dụ này dùng HTTP/2 không mã hóa, gọi là h2c, để chạy cục bộ không cần chứng chỉ, nên request đầu tiên nâng cấp kết nối lên HTTP/2. Sau đó, 20 request được gửi đồng thời, mỗi request trên một virtual thread. Kết quả: cả 20 response đều là HTTP/2, xong trong khoảng 260 mili giây, và server chỉ thấy một kết nối.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới. Highlight dòng .version(...) khi đọc &quot;phương thức version&quot;.
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:10</span>
+      <h3>Slide 5. Ép HTTP/1.1 với 6 kết nối: cùng 20 request, chậm hơn 3 lần</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Bỏ giới hạn (`ParallelFetch 1.1 20`): 267 ms, nhưng **20 kết nối**</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/h2/ParallelFetch.java</span><pre><code>int limit = args.length &gt; 1 ? Integer.parseInt(args[1]) : http11 ? 6 : 20;
+Semaphore slots = new Semaphore(limit);    // HTTP/1.1: mặc định 6 request cùng lúc, như trình duyệt
+            slots.acquire();
+            try {
+                versions.add(get(client, path).version());
+            } finally {
+                slots.release();</code></pre></div></div>
+    <div class="kb-thoai"><p>Với HTTP/1.1, mình chạy lại cùng chương trình với đối số 1.1. Chương trình dùng một Semaphore, bộ đếm giấy phép của Java, với 6 giấy phép để giới hạn 6 request cùng lúc, giống giới hạn kết nối của trình duyệt. Request thứ bảy phải chờ tới khi một request trước xong và trả lại giấy phép. Theo các bạn, lần này mất bao lâu, và server thấy bao nhiêu kết nối? Kết quả: 863 mili giây, gấp hơn 3 lần, và server thấy 6 kết nối, đúng 4 lượt như hình so sánh ở đầu phần. Bỏ giới hạn 6 giấy phép thì HTTP/1.1 cũng xong trong khoảng 260 mili giây, nhưng phải mở 20 kết nối. HTTP/2 đạt cùng tốc độ chỉ với một kết nối.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới. Sau câu &quot;bao nhiêu kết nối&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện.
+Hiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Bỏ giới hạn”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:02</span>
+      <h3>Slide 6. Head-of-line blocking còn lại ở tầng TCP: mất một segment, mọi stream chờ</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Head-of-line blocking** còn lại ở tầng TCP: mất một segment làm mọi HTTP/2 stream trên kết nối phải chờ.</li></ul></div></div>
+    <div class="kb-thoai"><p>Multiplexing loại bỏ việc request sau chờ request trước ở tầng HTTP, nhưng không loại bỏ được ở tầng TCP. Mọi stream đi chung một kết nối TCP, tức chung một byte stream có thứ tự. Khi segment 2, mang dữ liệu của stream 3, bị mất, bên nhận đã có segment 3, 4, 5 nhưng phải giữ lại, vì TCP chỉ giao byte cho ứng dụng theo đúng thứ tự. Stream 1 và 5 không thiếu gì, vẫn phải chờ segment 2 được gửi lại. Đây là head-of-line blocking, hay chặn đầu hàng, ở tầng TCP: giới hạn mà HTTP/2 không vượt qua được, và là động lực cho QUIC ở phần sau.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình hol-tcp: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Mọi stream đi chung”; bước 2 khi đọc “Khi segment 2”; bước 3 khi đọc “Stream 1 và 5”; bước 4 khi đọc “Đây là”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:42</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Các bạn hãy đếm số kết nối trong một tình huống cụ thể.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Client gửi 20 request tới cùng một server bằng HTTP/2. Client mở bao nhiêu kết nối TCP?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Một kết nối; 20 request là 20 HTTP/2 stream trên kết nối đó.</li>
+      <li><b>B.</b> 20 kết nối, mỗi request một kết nối.</li>
+      <li><b>C.</b> 6 kết nối, như trình duyệt với HTTP/1.1.</li>
+      <li><b>D.</b> Số kết nối bằng số nhân CPU của client.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: A</b> — <span>HTTP/2 ghép nhiều stream trên một kết nối (multiplexing); mỗi request là một stream có stream ID riêng. Giới hạn 6 kết nối là cách trình duyệt bù cho HTTP/1.1.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là A. Phương án C là con số của HTTP/1.1: trình duyệt mở 6 kết nối chính vì mỗi kết nối HTTP/1.1 chỉ xử lý một request tại một thời điểm. Với HTTP/2, một kết nối đã đủ cho cả 20 stream.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án A được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:08</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu thứ hai quay lại segment bị mất ở tầng TCP.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Trên một kết nối HTTP/2, một segment TCP mang dữ liệu của stream 3 bị mất. Các stream khác bị ảnh hưởng thế nào?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Không ảnh hưởng, vì mỗi stream độc lập.</li>
+      <li><b>B.</b> Chỉ stream 3 chờ segment được gửi lại.</li>
+      <li><b>C.</b> Kết nối HTTP/2 bị đóng và mở lại.</li>
+      <li><b>D.</b> Mọi stream trên kết nối phải chờ, vì TCP chỉ giao byte cho ứng dụng theo đúng thứ tự.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: D</b> — <span>Các stream độc lập ở tầng HTTP/2 nhưng đi chung một byte stream TCP. TCP giữ các segment đến sau segment bị mất cho tới khi segment đó được gửi lại, nên mọi stream phải chờ: head-of-line blocking ở tầng TCP.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là D. Phương án B là điều các bạn mong muốn, và cũng chính là điều QUIC làm được ở phần sau. Với HTTP/2 trên TCP, các stream chỉ độc lập ở tầng HTTP; ở tầng TCP chúng chung một byte stream có thứ tự.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án D.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:33</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**HTTP/2**: một kết nối, nhiều **HTTP/2 stream** song song (**multiplexing**)</li><li>**Binary framing**: frame nhị phân mang stream ID; header nén bằng **HPACK**</li><li>**Head-of-line blocking** còn lại ở tầng TCP: mất một segment, mọi stream chờ</li></ul></div>
+    <div class="kb-thoai"><p>HTTP/2 chuyển nhiều request song song trên một kết nối: mỗi request là một HTTP/2 stream, và các stream được ghép trên cùng kết nối bằng multiplexing. Nền tảng của cơ chế này là binary framing: mọi thứ chia thành frame nhị phân mang stream ID, và header được nén bằng HPACK. Giới hạn còn lại nằm ở TCP: mất một segment, mọi stream trên kết nối phải chờ, gọi là head-of-line blocking. Sáu từ khóa đi cùng phần này là HTTP/2, binary framing, HTTP/2 stream, multiplexing, HPACK và head-of-line blocking.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “HTTP/2 chuyển”; bước 2 khi đọc “Nền tảng”; bước 3 khi đọc “Giới hạn còn lại”; bước 4 khi đọc “Sáu từ khóa đi cùng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:09</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Server push, cho phép server gửi trước tài nguyên mà client chưa yêu cầu, từng là một tính năng của HTTP/2, nhưng các trình duyệt lớn đã bỏ hỗ trợ. Các bạn có thể tìm hiểu vì sao, cùng với cách HTTP/2 đặt độ ưu tiên cho stream. Bài tập mở rộng là đo thời gian tải 50 tài nguyên nhỏ bằng HttpClient với HTTP/1.1 và HTTP/2, rồi trình bày và giải thích kết quả.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Server push”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:33</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>HTTP/2 đã đưa nhiều request lên một kết nối, nhưng vẫn mắc ở chính TCP. Phần cuối của chương là HTTP/3: QUIC và giao thức trên UDP.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V20", "tieu_de": "HTTP/2: binary framing và multiplexing", "giong": "vi-VN-NamMinhNeural", "tong": 404.98, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/35e6cfcc686b0437.mp3", "dur": 13.54, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Một", 1], [2.225, "trang", 1], [2.438, "web", 1], [2.65, "thường", 1], [2.9, "cần", 1], [3.1, "hàng", 1], [3.3, "chục", 1], [3.5, "tài", 1], [3.675, "nguyên", 1], [3.9, "nhỏ", 1], [4.237, "từ", 1], [4.45, "cùng", 1], [4.675, "một", 1], [4.838, "server.", 1], [6.15, "Vì", 2], [6.4, "sao", 2], [6.45, "HTTP/1.1", 2], [6.5, "tải", 2], [6.55, "chúng", 2], [6.6, "chậm,", 2], [6.65, "và", 2], [6.7, "HTTP/2", 2], [6.75, "thay", 2], [6.8, "đổi", 2], [6.85, "điều", 2], [6.9, "gì", 2], [6.95, "để", 2], [7.0, "chuyển", 2], [7.05, "nhiều", 2], [7.1, "request", 2], [7.15, "song", 2], [7.2, "song", 2], [7.25, "trên", 2], [7.3, "một", 2], [7.3, "kết", 2], [7.3, "nối?", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Trang web cần hàng chục tài nguyên, HTTP/1.1 chỉ một request mỗi kết nối", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Lấy một trang web”; bước 2 khi đọc “Với HTTP/1.1”; bước 3 khi đọc “Mở thêm kết nối”; bước 4 khi đọc “câu hỏi cho HTTP/2”.", "start": 14.14, "audio": "audio/4e34e43844df910a.mp3", "dur": 34.99, "words": [[0.1, "Lấy", 0], [0.362, "một", 0], [0.55, "trang", 0], [0.787, "web", 0], [0.988, "làm", 0], [1.212, "ví", 0], [1.387, "dụ:", 0], [1.913, "trang", 0], [2.175, "cần", 0], [2.375, "hàng", 0], [2.575, "chục", 0], [2.775, "tài", 0], [2.962, "nguyên,", 0], [3.513, "như", 0], [3.775, "ảnh,", 0], [4.325, "script,", 0], [5.013, "stylesheet,", 0], [5.713, "từ", 0], [5.925, "cùng", 0], [6.15, "một", 0], [6.312, "server.", 0], [7.65, "Với", 1], [8.017, "HTTP/1.1,", 1], [8.383, "trên", 1], [8.75, "một", 1], [10.012, "kết", 1], [10.188, "nối,", 1], [10.713, "request", 1], [10.925, "sau", 1], [11.175, "phải", 1], [11.375, "chờ", 1], [11.575, "response", 1], [12.15, "trước", 1], [12.325, "xong,", 1], [12.912, "nên", 1], [13.213, "trình", 1], [13.412, "duyệt", 1], [13.613, "mở", 1], [13.787, "nhiều", 1], [14.025, "kết", 1], [14.25, "nối", 1], [14.425, "song", 1], [14.625, "song,", 1], [15.162, "thường", 1], [15.387, "khoảng", 1], [15.613, "6", 1], [15.825, "kết", 1], [16.05, "nối", 1], [16.262, "cho", 1], [16.438, "mỗi", 1], [16.675, "server.", 1], [17.988, "Mở", 2], [18.35, "thêm", 2], [18.587, "kết", 2], [18.8, "nối", 2], [19.012, "cũng", 2], [19.225, "tốn", 2], [19.462, "kém:", 2], [20.012, "mỗi", 2], [20.225, "kết", 2], [20.438, "nối", 2], [20.637, "cần", 2], [20.875, "một", 2], [21.025, "lần", 2], [21.238, "bắt", 2], [21.438, "tay", 2], [21.613, "ba", 2], [21.788, "bước,", 2], [22.288, "một", 2], [22.475, "lần", 2], [22.688, "handshake", 2], [23.282, "TLS", 2], [23.875, "và", 2], [24.05, "buffer", 2], [24.475, "riêng", 2], [24.837, "ở", 2], [24.925, "cả", 2], [25.1, "hai", 2], [25.275, "phía,", 2], [25.863, "mà", 2], [26.113, "vẫn", 2], [26.3, "chỉ", 2], [26.45, "được", 2], [26.587, "6", 2], [26.837, "request", 2], [27.038, "cùng", 2], [27.275, "lúc.", 2], [28.325, "Từ", 3], [28.6, "đó,", 3], [29.1, "câu", 3], [29.288, "hỏi", 3], [29.512, "cho", 3], [30.018, "HTTP/2", 3], [30.525, "là:", 3], [31.0, "làm", 3], [31.262, "sao", 3], [31.488, "chuyển", 3], [31.712, "nhiều", 3], [31.9, "request", 3], [32.075, "song", 3], [32.35, "song", 3], [32.587, "trên", 3], [32.775, "chỉ", 3], [32.9, "một", 3], [33.087, "kết", 3], [33.288, "nối", 3], [33.288, "TCP?", 3]], "cues": [0.1, 7.65, 17.988, 29.1], "lang": 0.6}, {"ten": "Slide 2. HTTP/1.1 cần 4 lượt cho 20 request, HTTP/2 chạy cả 20 stream trong một lượt", "loai": "slide", "slide": "S02", "dung": "Hình http1-http2: hai bước của hình, bước 3 là ô kết luận.\nHiện dần: bước 1 khi đọc “Với HTTP/1.1 và 6 kết nối”; bước 2 khi đọc “HTTP/2 làm khác”; bước 3 khi đọc “Cách ghép nhiều stream”.", "start": 49.73, "audio": "audio/3ce929d2484985f6.mp3", "dur": 30.72, "words": [[0.1, "Để", 0], [0.312, "thấy", 0], [0.475, "khác", 0], [0.7, "biệt,", 0], [1.163, "mình", 0], [1.35, "xét", 0], [1.587, "một", 0], [1.738, "trường", 0], [1.962, "hợp", 0], [2.15, "cụ", 0], [2.312, "thể:", 0], [2.925, "giả", 0], [3.15, "sử", 0], [3.325, "mỗi", 0], [3.538, "tài", 0], [3.75, "nguyên", 0], [3.962, "mất", 0], [4.138, "200", 0], [4.55, "mili", 0], [4.912, "giây", 0], [5.225, "ở", 0], [5.375, "server.", 0], [6.688, "Với", 1], [6.771, "HTTP/1.1", 1], [6.853, "và", 1], [6.936, "6", 1], [7.019, "kết", 1], [7.101, "nối,", 1], [7.184, "mỗi", 1], [7.267, "kết", 1], [7.35, "nối", 1], [7.432, "xử", 1], [7.515, "lý", 1], [7.598, "từng", 1], [7.68, "request", 1], [7.763, "một,", 1], [7.784, "nên", 1], [7.806, "20", 1], [7.827, "request", 1], [7.848, "cần", 1], [7.869, "4", 1], [7.891, "lượt,", 1], [7.912, "khoảng", 1], [7.933, "4", 1], [7.954, "lần", 1], [7.976, "200", 1], [7.997, "mili", 1], [8.018, "giây.", 1], [8.039, "HTTP/2", 2], [8.061, "làm", 2], [8.082, "khác:", 2], [8.103, "mọi", 2], [8.124, "request", 2], [8.146, "đi", 2], [8.167, "trên", 2], [8.188, "một", 2], [8.75, "kết", 2], [8.95, "nối,", 2], [9.463, "mỗi", 2], [10.675, "request", 2], [10.762, "là", 2], [10.85, "một", 2], [10.928, "HTTP/2", 2], [11.005, "stream,", 2], [11.082, "và", 2], [11.16, "các", 2], [11.238, "stream", 2], [11.315, "chạy", 2], [11.393, "song", 2], [11.47, "song.", 2], [11.547, "Cả", 3], [11.625, "20", 3], [11.925, "request", 3], [12.155, "vì", 3], [12.385, "thế", 3], [12.615, "xong", 3], [12.845, "trong", 3], [13.075, "khoảng", 3], [13.075, "một", 3], [13.075, "lượt.", 3], [13.075, "Cách", 4], [13.075, "ghép", 4], [13.075, "nhiều", 4], [13.075, "stream", 4], [13.075, "trên", 4], [13.075, "cùng", 4], [13.075, "một", 4], [13.075, "kết", 4], [13.075, "nối", 4], [13.075, "gọi", 4], [13.075, "là", 4], [13.075, "multiplexing.", 4]], "cues": [6.688, 8.039, 13.075], "lang": 2.6}, {"ten": "Slide 3. Binary framing: frame mang stream ID, frame các stream đi xen kẽ", "loai": "slide", "slide": "S03", "dung": "Hình frame-xen-ke: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Để ghép được như vậy”; bước 2 khi đọc “Khi client gửi ba request”; bước 3 khi đọc “Phía server”; bước 4 khi đọc “Cơ chế này gọi là”.", "start": 83.05, "audio": "audio/0cd294e0299a19c6.mp3", "dur": 44.71, "words": [[0.1, "Để", 0], [0.325, "ghép", 0], [0.55, "được", 0], [0.725, "như", 0], [0.887, "vậy,", 0], [1.587, "HTTP/2", 0], [2.288, "không", 0], [2.525, "gửi", 0], [2.712, "văn", 0], [2.913, "bản", 0], [3.138, "theo", 0], [3.3, "dòng", 0], [3.5, "như", 0], [3.5, "HTTP/1.1", 0], [3.5, "nữa,", 0], [3.5, "mà", 0], [3.5, "đóng", 0], [3.5, "gói", 0], [3.5, "mọi", 0], [3.5, "thứ", 0], [3.5, "thành", 0], [3.5, "frame", 0], [3.5, "nhị", 0], [3.5, "phân.", 0], [3.5, "Header", 1], [3.5, "của", 1], [3.5, "mỗi", 1], [3.5, "frame", 1], [3.5, "dài", 1], [3.5, "9", 1], [3.5, "byte,", 1], [3.5, "trong", 1], [3.5, "đó", 1], [3.5, "quan", 1], [3.5, "trọng", 1], [3.5, "nhất", 1], [3.5, "là", 1], [3.5, "stream", 1], [3.5, "ID,", 1], [3.5, "cho", 1], [3.5, "biết", 1], [3.5, "frame", 1], [3.5, "thuộc", 1], [3.5, "stream", 1], [3.5, "nào.", 1], [3.5, "Khi", 2], [3.5, "client", 2], [3.5, "gửi", 2], [3.5, "ba", 2], [3.5, "request,", 2], [3.5, "client", 2], [3.5, "gửi", 2], [3.5, "ba", 2], [3.5, "frame", 2], [3.5, "HEADERS", 2], [3.5, "với", 2], [3.5, "stream", 2], [3.5, "ID", 2], [3.5, "1,", 2], [3.5, "3", 2], [3.5, "và", 2], [3.5, "5.", 2], [3.5, "Các", 3], [3.5, "header", 3], [3.5, "HTTP", 3], [3.5, "của", 3], [3.5, "request", 3], [3.5, "nằm", 3], [3.5, "trong", 3], [3.5, "frame", 3], [3.5, "đó", 3], [3.5, "và", 3], [3.5, "được", 3], [3.5, "nén", 3], [3.5, "bằng", 3], [3.5, "HPACK,", 3], [3.5, "nên", 3], [3.5, "những", 3], [3.5, "header", 3], [3.5, "lặp", 3], [3.5, "lại", 3], [3.5, "giữa", 3], [3.5, "các", 3], [3.5, "request", 3], [3.5, "chỉ", 3], [3.5, "tốn", 3], [3.5, "vài", 3], [3.5, "byte.", 3], [3.5, "Phía", 4], [3.5, "server,", 4], [3.5, "response", 4], [3.5, "nào", 4], [3.5, "xong", 4], [3.5, "trước", 4], [3.5, "thì", 4], [3.5, "gửi", 4], [3.5, "trước:", 4], [3.5, "frame", 4], [3.5, "HEADERS", 4], [3.5, "và", 4], [3.5, "DATA", 4], [3.5, "của", 4], [3.5, "các", 4], [3.5, "stream", 4], [3.5, "đi", 4], [3.5, "xen", 4], [3.5, "kẽ", 4], [3.5, "trên", 4], [3.5, "cùng", 4], [3.5, "kết", 4], [3.5, "nối,", 4], [3.5, "và", 4], [3.5, "bên", 4], [3.5, "nhận", 4], [3.5, "ghép", 4], [3.5, "chúng", 4], [3.5, "lại", 4], [3.5, "theo", 4], [3.5, "stream", 4], [3.5, "ID.", 4], [3.5, "Cơ", 5], [3.5, "chế", 5], [3.5, "này", 5], [3.5, "gọi", 5], [3.5, "là", 5], [3.5, "binary", 5], [3.5, "framing,", 5], [3.5, "nền", 5], [3.5, "tảng", 5], [3.5, "của", 5], [3.5, "multiplexing.", 5]], "cues": [0.1, 3.5, 3.5, 3.5], "lang": 2.6}, {"ten": "Slide 4. HttpClient chọn HTTP/2: 20 request, một kết nối, khoảng 260 mili giây", "loai": "slide", "slide": "S04", "dung": "Mã phía trên, kết quả phía dưới. Highlight dòng .version(...) khi đọc \"phương thức version\".\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 130.36, "audio": "audio/d68fc0eba1058f9b.mp3", "dur": 50.5, "words": [[0.1, "Để", 0], [0.325, "kiểm", 0], [0.575, "chứng,", 0], [1.062, "mình", 0], [1.25, "dùng", 0], [1.413, "một", 0], [1.562, "server", 0], [1.913, "viết", 0], [2.1, "bằng", 0], [2.312, "Jetty,", 0], [3.013, "nhận", 0], [3.275, "cả", 0], [3.284, "HTTP/1.1", 0], [3.294, "và", 0], [3.303, "HTTP/2", 0], [3.312, "ở", 0], [3.321, "port", 0], [3.331, "9402.", 0], [3.34, "Mỗi", 1], [3.349, "tài", 1], [3.359, "nguyên", 1], [3.368, "trả", 1], [3.377, "sau", 1], [3.386, "200", 1], [3.396, "mili", 1], [3.405, "giây,", 1], [3.414, "và", 1], [3.423, "server", 1], [3.433, "đếm", 1], [3.442, "request", 1], [3.451, "theo", 1], [3.461, "port", 1], [3.47, "của", 1], [3.479, "client,", 1], [3.488, "tức", 1], [3.498, "theo", 1], [3.507, "kết", 1], [3.516, "nối.", 1], [3.526, "Phía", 2], [3.535, "client", 2], [3.544, "là", 2], [3.553, "HttpClient", 2], [3.563, "của", 2], [3.572, "JDK,", 2], [3.581, "chọn", 2], [3.591, "HTTP/2", 2], [3.6, "qua", 2], [3.609, "phương", 2], [3.618, "thức", 2], [3.628, "version", 2], [3.637, "của", 2], [3.646, "builder.", 2], [3.655, "Trên", 3], [3.665, "TLS,", 3], [3.674, "client", 3], [3.683, "và", 3], [3.693, "server", 3], [3.702, "chọn", 3], [3.711, "HTTP/2", 3], [3.72, "ngay", 3], [3.73, "trong", 3], [3.739, "handshake", 3], [3.748, "bằng", 3], [3.758, "ALPN.", 3], [3.767, "Ví", 4], [3.776, "dụ", 4], [3.785, "này", 4], [3.795, "dùng", 4], [3.804, "HTTP/2", 4], [3.813, "không", 4], [3.822, "mã", 4], [3.832, "hóa,", 4], [3.841, "gọi", 4], [3.85, "là", 4], [3.86, "h2c,", 4], [3.869, "để", 4], [3.878, "chạy", 4], [3.887, "cục", 4], [3.897, "bộ", 4], [3.906, "không", 4], [3.915, "cần", 4], [3.925, "chứng", 4], [3.934, "chỉ,", 4], [3.943, "nên", 4], [3.952, "request", 4], [3.962, "đầu", 4], [3.971, "tiên", 4], [3.98, "nâng", 4], [3.99, "cấp", 4], [3.999, "kết", 4], [4.008, "nối", 4], [4.017, "lên", 4], [4.027, "HTTP/2.", 4], [4.036, "Sau", 5], [4.045, "đó,", 5], [4.054, "20", 5], [4.064, "request", 5], [4.073, "được", 5], [4.082, "gửi", 5], [4.092, "đồng", 5], [4.101, "thời,", 5], [4.11, "mỗi", 5], [4.119, "request", 5], [4.129, "trên", 5], [4.138, "một", 5], [4.176, "virtual", 5], [4.214, "thread.", 5], [4.253, "Kết", 6], [4.291, "quả:", 6], [4.329, "cả", 6], [4.367, "20", 6], [4.405, "response", 6], [4.443, "đều", 6], [4.482, "là", 6], [4.52, "HTTP/2,", 6], [4.558, "xong", 6], [4.596, "trong", 6], [4.634, "khoảng", 6], [4.672, "260", 6], [4.711, "mili", 6], [4.749, "giây,", 6], [4.787, "và", 6], [4.787, "server", 6], [4.787, "chỉ", 6], [4.787, "thấy", 6], [4.787, "một", 6], [4.787, "kết", 6], [4.787, "nối.", 6]], "cues": [4.253], "lang": 9.6}, {"ten": "Slide 5. Ép HTTP/1.1 với 6 kết nối: cùng 20 request, chậm hơn 3 lần", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, kết quả phía dưới. Sau câu \"bao nhiêu kết nối\", dừng khoảng 2 giây trước khi khung kết quả hiện.\nHiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Bỏ giới hạn”.", "start": 190.46, "audio": "audio/f4478adfc525ed5b.mp3", "dur": 42.86, "words": [[0.1, "Với", 0], [0.174, "HTTP/1.1,", 0], [0.248, "mình", 0], [0.322, "chạy", 0], [0.397, "lại", 0], [0.471, "cùng", 0], [0.545, "chương", 0], [0.619, "trình", 0], [0.693, "với", 0], [0.767, "đối", 0], [0.841, "số", 0], [0.915, "1.1.", 0], [0.99, "Chương", 1], [1.064, "trình", 1], [1.138, "dùng", 1], [1.212, "một", 1], [1.302, "Semaphore,", 1], [1.393, "bộ", 1], [1.483, "đếm", 1], [1.574, "giấy", 1], [1.664, "phép", 1], [1.755, "của", 1], [1.845, "Java,", 1], [1.936, "với", 1], [2.026, "6", 1], [2.117, "giấy", 1], [2.207, "phép", 1], [2.298, "để", 1], [2.388, "giới", 1], [2.479, "hạn", 1], [2.569, "6", 1], [2.66, "request", 1], [2.75, "cùng", 1], [2.806, "lúc,", 1], [2.862, "giống", 1], [2.919, "giới", 1], [2.975, "hạn", 1], [3.031, "kết", 1], [3.088, "nối", 1], [3.144, "của", 1], [3.2, "trình", 1], [3.203, "duyệt.", 1], [3.206, "Request", 2], [3.208, "thứ", 2], [3.211, "bảy", 2], [3.214, "phải", 2], [3.217, "chờ", 2], [3.22, "tới", 2], [3.222, "khi", 2], [3.225, "một", 2], [3.228, "request", 2], [3.231, "trước", 2], [3.234, "xong", 2], [3.236, "và", 2], [3.239, "trả", 2], [3.242, "lại", 2], [3.245, "giấy", 2], [3.248, "phép.", 2], [3.25, "Theo", 3], [3.253, "các", 3], [3.256, "bạn,", 3], [3.259, "lần", 3], [3.262, "này", 3], [3.264, "mất", 3], [3.267, "bao", 3], [3.27, "lâu,", 3], [3.273, "và", 3], [3.276, "server", 3], [3.278, "thấy", 3], [3.281, "bao", 3], [3.284, "nhiêu", 3], [3.287, "kết", 3], [3.29, "nối?", 3], [3.292, "Kết", 4], [3.295, "quả:", 4], [3.298, "863", 4], [3.301, "mili", 4], [3.304, "giây,", 4], [3.306, "gấp", 4], [3.309, "hơn", 4], [3.312, "3", 4], [3.315, "lần,", 4], [3.318, "và", 4], [3.32, "server", 4], [3.323, "thấy", 4], [3.326, "6", 4], [3.329, "kết", 4], [3.332, "nối,", 4], [3.334, "đúng", 4], [3.337, "4", 4], [3.34, "lượt", 4], [3.343, "như", 4], [3.346, "hình", 4], [3.348, "so", 4], [3.351, "sánh", 4], [3.354, "ở", 4], [3.357, "đầu", 4], [3.36, "phần.", 4], [3.362, "Bỏ", 5], [3.365, "giới", 5], [3.368, "hạn", 5], [3.371, "6", 5], [3.374, "giấy", 5], [3.376, "phép", 5], [3.379, "thì", 5], [3.382, "HTTP/1.1", 5], [3.385, "cũng", 5], [3.388, "xong", 5], [3.39, "trong", 5], [3.393, "khoảng", 5], [3.396, "260", 5], [3.399, "mili", 5], [3.402, "giây,", 5], [3.404, "nhưng", 5], [3.407, "phải", 5], [3.41, "mở", 5], [3.413, "20", 5], [3.416, "kết", 5], [3.418, "nối.", 5], [3.421, "HTTP/2", 6], [3.424, "đạt", 6], [3.427, "cùng", 6], [3.43, "tốc", 6], [3.432, "độ", 6], [3.435, "chỉ", 6], [3.438, "với", 6], [3.438, "một", 6], [3.438, "kết", 6], [3.438, "nối.", 6]], "cues": [3.292, 3.362], "lang": 9.6}, {"ten": "Slide 6. Head-of-line blocking còn lại ở tầng TCP: mất một segment, mọi stream chờ", "loai": "slide", "slide": "S06", "dung": "Hình hol-tcp: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Mọi stream đi chung”; bước 2 khi đọc “Khi segment 2”; bước 3 khi đọc “Stream 1 và 5”; bước 4 khi đọc “Đây là”.", "start": 242.92, "audio": "audio/b057770b8906364c.mp3", "dur": 37.3, "words": [[0.1, "Multiplexing", 0], [1.075, "loại", 0], [1.337, "bỏ", 0], [1.538, "việc", 0], [1.725, "request", 0], [1.925, "sau", 0], [2.2, "chờ", 0], [2.438, "request", 0], [2.638, "trước", 0], [2.938, "ở", 0], [3.025, "tầng", 0], [3.675, "HTTP,", 0], [4.325, "nhưng", 0], [4.612, "không", 0], [4.85, "loại", 0], [4.987, "bỏ", 0], [5.225, "được", 0], [5.487, "ở", 0], [5.588, "tầng", 0], [6.469, "TCP.", 0], [7.35, "Mọi", 1], [7.737, "stream", 1], [8.088, "đi", 1], [8.188, "chung", 1], [8.375, "một", 1], [8.537, "kết", 1], [8.738, "nối", 1], [9.275, "TCP,", 1], [9.812, "tức", 1], [10.012, "chung", 1], [10.225, "một", 1], [10.412, "byte", 1], [10.588, "stream", 1], [10.912, "có", 1], [11.037, "thứ", 1], [11.188, "tự.", 1], [12.363, "Khi", 2], [12.662, "segment", 2], [13.1, "2,", 2], [13.613, "mang", 2], [13.9, "dữ", 2], [14.062, "liệu", 2], [14.275, "của", 2], [14.412, "stream", 2], [14.675, "3,", 2], [15.137, "bị", 2], [15.35, "mất,", 2], [15.812, "bên", 2], [16.0, "nhận", 2], [16.275, "đã", 2], [16.375, "có", 2], [16.488, "segment", 2], [16.9, "3,", 2], [17.4, "4,", 2], [17.975, "5", 2], [18.25, "nhưng", 2], [18.475, "phải", 2], [18.637, "giữ", 2], [18.825, "lại,", 2], [19.35, "vì", 2], [19.744, "TCP", 2], [20.137, "chỉ", 2], [20.337, "giao", 2], [20.512, "byte", 2], [20.725, "cho", 2], [20.9, "ứng", 2], [21.062, "dụng", 2], [21.312, "theo", 2], [21.475, "đúng", 2], [21.675, "thứ", 2], [21.825, "tự.", 2], [22.988, "Stream", 3], [23.325, "1", 3], [23.538, "và", 3], [23.7, "5", 3], [23.95, "không", 3], [24.188, "thiếu", 3], [24.375, "gì,", 3], [24.863, "vẫn", 3], [25.1, "phải", 3], [25.337, "chờ", 3], [25.55, "segment", 3], [26.038, "2", 3], [26.225, "được", 3], [26.375, "gửi", 3], [26.575, "lại.", 3], [27.788, "Đây", 4], [28.087, "là", 4], [28.225, "head-of-line", 4], [28.975, "blocking,", 4], [29.712, "hay", 4], [29.9, "chặn", 4], [30.15, "đầu", 4], [30.325, "hàng,", 4], [30.812, "ở", 4], [31.0, "tầng", 4], [31.569, "TCP:", 4], [32.138, "giới", 4], [32.388, "hạn", 4], [32.65, "mà", 4], [33.156, "HTTP/2", 4], [33.663, "không", 4], [33.888, "vượt", 4], [34.05, "qua", 4], [34.225, "được,", 4], [34.675, "và", 4], [34.875, "là", 4], [34.987, "động", 4], [35.212, "lực", 4], [35.388, "cho", 4], [35.588, "QUIC", 4], [35.788, "ở", 4], [35.9, "phần", 4], [36.112, "sau.", 4]], "cues": [7.35, 12.363, 22.988, 27.788], "lang": 2.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án A được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 282.82, "audio": "audio/b3656872d637355b.mp3", "dur": 3.82, "words": [[0.1, "Các", 0], [0.3, "bạn", 0], [0.575, "hãy", 0], [0.7, "đếm", 0], [0.912, "số", 0], [1.125, "kết", 0], [1.35, "nối", 0], [1.6, "trong", 0], [1.762, "một", 0], [1.95, "tình", 0], [2.163, "huống", 0], [2.375, "cụ", 0], [2.562, "thể.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/ef9fc71569a944fe.mp3", "dur2": 14.88, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.662, "là", 0], [0.85, "A.", 0], [1.175, "Phương", 1], [1.488, "án", 1], [1.663, "C", 1], [1.913, "là", 1], [2.013, "con", 1], [2.212, "số", 1], [2.45, "của", 1], [2.501, "HTTP/1.1:", 1], [2.551, "trình", 1], [2.602, "duyệt", 1], [2.653, "mở", 1], [2.704, "6", 1], [2.754, "kết", 1], [2.805, "nối", 1], [2.856, "chính", 1], [2.906, "vì", 1], [2.957, "mỗi", 1], [3.008, "kết", 1], [3.058, "nối", 1], [3.109, "HTTP/1.1", 1], [3.16, "chỉ", 1], [3.211, "xử", 1], [3.261, "lý", 1], [3.312, "một", 1], [3.445, "request", 1], [3.579, "tại", 1], [3.712, "một", 1], [3.923, "thời", 1], [4.133, "điểm.", 1], [4.343, "Với", 2], [4.554, "HTTP/2,", 2], [4.764, "một", 2], [4.975, "kết", 2], [5.2, "nối", 2], [5.2, "đã", 2], [5.2, "đủ", 2], [5.2, "cho", 2], [5.2, "cả", 2], [5.2, "20", 2], [5.2, "stream.", 2]], "dap_an": "A", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án D.", "start": 308.12, "audio": "audio/c031d02df11b640c.mp3", "dur": 3.89, "words": [[0.1, "Câu", 0], [0.287, "thứ", 0], [0.512, "hai", 0], [0.688, "quay", 0], [0.925, "lại", 0], [1.1, "segment", 0], [1.575, "bị", 0], [1.725, "mất", 0], [2.0, "ở", 0], [2.112, "tầng", 0], [2.112, "TCP.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/986c930574f7b18f.mp3", "dur2": 14.59, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.662, "là", 0], [0.787, "D.", 0], [1.163, "Phương", 1], [1.488, "án", 1], [1.663, "B", 1], [1.887, "là", 1], [2.038, "điều", 1], [2.212, "các", 1], [2.388, "bạn", 1], [2.6, "mong", 1], [2.788, "muốn,", 1], [3.288, "và", 1], [3.525, "cũng", 1], [3.712, "chính", 1], [3.938, "là", 1], [4.062, "điều", 1], [4.263, "QUIC", 1], [4.463, "làm", 1], [4.725, "được", 1], [4.975, "ở", 1], [5.05, "phần", 1], [5.25, "sau.", 1], [6.425, "Với", 2], [7.031, "HTTP/2", 2], [7.638, "trên", 2], [8.175, "TCP,", 2], [8.713, "các", 2], [8.863, "stream", 2], [9.188, "chỉ", 2], [9.338, "độc", 2], [9.488, "lập", 2], [9.75, "ở", 2], [9.838, "tầng", 2], [10.476, "HTTP;", 2], [11.113, "ở", 2], [11.3, "tầng", 2], [11.7, "TCP", 2], [12.1, "chúng", 2], [12.35, "chung", 2], [12.512, "một", 2], [12.662, "byte", 2], [12.825, "stream", 2], [13.15, "có", 2], [13.275, "thứ", 2], [13.412, "tự.", 2]], "dap_an": "D", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “HTTP/2 chuyển”; bước 2 khi đọc “Nền tảng”; bước 3 khi đọc “Giới hạn còn lại”; bước 4 khi đọc “Sáu từ khóa đi cùng”.", "start": 333.2, "audio": "audio/f0747bd5df55c172.mp3", "dur": 35.21, "words": [[1.038, "HTTP/2", 0], [1.038, "chuyển", 0], [1.275, "nhiều", 0], [1.475, "request", 0], [1.663, "song", 0], [1.95, "song", 0], [2.175, "trên", 0], [2.325, "một", 0], [2.462, "kết", 0], [2.638, "nối:", 0], [3.188, "mỗi", 0], [3.413, "request", 0], [3.675, "là", 0], [3.862, "một", 0], [4.406, "HTTP/2", 0], [4.95, "stream,", 0], [5.513, "và", 0], [5.763, "các", 0], [5.912, "stream", 0], [6.213, "được", 0], [6.35, "ghép", 0], [6.6, "trên", 0], [6.812, "cùng", 0], [7.025, "kết", 0], [7.25, "nối", 0], [7.438, "bằng", 0], [7.675, "multiplexing.", 0], [9.113, "Nền", 1], [9.525, "tảng", 1], [9.775, "của", 1], [9.9, "cơ", 1], [10.025, "chế", 1], [10.238, "này", 1], [10.475, "là", 1], [10.625, "binary", 1], [11.175, "framing:", 1], [11.912, "mọi", 1], [12.113, "thứ", 1], [12.287, "chia", 1], [12.463, "thành", 1], [12.662, "frame", 1], [12.912, "nhị", 1], [13.113, "phân", 1], [13.338, "mang", 1], [13.512, "stream", 1], [13.988, "ID,", 1], [14.463, "và", 1], [14.7, "header", 1], [15.15, "được", 1], [15.35, "nén", 1], [15.588, "bằng", 1], [16.638, "HPACK.", 1], [17.688, "Giới", 2], [17.962, "hạn", 2], [18.2, "còn", 2], [18.413, "lại", 2], [18.625, "nằm", 2], [18.875, "ở", 2], [19.375, "TCP:", 2], [19.875, "mất", 2], [20.113, "một", 2], [20.262, "segment,", 2], [21.0, "mọi", 2], [21.225, "stream", 2], [21.55, "trên", 2], [21.738, "kết", 2], [21.938, "nối", 2], [22.137, "phải", 2], [22.35, "chờ,", 2], [22.887, "gọi", 2], [23.163, "là", 2], [23.337, "head-of-line", 2], [24.087, "blocking.", 2], [25.5, "Sáu", 3], [25.8, "từ", 3], [25.962, "khóa", 3], [26.2, "đi", 3], [26.325, "cùng", 3], [26.538, "phần", 3], [26.738, "này", 3], [26.913, "là", 3], [27.594, "HTTP/2,", 3], [28.275, "binary", 3], [28.825, "framing,", 3], [29.619, "HTTP/2", 3], [30.413, "stream,", 3], [31.075, "multiplexing,", 3], [32.031, "HPACK", 3], [32.987, "và", 3], [33.112, "head-of-line", 3], [33.812, "blocking.", 3]], "cues": [1.038, 9.113, 17.688, 25.5], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Server push”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 369.01, "audio": "audio/b2d5ae955281daf7.mp3", "dur": 24.31, "words": [[0.1, "Server", 0], [0.525, "push,", 0], [1.075, "cho", 0], [1.275, "phép", 0], [1.488, "server", 0], [1.9, "gửi", 0], [2.1, "trước", 0], [2.312, "tài", 0], [2.487, "nguyên", 0], [2.763, "mà", 0], [2.875, "client", 0], [3.25, "chưa", 0], [3.487, "yêu", 0], [3.675, "cầu,", 0], [4.2, "từng", 0], [4.45, "là", 0], [4.525, "một", 0], [4.713, "tính", 0], [4.938, "năng", 0], [5.125, "của", 0], [5.794, "HTTP/2,", 0], [6.463, "nhưng", 0], [6.75, "các", 0], [6.9, "trình", 0], [7.088, "duyệt", 0], [7.263, "lớn", 0], [7.562, "đã", 0], [7.675, "bỏ", 0], [7.9, "hỗ", 0], [8.1, "trợ.", 0], [9.3, "Các", 1], [9.5, "bạn", 1], [9.713, "có", 1], [9.812, "thể", 1], [9.95, "tìm", 1], [10.188, "hiểu", 1], [10.412, "vì", 1], [10.55, "sao,", 1], [11.125, "cùng", 1], [11.363, "với", 1], [11.488, "cách", 1], [12.044, "HTTP/2", 1], [12.6, "đặt", 1], [12.762, "độ", 1], [12.988, "ưu", 1], [13.137, "tiên", 1], [13.412, "cho", 1], [13.537, "stream.", 1], [14.762, "Bài", 2], [15.0, "tập", 2], [15.213, "mở", 2], [15.387, "rộng", 2], [15.675, "là", 2], [15.838, "đo", 2], [16.012, "thời", 2], [16.188, "gian", 2], [16.438, "tải", 2], [16.65, "50", 2], [16.9, "tài", 2], [17.1, "nguyên", 2], [17.288, "nhỏ", 2], [17.562, "bằng", 2], [17.788, "HttpClient", 2], [18.8, "với", 2], [18.8, "HTTP/1.1", 2], [18.8, "và", 2], [18.8, "HTTP/2,", 2], [18.8, "rồi", 2], [18.8, "trình", 2], [18.8, "bày", 2], [18.8, "và", 2], [18.8, "giải", 2], [18.8, "thích", 2], [18.8, "kết", 2], [18.8, "quả.", 2]], "cues": [0.1, 14.762], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 393.92, "audio": "audio/9dc3d569bf142815.mp3", "dur": 10.46, "words": [[1.1, "HTTP/2", 0], [1.1, "đã", 0], [1.212, "đưa", 0], [1.387, "nhiều", 0], [1.625, "request", 0], [1.837, "lên", 0], [2.038, "một", 0], [2.212, "kết", 0], [2.388, "nối,", 0], [2.925, "nhưng", 0], [3.237, "vẫn", 0], [3.438, "mắc", 0], [3.65, "ở", 0], [3.75, "chính", 0], [4.612, "TCP.", 0], [5.475, "Phần", 1], [5.775, "cuối", 1], [5.95, "của", 1], [6.1, "chương", 1], [6.425, "là", 1], [6.425, "HTTP/3:", 1], [6.425, "QUIC", 1], [6.425, "và", 1], [6.425, "giao", 1], [6.425, "thức", 1], [6.425, "trên", 1], [6.425, "UDP.", 1]], "cues": [], "lang": 0.6}], "video_sau": "HTTP/3: QUIC và giao thức trên UDP"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

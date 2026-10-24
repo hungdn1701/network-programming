@@ -1,0 +1,5 @@
+* chi joined
+an: chào cả nhóm
+* chi left
+an: chi vừa rời phòng
+* an left

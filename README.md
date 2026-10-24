@@ -23,12 +23,12 @@ TS. Đặng Ngọc Hùng · 3 tín chỉ · Tiếng Việt · Java 21
 | | Phần | Phút | |
 |---|---|---|---|
 | 1 | TCP: kết nối giữa client và server | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V08/) · [slide](https://hungdn1701.github.io/network-programming/V08/slide.pdf) · [mã](code/chapter-2/01-tcp-connection/) |
-| 2 | TCP: timeout, half-close và lỗi kết nối | 8′ |  |
-| 3 | Bài toán ứng dụng: dịch vụ tra cứu qua TCP | 8′ |  |
-| 4 | Đa luồng: thread và race condition | 7′ |  |
-| 5 | Đa luồng: synchronized, happens-before và wait/notify | 8′ |  |
-| 6 | Đa luồng: Executor, thread pool và virtual thread | 8′ |  |
-| 7 | Bài toán ứng dụng: server tra cứu phục vụ nhiều client | 8′ |  |
+| 2 | TCP: timeout, half-close và lỗi kết nối | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V09/) · [slide](https://hungdn1701.github.io/network-programming/V09/slide.pdf) · [mã](code/chapter-2/02-timeout-halfclose/) |
+| 3 | Bài toán ứng dụng: dịch vụ tra cứu qua TCP | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V10/) · [slide](https://hungdn1701.github.io/network-programming/V10/slide.pdf) · [mã](code/chapter-2/03-lookup-tcp/) |
+| 4 | Đa luồng: thread và race condition | 7′ | [xem trước](https://hungdn1701.github.io/network-programming/V11/) · [slide](https://hungdn1701.github.io/network-programming/V11/slide.pdf) · [mã](code/chapter-2/04-thread-race/) |
+| 5 | Đa luồng: synchronized, happens-before và wait/notify | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V12/) · [slide](https://hungdn1701.github.io/network-programming/V12/slide.pdf) · [mã](code/chapter-2/05-sync/) |
+| 6 | Đa luồng: Executor, thread pool và virtual thread | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V13/) · [slide](https://hungdn1701.github.io/network-programming/V13/slide.pdf) · [mã](code/chapter-2/06-executor/) |
+| 7 | Bài toán ứng dụng: server tra cứu phục vụ nhiều client | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V14/) · [slide](https://hungdn1701.github.io/network-programming/V14/slide.pdf) · [mã](code/chapter-2/07-concurrent-lookup/) |
 
 ## Chương 3. Lập trình UDP và giao thức ứng dụng hiện đại
 
@@ -69,4 +69,4 @@ TS. Đặng Ngọc Hùng · 3 tín chỉ · Tiếng Việt · Java 21
 
 ---
 
-Repo này được sinh tự động từ nguồn biên soạn; không sửa trực tiếp. Cập nhật 2026-10-22.
+Repo này được sinh tự động từ nguồn biên soạn; không sửa trực tiếp. Cập nhật 2026-10-24.

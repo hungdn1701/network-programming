@@ -1,0 +1,11 @@
+╷
+└─ JUnit Jupiter ✔
+   └─ LookupServerTest ✔
+      ├─ portZeroGetsEphemeralPort() ✔
+      ├─ knownKey() ✔
+      ├─ unknownKey() ✔
+      ├─ emptyLine() ✔
+      ├─ lineLongerThan256Bytes() ✔
+      └─ crlfIsAccepted() ✔
+
+Test run finished after 175 ms

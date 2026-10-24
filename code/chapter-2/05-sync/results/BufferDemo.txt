@@ -1,0 +1,10 @@
+    9 ms  acceptor  put  conn-1
+    9 ms  worker    took conn-1
+   16 ms  acceptor  put  conn-2
+   16 ms  acceptor  put  conn-3
+  318 ms  worker    took conn-2
+  318 ms  acceptor  put  conn-4  (waited 301 ms: buffer full)
+  621 ms  worker    took conn-3
+  621 ms  acceptor  put  conn-5  (waited 298 ms: buffer full)
+  922 ms  worker    took conn-4
+ 1237 ms  worker    took conn-5

@@ -1,0 +1,509 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V12 — Đa luồng: synchronized, happens-before và wait/notify · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-2/05-sync">Mã</a>
+<h1>V12 · Đa luồng: synchronized, happens-before và wait/notify</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 2</div><div class="ten">Đa luồng: synchronized, <span style="white-space:nowrap">happens-before</span> và wait/notify</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Dữ liệu dùng chung cần loại trừ, nhìn thấy được, và có cách chờ điều kiện</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Bộ đếm <code>requests</code>: hai thread tăng 2 000 000 lần, <b>mất cập nhật</b></li><li data-s="2">Cần: <b>mỗi lần một thread</b> đọc – sửa – ghi, và giá trị đã ghi phải <b>nhìn thấy được</b> ở thread khác</li><li data-s="3">Server đa luồng còn cần <b>chờ điều kiện</b>: thread xử lý chờ khi hàng đợi kết nối rỗng</li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> bảo vệ dữ liệu dùng chung bằng gì, bảo đảm nhìn thấy thay đổi ra sao, và chờ điều kiện thế nào cho đúng?</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>synchronized cho mỗi lần một thread vào critical section</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 560" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Monitor và critical section. worker-a đang giữ monitor của đối tượng counter, chạy trong phương thức synchronized increment; worker-b bị chặn ở lối vào, chờ monitor. worker-a ra khỏi phương thức thì nhả monitor, worker-b mới vào. Đối tượng other có monitor riêng, worker-c chạy trong increment của other cùng lúc với worker-a.">
+  <defs>
+    <marker id="mo-navy" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="mo-q" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#8A6508"/></marker>
+  </defs>
+
+  <!-- ① đối tượng counter: critical section có monitor -->
+  <g data-s="1">
+    <rect x="460" y="30" width="660" height="280" rx="8" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="490" y="74" font-size="26" font-weight="500" fill="#051A53">đối tượng <tspan font-family="Consolas, monospace">counter</tspan></text>
+    <text x="490" y="110" font-size="22" fill="#373D4E" font-family="Consolas, monospace">synchronized void increment()</text>
+    <rect x="930" y="46" width="170" height="44" rx="22" fill="#FFFFFF" stroke="#051A53" stroke-width="2"/>
+    <text x="1015" y="76" text-anchor="middle" font-size="22" fill="#051A53">monitor</text>
+    <text x="790" y="296" text-anchor="middle" font-size="22" fill="#5B6478">critical section: mỗi lần một thread</text>
+  </g>
+
+  <!-- ② worker-a giữ monitor -->
+  <g data-s="2">
+    <rect x="640" y="150" width="300" height="90" rx="6" fill="#FFFFFF" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="790" y="190" text-anchor="middle" font-size="24" font-weight="500" fill="#22603F" font-family="Consolas, monospace">worker-a</text>
+    <text x="790" y="224" text-anchor="middle" font-size="21" fill="#22603F">giữ monitor</text>
+  </g>
+
+  <!-- ③ worker-b bị chặn ở lối vào -->
+  <g data-s="3">
+    <rect x="40" y="120" width="320" height="150" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="200" y="158" text-anchor="middle" font-size="22" fill="#6B4E06">lối vào</text>
+    <rect x="70" y="176" width="260" height="70" rx="6" fill="#FFFFFF" stroke="#8A6508" stroke-width="2"/>
+    <text x="200" y="207" text-anchor="middle" font-size="24" font-weight="500" fill="#6B4E06" font-family="Consolas, monospace">worker-b</text>
+    <text x="200" y="236" text-anchor="middle" font-size="20" fill="#6B4E06">bị chặn, chờ monitor</text>
+  </g>
+
+  <!-- ④ worker-a ra, nhả monitor; worker-b vào -->
+  <g data-s="4">
+    <line x1="940" y1="210" x2="1290" y2="210" stroke="#051A53" stroke-width="3" marker-end="url(#mo-navy)"/>
+    <text x="1300" y="196" font-size="22" fill="#051A53"><tspan font-family="Consolas, monospace">worker-a</tspan> ra,</text>
+    <text x="1300" y="228" font-size="22" fill="#051A53">nhả monitor</text>
+    <line x1="360" y1="215" x2="632" y2="215" stroke="#8A6508" stroke-width="3" marker-end="url(#mo-q)"/>
+    <text x="476" y="200" font-size="21" fill="#6B4E06">rồi mới vào</text>
+  </g>
+
+  <!-- ⑤ đối tượng khác, monitor khác: không loại trừ nhau -->
+  <g data-s="5">
+    <rect x="460" y="350" width="660" height="180" rx="8" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="490" y="392" font-size="26" font-weight="500" fill="#051A53">đối tượng <tspan font-family="Consolas, monospace">other</tspan></text>
+    <rect x="930" y="366" width="170" height="44" rx="22" fill="#FFFFFF" stroke="#051A53" stroke-width="2"/>
+    <text x="1015" y="396" text-anchor="middle" font-size="22" fill="#051A53">monitor</text>
+    <rect x="640" y="424" width="300" height="80" rx="6" fill="#FFFFFF" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="790" y="458" text-anchor="middle" font-size="24" font-weight="500" fill="#22603F" font-family="Consolas, monospace">worker-c</text>
+    <text x="790" y="490" text-anchor="middle" font-size="21" fill="#22603F">giữ monitor của other</text>
+    <text x="1160" y="430" font-size="22" fill="#051A53">monitor khác: <tspan font-family="Consolas, monospace">worker-c</tspan></text>
+    <text x="1160" y="462" font-size="22" fill="#051A53">chạy cùng lúc với <tspan font-family="Consolas, monospace">worker-a</tspan>,</text>
+    <text x="1160" y="494" font-size="22" font-weight="500" fill="#051A53">không loại trừ lẫn nhau</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="6"><p><b>synchronized</b> giữ <b>monitor</b> của đối tượng: trên cùng một đối tượng, mỗi lần một thread vào <b>critical section</b>; hai đối tượng khác nhau thì không loại trừ lẫn nhau.</p></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Nhả rồi lấy cùng một monitor tạo quan hệ <span style="white-space:nowrap">happens-before</span></h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 560" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Happens-before. Có đồng bộ hóa: worker-a ghi requests bằng 42 rồi thoát synchronized, nhả monitor; worker-b vào synchronized trên cùng monitor rồi đọc được 42. Không đồng bộ hóa: main đặt plainStop bằng true, worker lặp đọc plainStop và có thể không bao giờ thấy true. Biến volatile: lần ghi happens-before các lần đọc sau, nhưng không làm đọc – sửa – ghi thành nguyên tử.">
+  <defs>
+    <marker id="hb-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- ① có đồng bộ hóa: worker-a ghi rồi nhả monitor -->
+  <g data-s="1">
+    <text x="40" y="40" font-size="26" font-weight="500" fill="#051A53">Có đồng bộ hóa: cùng một monitor</text>
+    <rect x="80" y="64" width="300" height="60" rx="4" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="230" y="103" text-anchor="middle" font-size="24" font-weight="500" fill="#051A53" font-family="Consolas, monospace">worker-a</text>
+    <line x1="230" y1="124" x2="230" y2="430" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="6 8"/>
+    <rect x="90" y="150" width="280" height="50" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2"/>
+    <text x="230" y="183" text-anchor="middle" font-size="22" fill="#051A53" font-family="Consolas, monospace">requests = 42</text>
+    <rect x="90" y="220" width="280" height="60" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2"/>
+    <text x="230" y="246" text-anchor="middle" font-size="21" fill="#051A53">thoát synchronized</text>
+    <text x="230" y="270" text-anchor="middle" font-size="21" fill="#051A53">nhả monitor</text>
+  </g>
+
+  <!-- ② worker-b lấy cùng monitor rồi đọc: thấy 42 -->
+  <g data-s="2">
+    <rect x="520" y="64" width="300" height="60" rx="4" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="670" y="103" text-anchor="middle" font-size="24" font-weight="500" fill="#051A53" font-family="Consolas, monospace">worker-b</text>
+    <line x1="670" y1="124" x2="670" y2="430" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="6 8"/>
+    <rect x="530" y="300" width="280" height="60" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2"/>
+    <text x="670" y="326" text-anchor="middle" font-size="21" fill="#051A53">vào synchronized</text>
+    <text x="670" y="350" text-anchor="middle" font-size="21" fill="#051A53">lấy monitor</text>
+    <rect x="530" y="376" width="280" height="50" rx="4" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="670" y="409" text-anchor="middle" font-size="22" fill="#22603F" font-family="Consolas, monospace">đọc requests: 42</text>
+    <path d="M370,252 C450,252 450,330 522,330" fill="none" stroke="#2F855A" stroke-width="3.5" marker-end="url(#hb-ok)"/>
+    <text x="450" y="226" text-anchor="middle" font-size="22" font-weight="500" fill="#2F855A">happens-before</text>
+  </g>
+
+  <!-- ③ không đồng bộ hóa: không bảo đảm nhìn thấy -->
+  <g data-s="3">
+    <text x="940" y="40" font-size="26" font-weight="500" fill="#051A53">Không đồng bộ hóa</text>
+    <rect x="980" y="64" width="300" height="60" rx="4" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1130" y="103" text-anchor="middle" font-size="24" font-weight="500" fill="#051A53" font-family="Consolas, monospace">main</text>
+    <line x1="1130" y1="124" x2="1130" y2="430" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="6 8"/>
+    <rect x="990" y="220" width="280" height="50" rx="4" fill="#EEF2FB" stroke="#051A53" stroke-width="2"/>
+    <text x="1130" y="253" text-anchor="middle" font-size="22" fill="#051A53" font-family="Consolas, monospace">plainStop = true</text>
+    <rect x="1420" y="64" width="300" height="60" rx="4" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1570" y="103" text-anchor="middle" font-size="24" font-weight="500" fill="#051A53" font-family="Consolas, monospace">plain</text>
+    <line x1="1570" y1="124" x2="1570" y2="430" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="6 8"/>
+    <g font-size="21" fill="#BC2626" font-family="Consolas, monospace" text-anchor="middle">
+      <rect x="1430" y="150" width="280" height="44" rx="4" fill="#FFFFFF" stroke="#BC2626" stroke-width="2"/>
+      <text x="1570" y="180">đọc plainStop: false</text>
+      <rect x="1430" y="250" width="280" height="44" rx="4" fill="#FFFFFF" stroke="#BC2626" stroke-width="2"/>
+      <text x="1570" y="280">đọc plainStop: false</text>
+      <rect x="1430" y="350" width="280" height="44" rx="4" fill="#FFFFFF" stroke="#BC2626" stroke-width="2"/>
+      <text x="1570" y="380">đọc plainStop: false</text>
+    </g>
+    <text x="1350" y="460" text-anchor="middle" font-size="22" font-weight="500" fill="#BC2626">không có happens-before: có thể không bao giờ thấy true</text>
+  </g>
+
+  <!-- ④ volatile -->
+  <g data-s="4">
+    <rect x="40" y="480" width="1680" height="64" rx="6" fill="#F8FAFC" stroke="#051A53" stroke-width="2"/>
+    <text x="880" y="521" text-anchor="middle" font-size="23" fill="#051A53"><tspan font-family="Consolas, monospace" font-weight="500">volatile</tspan>: lần ghi có quan hệ happens-before với các lần đọc sau, nhưng <tspan font-weight="500">không</tspan> làm đọc – sửa – ghi thành nguyên tử</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b><span style="white-space:nowrap">Happens-before</span></b>: thay đổi trước khi nhả monitor nhìn thấy được sau khi lấy cùng monitor. Không đồng bộ hóa thì <b>không có bảo đảm</b> nào.</p></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>wait() nhả monitor và chờ, notifyAll() đánh thức thread đang chờ</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Hàng đợi có giới hạn hai phần tử giữa thread acceptor và thread worker. Hàng đợi đầy: put của acceptor gọi wait, nhả monitor và chờ. Worker lấy một phần tử bằng take rồi gọi notifyAll, đánh thức acceptor. Acceptor tỉnh dậy, kiểm tra lại điều kiện trong while, thấy còn chỗ thì đưa phần tử vào.">
+  <defs>
+    <marker id="bb-navy" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="bb-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- ① producer, hàng đợi hai chỗ, consumer -->
+  <g data-s="1">
+    <rect x="40" y="110" width="400" height="120" rx="6" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="240" y="156" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">thread <tspan font-family="Consolas, monospace">acceptor</tspan></text>
+    <text x="240" y="196" text-anchor="middle" font-size="22" fill="#373D4E" font-family="Consolas, monospace">put(conn)</text>
+    <rect x="600" y="90" width="560" height="160" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="880" y="126" text-anchor="middle" font-size="24" font-weight="500" fill="#6B4E06">hàng đợi, tối đa 2 phần tử</text>
+    <rect x="640" y="150" width="220" height="70" rx="4" fill="#FFFFFF" stroke="#8A6508" stroke-width="2"/>
+    <text x="750" y="194" text-anchor="middle" font-size="24" fill="#6B4E06" font-family="Consolas, monospace">conn-2</text>
+    <rect x="900" y="150" width="220" height="70" rx="4" fill="#FFFFFF" stroke="#8A6508" stroke-width="2"/>
+    <text x="1010" y="194" text-anchor="middle" font-size="24" fill="#6B4E06" font-family="Consolas, monospace">conn-3</text>
+    <rect x="1320" y="110" width="400" height="120" rx="6" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1520" y="156" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">thread <tspan font-family="Consolas, monospace">worker</tspan></text>
+    <text x="1520" y="196" text-anchor="middle" font-size="22" fill="#373D4E" font-family="Consolas, monospace">take()</text>
+    <line x1="440" y1="170" x2="592" y2="170" stroke="#051A53" stroke-width="3" marker-end="url(#bb-navy)"/>
+    <line x1="1160" y1="170" x2="1312" y2="170" stroke="#051A53" stroke-width="3" marker-end="url(#bb-navy)"/>
+  </g>
+
+  <!-- ② đầy: acceptor wait(), nhả monitor -->
+  <g data-s="2">
+    <rect x="40" y="270" width="400" height="110" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="240" y="308" text-anchor="middle" font-size="22" fill="#6B4E06"><tspan font-family="Consolas, monospace">put(conn-4)</tspan>: đầy</text>
+    <text x="240" y="340" text-anchor="middle" font-size="22" fill="#6B4E06"><tspan font-family="Consolas, monospace">wait()</tspan>: nhả monitor, chờ</text>
+    <line x1="240" y1="230" x2="240" y2="262" stroke="#8A6508" stroke-width="3" marker-end="url(#bb-navy)"/>
+  </g>
+
+  <!-- ③ worker take() rồi notifyAll() -->
+  <g data-s="3">
+    <rect x="1320" y="270" width="400" height="110" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1520" y="308" text-anchor="middle" font-size="22" fill="#22603F"><tspan font-family="Consolas, monospace">take()</tspan> lấy <tspan font-family="Consolas, monospace">conn-2</tspan></text>
+    <text x="1520" y="340" text-anchor="middle" font-size="22" fill="#22603F"><tspan font-family="Consolas, monospace">notifyAll()</tspan></text>
+    <path d="M1320,350 C1100,450 660,450 448,350" fill="none" stroke="#2F855A" stroke-width="3" marker-end="url(#bb-ok)"/>
+    <text x="880" y="452" text-anchor="middle" font-size="22" fill="#22603F">đánh thức thread đang chờ trên cùng monitor</text>
+  </g>
+
+  <!-- ④ acceptor tỉnh dậy, kiểm tra lại điều kiện -->
+  <g data-s="4">
+    <text x="240" y="420" text-anchor="middle" font-size="22" fill="#051A53">tỉnh dậy, kiểm tra lại</text>
+    <text x="240" y="452" text-anchor="middle" font-size="22" fill="#051A53" font-family="Consolas, monospace">while (đầy)</text>
+    <text x="240" y="490" text-anchor="middle" font-size="22" fill="#051A53">còn chỗ: đưa <tspan font-family="Consolas, monospace">conn-4</tspan> vào</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b>wait/notify</b>: <code>wait()</code> nhả monitor và chờ; <code>notifyAll()</code> đánh thức; thread tỉnh dậy <b>kiểm tra lại</b> điều kiện trong <code>while</code>.</p></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Bộ đếm có synchronized cho đúng 2 000 000 ở mọi lần chạy</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">synchronized</span> <span class="hl-k">void</span> <span class="hl-m">increment</span>() {  <span class="hl-c">// critical section: mỗi lần một thread, giữ monitor của this</span>
+    requests++;
+}
+
+<span class="hl-k">synchronized</span> <span class="hl-k">int</span> <span class="hl-m">get</span>() {  <span class="hl-c">// đọc cũng giữ cùng monitor: thấy giá trị mới nhất</span>
+    <span class="hl-k">return</span> requests;
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>run 1: requests = 2000000 (expected 2000000)
+run 2: requests = 2000000 (expected 2000000)
+run 3: requests = 2000000 (expected 2000000)</pre></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>Hàng đợi đầy thì put() chờ đến khi worker lấy bớt</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">synchronized</span> <span class="hl-k">void</span> <span class="hl-m">put</span>(<span class="hl-t">T</span> item) <span class="hl-k">throws</span> <span class="hl-t">InterruptedException</span> {
+    <span class="hl-k">while</span> (items.<span class="hl-m">size</span>() == capacity) {  <span class="hl-c">// đầy: chờ; wait() nhả monitor trong lúc chờ</span>
+        <span class="hl-m">wait</span>();
+    }
+    items.<span class="hl-m">addLast</span>(item);
+    <span class="hl-m">notifyAll</span>();  <span class="hl-c">// đánh thức các thread đang chờ trên monitor này</span>
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>    9 ms  acceptor  put  conn-1
+    9 ms  worker    took conn-1
+   16 ms  acceptor  put  conn-2
+   16 ms  acceptor  put  conn-3
+  318 ms  worker    took conn-2
+<span class="noi-bat">  318 ms  acceptor  put  conn-4  (waited 301 ms: buffer full)</span>
+  621 ms  worker    took conn-3
+<span class="noi-bat">  621 ms  acceptor  put  conn-5  (waited 298 ms: buffer full)</span>
+  922 ms  worker    took conn-4
+ 1237 ms  worker    took conn-5</pre></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S07"><header><h1>wait() phải nằm trong while: thread tỉnh dậy chưa chắc điều kiện đã đúng</h1></header><main class="bo-cuc-ma"><div class="ma-hang"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">synchronized</span> <span class="hl-t">String</span> <span class="hl-m">take</span>() <span class="hl-k">throws</span> <span class="hl-t">InterruptedException</span> {
+    <span class="hl-k">if</span> (items.<span class="hl-m">isEmpty</span>()) {  <span class="hl-c">// SAI: chỉ kiểm tra điều kiện một lần</span>
+        <span class="hl-m">wait</span>();
+    }
+    <span class="hl-k">return</span> items.<span class="hl-m">removeFirst</span>();  <span class="hl-c">// tỉnh dậy mà hàng đợi vẫn rỗng thì ném ngoại lệ</span>
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>worker-1: took conn-1
+worker-2: NoSuchElementException</pre></div><ul class="y-nho"><li data-s="2"><code>notifyAll()</code> đánh thức <b>cả hai</b> worker, nhưng chỉ có <b>một</b> phần tử</li><li data-s="3">Thread còn có thể tỉnh dậy <b>không do ai đánh thức</b> (spurious wakeup, đánh thức giả): luôn kiểm tra lại điều kiện trong <code>while</code></li></ul></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Vì sao lời gọi <code>wait()</code> trong <code>take()</code> phải nằm trong vòng lặp while thay vì if?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Vì Java chỉ cho phép gọi <code>wait()</code> bên trong một vòng lặp.</div></div><div class=""><span>B</span><div>Vì vòng lặp while chạy nhanh hơn câu lệnh if.</div></div><div class="dung"><span>C</span><div>Vì thread tỉnh dậy chưa chắc điều kiện đã đúng: thread khác có thể đã lấy mất phần tử, hoặc thread tỉnh dậy không do ai đánh thức.</div></div><div class=""><span>D</span><div>Vì <code>notifyAll()</code> chỉ đánh thức được thread đang chờ trong vòng lặp.</div></div></div><div class="giai-thich"><code>notifyAll()</code> đánh thức mọi thread đang chờ, và thread có thể tỉnh dậy do spurious wakeup. Thread tỉnh dậy phải kiểm tra lại điều kiện. Dùng if vẫn biên dịch được, chỉ sai khi chạy.</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Vì sao lời gọi <code>wait()</code> trong <code>take()</code> phải nằm trong vòng lặp while thay vì if?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Vì Java chỉ cho phép gọi <code>wait()</code> bên trong một vòng lặp.</div></div><div class=""><span>B</span><div>Vì vòng lặp while chạy nhanh hơn câu lệnh if.</div></div><div class="dung"><span>C</span><div>Vì thread tỉnh dậy chưa chắc điều kiện đã đúng: thread khác có thể đã lấy mất phần tử, hoặc thread tỉnh dậy không do ai đánh thức.</div></div><div class=""><span>D</span><div>Vì <code>notifyAll()</code> chỉ đánh thức được thread đang chờ trong vòng lặp.</div></div></div><div class="giai-thich"><code>notifyAll()</code> đánh thức mọi thread đang chờ, và thread có thể tỉnh dậy do spurious wakeup. Thread tỉnh dậy phải kiểm tra lại điều kiện. Dùng if vẫn biên dịch được, chỉ sai khi chạy.</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Hai thread cùng lúc gọi phương thức synchronized <code>increment()</code>: một thread trên đối tượng counter, thread kia trên đối tượng other cùng lớp. Điều nào đúng?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Hai thread chạy cùng lúc được, vì mỗi đối tượng có monitor riêng.</div></div><div class=""><span>B</span><div>Thread thứ hai phải chờ, vì synchronized khóa phương thức <code>increment()</code> cho mọi đối tượng.</div></div><div class=""><span>C</span><div>Chương trình báo lỗi vì hai thread cùng gọi một phương thức synchronized.</div></div><div class=""><span>D</span><div>Thread thứ hai phải chờ, vì mọi phương thức synchronized trong chương trình dùng chung một khóa.</div></div></div><div class="giai-thich">Phương thức synchronized (không static) giữ monitor của đối tượng đang gọi. counter và other là hai đối tượng, hai monitor, nên hai thread không loại trừ nhau.</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Hai thread cùng lúc gọi phương thức synchronized <code>increment()</code>: một thread trên đối tượng counter, thread kia trên đối tượng other cùng lớp. Điều nào đúng?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Hai thread chạy cùng lúc được, vì mỗi đối tượng có monitor riêng.</div></div><div class=""><span>B</span><div>Thread thứ hai phải chờ, vì synchronized khóa phương thức <code>increment()</code> cho mọi đối tượng.</div></div><div class=""><span>C</span><div>Chương trình báo lỗi vì hai thread cùng gọi một phương thức synchronized.</div></div><div class=""><span>D</span><div>Thread thứ hai phải chờ, vì mọi phương thức synchronized trong chương trình dùng chung một khóa.</div></div></div><div class="giai-thich">Phương thức synchronized (không static) giữ monitor của đối tượng đang gọi. counter và other là hai đối tượng, hai monitor, nên hai thread không loại trừ nhau.</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>synchronized</b> + <b>monitor</b>: trên cùng một đối tượng, mỗi lần một thread vào <b>critical section</b></div></div><div class="the" data-s="2"><span class="so">2</span><div><b><span style="white-space:nowrap">Happens-before</span></b>: nhả rồi lấy cùng monitor, hoặc ghi rồi đọc biến <b>volatile</b>, thì thay đổi nhìn thấy được</div></div><div class="the" data-s="3"><span class="so">3</span><div><b>wait/notify</b>: <code>wait()</code> nhả monitor và chờ, <code>notifyAll()</code> đánh thức; điều kiện kiểm tra trong <code>while</code></div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>critical section</span><span>synchronized</span><span>monitor</span><span>happens-before</span><span>wait/notify</span><span>volatile</span></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>java.util.concurrent: ReentrantLock, Condition, BlockingQueue</li><li>Deadlock và thứ tự lấy khóa</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Thay BoundedBuffer tự viết bằng ArrayBlockingQueue; so sánh số dòng mã và hành vi khi hàng đợi đầy.</p></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Đa luồng: Executor, thread pool và virtual thread</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Race condition xảy ra vì hai thread cùng đọc, sửa, ghi một biến. Phần này trả lời ba câu hỏi: làm sao cho mỗi lần chỉ một thread làm việc đó, làm sao thread khác chắc chắn thấy giá trị mới, và một thread chờ điều kiện thế nào cho đúng?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:17</span>
+      <h3>Slide 1. Dữ liệu dùng chung cần loại trừ, nhìn thấy được, và có cách chờ điều kiện</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Bộ đếm `requests`: hai thread tăng 2 000 000 lần, **mất cập nhật**</li><li>Cần: **mỗi lần một thread** đọc – sửa – ghi, và giá trị đã ghi phải **nhìn thấy được** ở thread khác</li><li>Server đa luồng còn cần **chờ điều kiện**: thread xử lý chờ khi hàng đợi kết nối rỗng</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** bảo vệ dữ liệu dùng chung bằng gì, bảo đảm nhìn thấy thay đổi ra sao, và chờ điều kiện thế nào cho đúng?</div></div>
+    <div class="kb-thoai"><p>Ở phần trước, hai thread cùng tăng bộ đếm requests và làm mất cập nhật. Để sửa lỗi đó, chương trình cần hai bảo đảm: mỗi lần chỉ một thread được thực hiện bước đọc, sửa, ghi, và giá trị một thread đã ghi phải nhìn thấy được ở thread khác. Ngoài ra, server đa luồng còn cần một kiểu phối hợp nữa: một thread nhận kết nối và đưa vào hàng đợi, còn thread xử lý phải chờ khi hàng đợi rỗng. Ba yêu cầu đó dẫn tới câu hỏi của phần: bảo vệ dữ liệu dùng chung bằng gì, bảo đảm nhìn thấy thay đổi ra sao, và chờ điều kiện thế nào cho đúng?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Ở phần trước”; bước 2 khi đọc “Để sửa lỗi đó”; bước 3 khi đọc “Ngoài ra”; bước 4 khi đọc “Ba yêu cầu đó”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:49</span>
+      <h3>Slide 2. synchronized cho mỗi lần một thread vào critical section</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**synchronized** giữ **monitor** của đối tượng: trên cùng một đối tượng, mỗi lần một thread vào **critical section**; hai đối tượng khác nhau thì không loại trừ lẫn nhau.</li></ul></div></div>
+    <div class="kb-thoai"><p>Đoạn mã đọc, sửa, ghi dữ liệu dùng chung gọi là critical section: chỉ một thread được thực hiện đoạn mã đó tại một thời điểm. Java bảo vệ critical section bằng từ khóa synchronized, dựa trên monitor, tức khóa đi kèm mỗi đối tượng Java. Khi worker-a gọi phương thức increment có từ khóa synchronized trên đối tượng counter, worker-a giữ monitor của counter. Nếu worker-b cũng gọi phương thức đó trên counter, worker-b bị chặn ở lối vào để chờ monitor. Chỉ khi worker-a ra khỏi phương thức và nhả monitor, worker-b mới vào được. Các bạn để ý: monitor gắn với đối tượng, không gắn với đoạn mã. Đối tượng thứ hai trong hình, other, có monitor riêng, nên worker-c gọi phương thức increment trên other vẫn chạy cùng lúc với worker-a. Vì vậy, các thread muốn loại trừ lẫn nhau phải đồng bộ hóa trên cùng một đối tượng.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình monitor: năm bước của hình, bước 6 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Đoạn mã đọc, sửa, ghi”; bước 2 khi đọc “Khi worker-a gọi”; bước 3 khi đọc “Nếu worker-b cũng gọi”; bước 4 khi đọc “Chỉ khi worker-a ra khỏi”; bước 5 khi đọc “Đối tượng thứ hai trong hình”; bước 6 khi đọc “Vì vậy, các thread”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:44</span>
+      <h3>Slide 3. Nhả rồi lấy cùng một monitor tạo quan hệ happens-before</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Happens-before**: thay đổi trước khi nhả monitor nhìn thấy được sau khi lấy cùng monitor. Không đồng bộ hóa thì **không có bảo đảm** nào.</li></ul></div></div>
+    <div class="kb-thoai"><p>Monitor còn cho một bảo đảm nữa: thay đổi của thread này nhìn thấy được ở thread kia. Trình biên dịch và CPU được phép giữ giá trị trong thanh ghi hay đổi thứ tự thao tác, nên giá trị một thread đã ghi chưa chắc đã được thread khác nhìn thấy. Mô hình bộ nhớ Java định nghĩa khi nào thì chắc chắn nhìn thấy, bằng quan hệ happens-before. Bên trái hình, worker-a ghi requests bằng 42 rồi thoát khối synchronized, tức nhả monitor. Sau đó worker-b vào khối synchronized trên cùng monitor: lần nhả của worker-a có quan hệ happens-before với lần lấy của worker-b, nên worker-b chắc chắn đọc được 42. Bên phải là trường hợp không đồng bộ hóa: thread main đặt một cờ dừng bằng true, còn một thread khác lặp đọc cờ đó. Khi mình chạy thử, sau hai giây thread đọc cờ vẫn chưa dừng. Từ khóa volatile là cách nhẹ hơn: lần ghi một biến volatile có quan hệ happens-before với các lần đọc biến đó về sau, nhưng volatile không biến bước đọc, sửa, ghi thành một thao tác nguyên tử. Vì vậy, dữ liệu dùng chung cần đồng bộ hóa cả khi đọc lẫn khi ghi.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình happens-before: bốn bước của hình, bước 5 là ô kết luận. Kết quả chạy thử của chương trình StopFlag ở results/StopFlag.txt (README của mã, mục đọc thêm).
+Hiện dần: bước 1 khi đọc “Bên trái hình”; bước 2 khi đọc “Sau đó worker-b”; bước 3 khi đọc “Bên phải là trường hợp”; bước 4 khi đọc “Từ khóa volatile”; bước 5 khi đọc “Vì vậy, dữ liệu dùng chung”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:51</span>
+      <h3>Slide 4. wait() nhả monitor và chờ, notifyAll() đánh thức thread đang chờ</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**wait/notify**: `wait()` nhả monitor và chờ; `notifyAll()` đánh thức; thread tỉnh dậy **kiểm tra lại** điều kiện trong `while`.</li></ul></div></div>
+    <div class="kb-thoai"><p>Yêu cầu cuối, chờ điều kiện, cũng dựa trên monitor. Mình dùng một hàng đợi có giới hạn, tối đa hai phần tử, giữa hai thread: thread nhận kết nối, gọi là acceptor, đưa kết nối vào bằng phương thức put, còn thread worker lấy ra bằng phương thức take. Khi hàng đợi đầy, acceptor không đưa thêm được, nên gọi phương thức wait. Lời gọi wait nhả monitor của hàng đợi rồi chờ, để thread khác vào được. Worker lấy một kết nối ra, rồi gọi phương thức notifyAll để đánh thức mọi thread đang chờ trên monitor đó. Acceptor tỉnh dậy, lấy lại monitor, kiểm tra lại điều kiện, thấy còn chỗ thì đưa kết nối mới vào. Cơ chế này gọi là wait/notify, và chiều ngược lại cũng vậy: hàng đợi rỗng thì worker chờ, lần put tiếp theo đánh thức worker.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình bounded-buffer: bốn bước của hình, bước 5 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Mình dùng một hàng đợi”; bước 2 khi đọc “Khi hàng đợi đầy”; bước 3 khi đọc “Worker lấy một kết nối”; bước 4 khi đọc “Acceptor tỉnh dậy”; bước 5 khi đọc “Cơ chế này”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:40</span>
+      <h3>Slide 5. Bộ đếm có synchronized cho đúng 2 000 000 ở mọi lần chạy</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/sync/CounterSafe.java</span><pre><code>synchronized void increment() {  // critical section: mỗi lần một thread, giữ monitor của this
+    requests++;
+}
+
+synchronized int get() {  // đọc cũng giữ cùng monitor: thấy giá trị mới nhất
+    return requests;
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Bây giờ mình áp dụng synchronized cho bộ đếm của phần trước. Lớp CounterSafe đặt bước tăng requests trong phương thức increment có từ khóa synchronized, và phương thức get cũng được khai báo synchronized, để lần đọc cuối nhìn thấy mọi lần ghi. Hai thread vẫn tăng mỗi thread một triệu lần như ở phần trước. Các bạn thử đoán lần này kết quả thế nào. Kết quả: cả ba lần chạy đều đúng hai triệu. Còn với cấu trúc dữ liệu dùng chung phức tạp hơn, như một bảng tra cứu nhiều thread cùng đọc ghi, thư viện Java có sẵn lớp an toàn đồng thời như ConcurrentHashMap. Các lớp đó đã được thiết kế và kiểm thử cho truy cập đồng thời, nên dùng chúng an toàn hơn tự đồng bộ hóa lại.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới. Highlight hai từ khóa synchronized khi đọc tới.
+Hiện dần: bước 1 khi đọc “Kết quả: cả ba lần”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:29</span>
+      <h3>Slide 6. Hàng đợi đầy thì put() chờ đến khi worker lấy bớt</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/sync/BoundedBuffer.java</span><pre><code>synchronized void put(T item) throws InterruptedException {
+    while (items.size() == capacity) {  // đầy: chờ; wait() nhả monitor trong lúc chờ
+        wait();
+    }
+    items.addLast(item);
+    notifyAll();  // đánh thức các thread đang chờ trên monitor này
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Trong mã của hàng đợi, phương thức put kiểm tra điều kiện đầy trong vòng lặp while, và còn đầy thì gọi phương thức wait. Khi có chỗ, phương thức put đưa phần tử vào rồi gọi phương thức notifyAll. Phương thức take viết đối xứng: hàng đợi rỗng thì chờ, lấy được phần tử thì đánh thức thread đang chờ. Mình chạy với hàng đợi hai phần tử: acceptor đưa vào năm kết nối, còn worker xử lý mỗi kết nối 300 mili giây. Các bạn để ý dòng đưa kết nối thứ tư vào hàng đợi: acceptor phải chờ khoảng 300 mili giây, vì hàng đợi đầy cho đến khi worker lấy kết nối thứ hai ra.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới; dòng 6 và dòng 8 của kết quả được tô nền (hai lần put phải chờ). Chương trình chạy là BufferDemo; thời điểm in theo thứ tự thời gian.
+Hiện dần: bước 1 khi đọc “Mình chạy với hàng đợi”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:14</span>
+      <h3>Slide 7. wait() phải nằm trong while: thread tỉnh dậy chưa chắc điều kiện đã đúng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>`notifyAll()` đánh thức **cả hai** worker, nhưng chỉ có **một** phần tử</li><li>Thread còn có thể tỉnh dậy **không do ai đánh thức** (spurious wakeup, đánh thức giả): luôn kiểm tra lại điều kiện trong `while`</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/sync/IfInsteadOfWhile.java</span><pre><code>synchronized String take() throws InterruptedException {
+    if (items.isEmpty()) {  // SAI: chỉ kiểm tra điều kiện một lần
+        wait();
+    }
+    return items.removeFirst();  // tỉnh dậy mà hàng đợi vẫn rỗng thì ném ngoại lệ
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Lỗi hay gặp nhất với wait là đặt lời gọi đó trong if thay vì while. Mình viết một phiên bản khác của phương thức take, kiểm tra điều kiện bằng if, cho hai worker cùng chờ trên hàng đợi rỗng, rồi đưa vào đúng một kết nối. Các bạn đoán hai worker nhận được gì. Kết quả: worker-1 lấy được kết nối, còn worker-2 nhận NoSuchElementException. Lý do là lời gọi notifyAll đánh thức cả hai worker. Worker-1 lấy phần tử trước, còn worker-2 không kiểm tra lại điều kiện, nên lấy từ một hàng đợi đã rỗng. Ngoài ra, đặc tả Java cho phép thread tỉnh dậy khỏi wait mà không do ai đánh thức, gọi là spurious wakeup, hay đánh thức giả. Vì cả hai lý do, lời gọi wait luôn phải nằm trong vòng lặp while kiểm tra lại điều kiện.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới. Sau câu &quot;nhận được gì&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện. Thứ tự worker-1 và worker-2 có thể đổi giữa các lần chạy; luôn có một worker nhận ngoại lệ.
+Hiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Lý do là”; bước 3 khi đọc “Ngoài ra”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:10</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Lỗi của worker-2 vừa rồi là chất liệu cho câu hỏi đầu.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Vì sao lời gọi wait() trong take() phải nằm trong vòng lặp while thay vì if?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Vì Java chỉ cho phép gọi wait() bên trong một vòng lặp.</li>
+      <li><b>B.</b> Vì vòng lặp while chạy nhanh hơn câu lệnh if.</li>
+      <li><b>C.</b> Vì thread tỉnh dậy chưa chắc điều kiện đã đúng: thread khác có thể đã lấy mất phần tử, hoặc thread tỉnh dậy không do ai đánh thức.</li>
+      <li><b>D.</b> Vì notifyAll() chỉ đánh thức được thread đang chờ trong vòng lặp.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: C</b> — <span>notifyAll() đánh thức mọi thread đang chờ, và thread có thể tỉnh dậy do spurious wakeup. Thread tỉnh dậy phải kiểm tra lại điều kiện. Dùng if vẫn biên dịch được, chỉ sai khi chạy.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là C. Phương án A nghe hợp lý vì mẫu mã nào cũng đặt wait trong vòng lặp, nhưng Java không bắt buộc điều đó: dùng if vẫn biên dịch được, và chỉ sai khi chạy, như worker-2 vừa gặp.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án C được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:32</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu tiếp theo dùng lại hai đối tượng counter và other trong hình monitor.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Hai thread cùng lúc gọi phương thức synchronized increment(): một thread trên đối tượng counter, thread kia trên đối tượng other cùng lớp. Điều nào đúng?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Hai thread chạy cùng lúc được, vì mỗi đối tượng có monitor riêng.</li>
+      <li><b>B.</b> Thread thứ hai phải chờ, vì synchronized khóa phương thức increment() cho mọi đối tượng.</li>
+      <li><b>C.</b> Chương trình báo lỗi vì hai thread cùng gọi một phương thức synchronized.</li>
+      <li><b>D.</b> Thread thứ hai phải chờ, vì mọi phương thức synchronized trong chương trình dùng chung một khóa.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: A</b> — <span>Phương thức synchronized (không static) giữ monitor của đối tượng đang gọi. counter và other là hai đối tượng, hai monitor, nên hai thread không loại trừ nhau.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là A. Phương án B là hiểu nhầm phổ biến: synchronized không khóa đoạn mã, mà khóa monitor của đối tượng đang gọi. Hai đối tượng khác nhau có hai monitor, nên hai thread không loại trừ lẫn nhau.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án A.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:57</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**synchronized** + **monitor**: trên cùng một đối tượng, mỗi lần một thread vào **critical section**</li><li>**Happens-before**: nhả rồi lấy cùng monitor, hoặc ghi rồi đọc biến **volatile**, thì thay đổi nhìn thấy được</li><li>**wait/notify**: `wait()` nhả monitor và chờ, `notifyAll()` đánh thức; điều kiện kiểm tra trong `while`</li></ul></div>
+    <div class="kb-thoai"><p>Dữ liệu dùng chung được bảo vệ bằng synchronized: trên cùng một đối tượng, monitor chỉ cho một thread vào critical section tại một thời điểm. Thay đổi nhìn thấy được khi có quan hệ happens-before, như nhả rồi lấy cùng một monitor, hay ghi rồi đọc một biến volatile. Còn để chờ điều kiện, thread gọi phương thức wait trong vòng lặp while, và được đánh thức bằng lời gọi notifyAll. Trên slide là sáu từ khóa của phần: critical section, synchronized, monitor, happens-before, wait/notify và volatile.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “Dữ liệu dùng chung”; bước 2 khi đọc “Thay đổi nhìn thấy được”; bước 3 khi đọc “Còn để chờ điều kiện”; bước 4 khi đọc “Trên slide là sáu từ khóa”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:29</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Gói java.util.concurrent có những công cụ thay cho synchronized và wait/notify tự viết, như ReentrantLock, Condition và BlockingQueue. Khi một thread cần giữ nhiều khóa, các bạn nên đọc thêm về deadlock và thứ tự lấy khóa. Bài tập mở rộng là thay BoundedBuffer tự viết bằng ArrayBlockingQueue, rồi so sánh số dòng mã và hành vi khi hàng đợi đầy.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Gói java.util.concurrent”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-12" data-index="12">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:51</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(12)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(12, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Server đã có công cụ để nhiều thread dùng chung dữ liệu an toàn. Nhưng tạo một thread mới cho mỗi kết nối thì không giới hạn được tài nguyên. Phần tiếp theo, về Executor, thread pool và virtual thread, giải quyết vấn đề đó.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V12", "tieu_de": "Đa luồng: synchronized, happens-before và wait/notify", "giong": "vi-VN-NamMinhNeural", "tong": 486.84, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/0ff8342c28b2e284.mp3", "dur": 16.7, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Race", 1], [2.362, "condition", 1], [3.112, "xảy", 1], [3.388, "ra", 1], [3.587, "vì", 1], [3.75, "hai", 1], [3.95, "thread", 1], [4.213, "cùng", 1], [4.438, "đọc,", 1], [4.838, "sửa,", 1], [5.5, "ghi", 1], [5.725, "một", 1], [5.938, "biến.", 1], [7.112, "Phần", 2], [7.362, "này", 2], [7.55, "trả", 2], [7.725, "lời", 2], [7.9, "ba", 2], [8.075, "câu", 2], [8.262, "hỏi:", 2], [8.838, "làm", 2], [9.1, "sao", 2], [9.363, "cho", 2], [9.475, "mỗi", 2], [9.637, "lần", 2], [9.875, "chỉ", 2], [10.0, "một", 2], [10.2, "thread", 2], [10.438, "làm", 2], [10.637, "việc", 2], [10.812, "đó,", 2], [11.338, "làm", 2], [11.6, "sao", 2], [11.825, "thread", 2], [12.062, "khác", 2], [12.3, "chắc", 2], [12.475, "chắn", 2], [12.713, "thấy", 2], [12.887, "giá", 2], [13.1, "trị", 2], [13.3, "mới,", 2], [13.85, "và", 2], [14.012, "một", 2], [14.213, "thread", 2], [14.463, "chờ", 2], [14.65, "điều", 2], [14.8, "kiện", 2], [15.05, "thế", 2], [15.175, "nào", 2], [15.387, "cho", 2], [15.537, "đúng?", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Dữ liệu dùng chung cần loại trừ, nhìn thấy được, và có cách chờ điều kiện", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Ở phần trước”; bước 2 khi đọc “Để sửa lỗi đó”; bước 3 khi đọc “Ngoài ra”; bước 4 khi đọc “Ba yêu cầu đó”.", "start": 17.3, "audio": "audio/19c7573b378021cb.mp3", "dur": 31.94, "words": [[0.1, "Ở", 0], [0.3, "phần", 0], [0.525, "trước,", 0], [1.012, "hai", 0], [1.225, "thread", 0], [1.512, "cùng", 0], [1.712, "tăng", 0], [1.925, "bộ", 0], [2.112, "đếm", 0], [2.325, "requests", 0], [2.788, "và", 0], [2.962, "làm", 0], [3.2, "mất", 0], [3.388, "cập", 0], [3.587, "nhật.", 0], [4.65, "Để", 1], [4.875, "sửa", 1], [5.075, "lỗi", 1], [5.263, "đó,", 1], [5.763, "chương", 1], [6.025, "trình", 1], [6.263, "cần", 1], [6.438, "hai", 1], [6.588, "bảo", 1], [6.775, "đảm:", 1], [7.338, "mỗi", 1], [7.525, "lần", 1], [7.763, "chỉ", 1], [7.888, "một", 1], [8.088, "thread", 1], [8.363, "được", 1], [8.512, "thực", 1], [8.65, "hiện", 1], [8.887, "bước", 1], [9.1, "đọc,", 1], [9.537, "sửa,", 1], [10.25, "ghi,", 1], [10.838, "và", 1], [11.05, "giá", 1], [11.213, "trị", 1], [11.387, "một", 1], [11.575, "thread", 1], [11.863, "đã", 1], [12.012, "ghi", 1], [12.2, "phải", 1], [12.363, "nhìn", 1], [12.588, "thấy", 1], [12.812, "được", 1], [13.025, "ở", 1], [13.125, "thread", 1], [13.35, "khác.", 1], [14.488, "Ngoài", 2], [14.775, "ra,", 2], [15.225, "server", 2], [15.662, "đa", 2], [15.825, "luồng", 2], [16.1, "còn", 2], [16.312, "cần", 2], [16.488, "một", 2], [16.65, "kiểu", 2], [16.837, "phối", 2], [17.012, "hợp", 2], [17.2, "nữa:", 2], [17.8, "một", 2], [18.025, "thread", 2], [18.312, "nhận", 2], [18.525, "kết", 2], [18.75, "nối", 2], [19.012, "và", 2], [19.175, "đưa", 2], [19.35, "vào", 2], [19.512, "hàng", 2], [19.712, "đợi,", 2], [20.238, "còn", 2], [20.462, "thread", 2], [20.688, "xử", 2], [20.875, "lý", 2], [21.113, "phải", 2], [21.3, "chờ", 2], [21.562, "khi", 2], [21.75, "hàng", 2], [21.962, "đợi", 2], [22.125, "rỗng.", 2], [23.337, "Ba", 3], [23.625, "yêu", 3], [23.825, "cầu", 3], [24.025, "đó", 3], [24.275, "dẫn", 3], [24.488, "tới", 3], [24.637, "câu", 3], [24.825, "hỏi", 3], [25.025, "của", 3], [25.163, "phần:", 3], [25.663, "bảo", 3], [25.887, "vệ", 3], [26.075, "dữ", 3], [26.262, "liệu", 3], [26.488, "dùng", 3], [26.725, "chung", 3], [26.962, "bằng", 3], [27.137, "gì,", 3], [27.625, "bảo", 3], [27.85, "đảm", 3], [28.05, "nhìn", 3], [28.238, "thấy", 3], [28.438, "thay", 3], [28.6, "đổi", 3], [28.8, "ra", 3], [28.925, "sao,", 3], [29.462, "và", 3], [29.663, "chờ", 3], [29.887, "điều", 3], [30.038, "kiện", 3], [30.275, "thế", 3], [30.4, "nào", 3], [30.613, "cho", 3], [30.762, "đúng?", 3]], "cues": [0.1, 4.65, 14.488, 23.337], "lang": 0.6}, {"ten": "Slide 2. synchronized cho mỗi lần một thread vào critical section", "loai": "slide", "slide": "S02", "dung": "Hình monitor: năm bước của hình, bước 6 là ô kết luận.\nHiện dần: bước 1 khi đọc “Đoạn mã đọc, sửa, ghi”; bước 2 khi đọc “Khi worker-a gọi”; bước 3 khi đọc “Nếu worker-b cũng gọi”; bước 4 khi đọc “Chỉ khi worker-a ra khỏi”; bước 5 khi đọc “Đối tượng thứ hai trong hình”; bước 6 khi đọc “Vì vậy, các thread”.", "start": 49.84, "audio": "audio/392819ff58ddea8e.mp3", "dur": 51.77, "words": [[0.1, "Đoạn", 0], [0.45, "mã", 0], [0.637, "đọc,", 0], [1.075, "sửa,", 0], [1.738, "ghi", 0], [1.938, "dữ", 0], [2.1, "liệu", 0], [2.312, "dùng", 0], [2.538, "chung", 0], [2.763, "gọi", 0], [2.987, "là", 0], [3.112, "critical", 0], [3.712, "section:", 0], [4.45, "chỉ", 0], [4.612, "một", 0], [4.812, "thread", 0], [5.1, "được", 0], [5.263, "thực", 0], [5.4, "hiện", 0], [5.638, "đoạn", 0], [5.862, "mã", 0], [6.013, "đó", 0], [6.263, "tại", 0], [6.388, "một", 0], [6.588, "thời", 0], [6.75, "điểm.", 0], [7.95, "Java", 1], [8.375, "bảo", 1], [8.6, "vệ", 1], [8.762, "critical", 1], [9.375, "section", 1], [9.875, "bằng", 1], [10.125, "từ", 1], [10.325, "khóa", 1], [10.575, "synchronized,", 1], [11.412, "dựa", 1], [11.662, "trên", 1], [11.912, "monitor,", 1], [12.738, "tức", 1], [12.912, "khóa", 1], [13.2, "đi", 1], [13.325, "kèm", 1], [13.6, "mỗi", 1], [13.787, "đối", 1], [13.95, "tượng", 1], [14.213, "Java.", 1], [15.512, "Khi", 2], [15.812, "worker-a", 2], [16.312, "gọi", 2], [16.512, "phương", 2], [16.725, "thức", 2], [16.938, "increment", 2], [17.413, "có", 2], [17.55, "từ", 2], [17.75, "khóa", 2], [17.988, "synchronized", 2], [18.6, "trên", 2], [18.775, "đối", 2], [18.938, "tượng", 2], [19.2, "counter,", 2], [19.9, "worker-a", 2], [20.45, "giữ", 2], [20.663, "monitor", 2], [21.188, "của", 2], [21.425, "counter.", 2], [22.738, "Nếu", 3], [23.163, "worker-b", 3], [23.663, "cũng", 3], [24.062, "gọi", 3], [24.275, "phương", 3], [24.475, "thức", 3], [24.625, "đó", 3], [24.825, "trên", 3], [25.05, "counter,", 3], [25.775, "worker-b", 3], [26.337, "bị", 3], [26.538, "chặn", 3], [26.837, "ở", 3], [26.925, "lối", 3], [27.175, "vào", 3], [27.337, "để", 3], [27.512, "chờ", 3], [27.788, "monitor.", 3], [29.238, "Chỉ", 4], [29.462, "khi", 4], [29.675, "worker-a", 4], [30.163, "ra", 4], [30.325, "khỏi", 4], [30.587, "phương", 4], [30.812, "thức", 4], [31.012, "và", 4], [31.188, "nhả", 4], [31.45, "monitor,", 4], [32.312, "worker-b", 4], [32.913, "mới", 4], [33.15, "vào", 4], [33.325, "được.", 4], [34.4, "Các", 5], [34.6, "bạn", 5], [34.825, "để", 5], [34.95, "ý:", 5], [35.475, "monitor", 5], [36.1, "gắn", 5], [36.375, "với", 5], [36.487, "đối", 5], [36.675, "tượng,", 5], [37.225, "không", 5], [37.525, "gắn", 5], [37.775, "với", 5], [37.888, "đoạn", 5], [38.112, "mã.", 5], [39.337, "Đối", 6], [39.587, "tượng", 6], [39.837, "thứ", 6], [40.013, "hai", 6], [40.188, "trong", 6], [40.388, "hình,", 6], [40.85, "other,", 6], [41.55, "có", 6], [41.7, "monitor", 6], [42.25, "riêng,", 6], [42.775, "nên", 6], [43.1, "worker-c", 6], [43.7, "gọi", 6], [43.938, "phương", 6], [44.138, "thức", 6], [44.35, "increment", 6], [44.825, "trên", 6], [45.1, "other", 6], [45.425, "vẫn", 6], [45.625, "chạy", 6], [45.8, "cùng", 6], [46.025, "lúc", 6], [46.212, "với", 6], [46.4, "worker-a.", 6], [46.962, "Vì", 7], [47.188, "vậy,", 7], [47.688, "các", 7], [47.837, "thread", 7], [48.112, "muốn", 7], [48.3, "loại", 7], [48.462, "trừ", 7], [48.675, "lẫn", 7], [48.875, "nhau", 7], [49.1, "phải", 7], [49.25, "đồng", 7], [49.438, "bộ", 7], [49.612, "hóa", 7], [49.862, "trên", 7], [50.05, "cùng", 7], [50.237, "một", 7], [50.4, "đối", 7], [50.575, "tượng.", 7]], "cues": [0.1, 15.512, 22.738, 29.238, 39.337, 46.962], "lang": 2.6}, {"ten": "Slide 3. Nhả rồi lấy cùng một monitor tạo quan hệ happens-before", "loai": "slide", "slide": "S03", "dung": "Hình happens-before: bốn bước của hình, bước 5 là ô kết luận. Kết quả chạy thử của chương trình StopFlag ở results/StopFlag.txt (README của mã, mục đọc thêm).\nHiện dần: bước 1 khi đọc “Bên trái hình”; bước 2 khi đọc “Sau đó worker-b”; bước 3 khi đọc “Bên phải là trường hợp”; bước 4 khi đọc “Từ khóa volatile”; bước 5 khi đọc “Vì vậy, dữ liệu dùng chung”.", "start": 104.21, "audio": "audio/0e1717e61c741b79.mp3", "dur": 64.42, "words": [[0.1, "Monitor", 0], [0.838, "còn", 0], [1.262, "cho", 0], [1.363, "một", 0], [1.525, "bảo", 0], [1.725, "đảm", 0], [1.925, "nữa:", 0], [2.5, "thay", 0], [2.688, "đổi", 0], [2.925, "của", 0], [3.087, "thread", 0], [3.375, "này", 0], [3.587, "nhìn", 0], [3.825, "thấy", 0], [4.05, "được", 0], [4.263, "ở", 0], [4.338, "thread", 0], [4.562, "kia.", 0], [5.713, "Trình", 1], [6.025, "biên", 1], [6.225, "dịch", 1], [6.425, "và", 1], [6.844, "CPU", 1], [7.263, "được", 1], [7.412, "phép", 1], [7.638, "giữ", 1], [7.812, "giá", 1], [8.012, "trị", 1], [8.262, "trong", 1], [8.438, "thanh", 1], [8.637, "ghi", 1], [8.825, "hay", 1], [8.95, "đổi", 1], [9.125, "thứ", 1], [9.338, "tự", 1], [9.537, "thao", 1], [9.713, "tác,", 1], [10.238, "nên", 1], [10.512, "giá", 1], [10.7, "trị", 1], [10.875, "một", 1], [11.075, "thread", 1], [11.35, "đã", 1], [11.475, "ghi", 1], [11.637, "chưa", 1], [11.85, "chắc", 1], [12.088, "đã", 1], [12.213, "được", 1], [12.387, "thread", 1], [12.625, "khác", 1], [12.9, "nhìn", 1], [13.088, "thấy.", 1], [14.275, "Mô", 2], [14.675, "hình", 2], [14.863, "bộ", 2], [15.05, "nhớ", 2], [15.312, "Java", 2], [15.725, "định", 2], [15.938, "nghĩa", 2], [16.15, "khi", 2], [16.337, "nào", 2], [16.587, "thì", 2], [16.75, "chắc", 2], [16.95, "chắn", 2], [17.175, "nhìn", 2], [17.35, "thấy,", 2], [17.913, "bằng", 2], [18.163, "quan", 2], [18.375, "hệ", 2], [18.562, "happens-before.", 2], [20.3, "Bên", 3], [20.575, "trái", 3], [20.775, "hình,", 3], [21.25, "worker-a", 3], [21.775, "ghi", 3], [21.962, "requests", 3], [22.425, "bằng", 3], [22.663, "42", 3], [23.212, "rồi", 3], [23.387, "thoát", 3], [23.6, "khối", 3], [23.825, "synchronized,", 3], [24.675, "tức", 3], [24.913, "nhả", 3], [25.175, "monitor.", 3], [26.625, "Sau", 4], [26.913, "đó", 4], [27.125, "worker-b", 4], [27.675, "vào", 4], [27.837, "khối", 4], [28.075, "synchronized", 4], [28.725, "trên", 4], [28.913, "cùng", 4], [29.125, "monitor:", 4], [29.938, "lần", 4], [30.15, "nhả", 4], [30.425, "của", 4], [30.637, "worker-a", 4], [31.188, "có", 4], [31.325, "quan", 4], [31.525, "hệ", 4], [31.688, "happens-before", 4], [32.513, "với", 4], [32.638, "lần", 4], [32.837, "lấy", 4], [33.038, "của", 4], [33.288, "worker-b,", 4], [34.138, "nên", 4], [34.45, "worker-b", 4], [34.913, "chắc", 4], [35.15, "chắn", 4], [35.388, "đọc", 4], [35.562, "được", 4], [35.75, "42.", 4], [37.225, "Bên", 5], [37.55, "phải", 5], [37.725, "là", 5], [37.837, "trường", 5], [38.075, "hợp", 5], [38.263, "không", 5], [38.475, "đồng", 5], [38.65, "bộ", 5], [38.812, "hóa:", 5], [39.425, "thread", 5], [39.75, "main", 5], [39.962, "đặt", 5], [40.138, "một", 5], [40.325, "cờ", 5], [40.538, "dừng", 5], [40.788, "bằng", 5], [40.987, "true,", 5], [41.538, "còn", 5], [41.737, "một", 5], [41.913, "thread", 5], [42.125, "khác", 5], [42.4, "lặp", 5], [42.587, "đọc", 5], [42.775, "cờ", 5], [42.962, "đó.", 5], [44.15, "Khi", 6], [44.4, "mình", 6], [44.612, "chạy", 6], [44.8, "thử,", 6], [45.375, "sau", 6], [45.638, "hai", 6], [45.825, "giây", 6], [45.987, "thread", 6], [46.275, "đọc", 6], [46.487, "cờ", 6], [46.725, "vẫn", 6], [46.95, "chưa", 6], [47.175, "dừng.", 6], [48.312, "Từ", 7], [48.587, "khóa", 7], [48.875, "volatile", 7], [49.5, "là", 7], [49.663, "cách", 7], [49.888, "nhẹ", 7], [50.075, "hơn:", 7], [50.575, "lần", 7], [50.825, "ghi", 7], [50.962, "một", 7], [51.138, "biến", 7], [51.375, "volatile", 7], [51.9, "có", 7], [52.013, "quan", 7], [52.2, "hệ", 7], [52.375, "happens-before", 7], [53.237, "với", 7], [53.362, "các", 7], [53.538, "lần", 7], [53.737, "đọc", 7], [53.875, "biến", 7], [54.075, "đó", 7], [54.275, "về", 7], [54.4, "sau,", 7], [54.987, "nhưng", 7], [55.3, "volatile", 7], [55.888, "không", 7], [56.112, "biến", 7], [56.312, "bước", 7], [56.487, "đọc,", 7], [56.913, "sửa,", 7], [57.6, "ghi", 7], [57.788, "thành", 7], [57.975, "một", 7], [58.15, "thao", 7], [58.3, "tác", 7], [58.525, "nguyên", 7], [58.725, "tử.", 7], [59.962, "Vì", 8], [60.212, "vậy,", 8], [60.625, "dữ", 8], [60.825, "liệu", 8], [61.038, "dùng", 8], [61.288, "chung", 8], [61.513, "cần", 8], [61.712, "đồng", 8], [61.9, "bộ", 8], [62.087, "hóa", 8], [62.362, "cả", 8], [62.538, "khi", 8], [62.7, "đọc", 8], [62.875, "lẫn", 8], [63.1, "khi", 8], [63.263, "ghi.", 8]], "cues": [20.3, 26.625, 37.225, 48.312, 59.962], "lang": 2.6}, {"ten": "Slide 4. wait() nhả monitor và chờ, notifyAll() đánh thức thread đang chờ", "loai": "slide", "slide": "S04", "dung": "Hình bounded-buffer: bốn bước của hình, bước 5 là ô kết luận.\nHiện dần: bước 1 khi đọc “Mình dùng một hàng đợi”; bước 2 khi đọc “Khi hàng đợi đầy”; bước 3 khi đọc “Worker lấy một kết nối”; bước 4 khi đọc “Acceptor tỉnh dậy”; bước 5 khi đọc “Cơ chế này”.", "start": 171.23, "audio": "audio/2bc6f097851a7753.mp3", "dur": 46.94, "words": [[0.1, "Yêu", 0], [0.338, "cầu", 0], [0.575, "cuối,", 0], [1.1, "chờ", 0], [1.375, "điều", 0], [1.562, "kiện,", 0], [2.125, "cũng", 0], [2.337, "dựa", 0], [2.55, "trên", 0], [2.825, "monitor.", 0], [4.312, "Mình", 1], [4.662, "dùng", 1], [4.838, "một", 1], [4.987, "hàng", 1], [5.175, "đợi", 1], [5.375, "có", 1], [5.513, "giới", 1], [5.688, "hạn,", 1], [6.175, "tối", 1], [6.4, "đa", 1], [6.588, "hai", 1], [6.75, "phần", 1], [6.975, "tử,", 1], [7.537, "giữa", 1], [7.75, "hai", 1], [7.912, "thread:", 1], [8.488, "thread", 1], [8.762, "nhận", 1], [8.988, "kết", 1], [9.2, "nối,", 1], [9.725, "gọi", 1], [10.0, "là", 1], [10.225, "acceptor,", 1], [11.062, "đưa", 1], [11.287, "kết", 1], [11.512, "nối", 1], [11.725, "vào", 1], [11.863, "bằng", 1], [12.075, "phương", 1], [12.3, "thức", 1], [12.438, "put,", 1], [12.963, "còn", 1], [13.2, "thread", 1], [13.488, "worker", 1], [13.912, "lấy", 1], [14.125, "ra", 1], [14.275, "bằng", 1], [14.488, "phương", 1], [14.713, "thức", 1], [14.875, "take.", 1], [15.988, "Khi", 2], [16.275, "hàng", 2], [16.475, "đợi", 2], [16.663, "đầy,", 2], [17.125, "acceptor", 2], [17.688, "không", 2], [17.925, "đưa", 2], [18.05, "thêm", 2], [18.262, "được,", 2], [18.688, "nên", 2], [19.012, "gọi", 2], [19.262, "phương", 2], [19.512, "thức", 2], [19.675, "wait.", 2], [20.837, "Lời", 3], [21.125, "gọi", 3], [21.35, "wait", 3], [21.512, "nhả", 3], [21.762, "monitor", 3], [22.337, "của", 3], [22.488, "hàng", 3], [22.7, "đợi", 3], [22.9, "rồi", 3], [23.087, "chờ,", 3], [23.637, "để", 3], [23.837, "thread", 3], [24.075, "khác", 3], [24.312, "vào", 3], [24.5, "được.", 3], [25.575, "Worker", 4], [26.1, "lấy", 4], [26.25, "một", 4], [26.413, "kết", 4], [26.613, "nối", 4], [26.788, "ra,", 4], [27.262, "rồi", 4], [27.475, "gọi", 4], [27.688, "phương", 4], [27.887, "thức", 4], [28.087, "notifyAll", 4], [28.938, "để", 4], [29.075, "đánh", 4], [29.262, "thức", 4], [29.475, "mọi", 4], [29.65, "thread", 4], [29.938, "đang", 4], [30.15, "chờ", 4], [30.387, "trên", 4], [30.613, "monitor", 4], [31.113, "đó.", 4], [32.312, "Acceptor", 5], [32.837, "tỉnh", 5], [33.087, "dậy,", 5], [33.587, "lấy", 5], [33.812, "lại", 5], [34.013, "monitor,", 5], [34.862, "kiểm", 5], [35.075, "tra", 5], [35.263, "lại", 5], [35.425, "điều", 5], [35.575, "kiện,", 5], [36.138, "thấy", 5], [36.3, "còn", 5], [36.525, "chỗ", 5], [36.812, "thì", 5], [36.975, "đưa", 5], [37.125, "kết", 5], [37.375, "nối", 5], [37.55, "mới", 5], [37.788, "vào.", 5], [38.938, "Cơ", 6], [39.112, "chế", 6], [39.3, "này", 6], [39.487, "gọi", 6], [39.688, "là", 6], [39.837, "wait/notify,", 6], [40.975, "và", 6], [41.175, "chiều", 6], [41.375, "ngược", 6], [41.587, "lại", 6], [41.75, "cũng", 6], [41.95, "vậy:", 6], [42.462, "hàng", 6], [42.688, "đợi", 6], [42.85, "rỗng", 6], [43.112, "thì", 6], [43.325, "worker", 6], [43.712, "chờ,", 6], [44.288, "lần", 6], [44.562, "put", 6], [44.812, "tiếp", 6], [45.038, "theo", 6], [45.212, "đánh", 6], [45.413, "thức", 6], [45.625, "worker.", 6]], "cues": [4.312, 15.988, 25.575, 32.312, 38.938], "lang": 2.6}, {"ten": "Slide 5. Bộ đếm có synchronized cho đúng 2 000 000 ở mọi lần chạy", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, kết quả phía dưới. Highlight hai từ khóa synchronized khi đọc tới.\nHiện dần: bước 1 khi đọc “Kết quả: cả ba lần”.", "start": 220.77, "audio": "audio/e58578967eb276b8.mp3", "dur": 39.6, "words": [[0.1, "Bây", 0], [0.375, "giờ", 0], [0.575, "mình", 0], [0.863, "áp", 0], [1.025, "dụng", 0], [1.288, "synchronized", 0], [1.95, "cho", 0], [2.087, "bộ", 0], [2.3, "đếm", 0], [2.587, "của", 0], [2.763, "phần", 0], [3.0, "trước.", 0], [4.112, "Lớp", 1], [4.412, "CounterSafe", 1], [5.037, "đặt", 1], [5.188, "bước", 1], [5.388, "tăng", 1], [5.625, "requests", 1], [6.062, "trong", 1], [6.25, "phương", 1], [6.45, "thức", 1], [6.662, "increment", 1], [7.15, "có", 1], [7.287, "từ", 1], [7.475, "khóa", 1], [7.713, "synchronized,", 1], [8.562, "và", 1], [8.8, "phương", 1], [9.012, "thức", 1], [9.213, "get", 1], [9.412, "cũng", 1], [9.588, "được", 1], [9.713, "khai", 1], [9.912, "báo", 1], [10.137, "synchronized,", 1], [10.988, "để", 1], [11.15, "lần", 1], [11.35, "đọc", 1], [11.512, "cuối", 1], [11.65, "nhìn", 1], [11.887, "thấy", 1], [12.062, "mọi", 1], [12.275, "lần", 1], [12.463, "ghi.", 1], [13.575, "Hai", 2], [13.812, "thread", 2], [14.113, "vẫn", 2], [14.35, "tăng", 2], [14.525, "mỗi", 2], [14.688, "thread", 2], [14.988, "một", 2], [15.162, "triệu", 2], [15.375, "lần", 2], [15.6, "như", 2], [15.863, "ở", 2], [15.975, "phần", 2], [16.2, "trước.", 2], [17.312, "Các", 3], [17.512, "bạn", 3], [17.725, "thử", 3], [17.925, "đoán", 3], [18.188, "lần", 3], [18.375, "này", 3], [18.575, "kết", 3], [18.8, "quả", 3], [19.025, "thế", 3], [19.163, "nào.", 3], [20.312, "Kết", 4], [20.525, "quả:", 4], [21.125, "cả", 4], [21.3, "ba", 4], [21.5, "lần", 4], [21.738, "chạy", 4], [22.025, "đều", 4], [22.2, "đúng", 4], [22.425, "hai", 4], [22.613, "triệu.", 4], [23.812, "Còn", 5], [24.087, "với", 5], [24.2, "cấu", 5], [24.387, "trúc", 5], [24.613, "dữ", 5], [24.762, "liệu", 5], [24.975, "dùng", 5], [25.225, "chung", 5], [25.438, "phức", 5], [25.613, "tạp", 5], [25.825, "hơn,", 5], [26.312, "như", 5], [26.538, "một", 5], [26.7, "bảng", 5], [26.925, "tra", 5], [27.113, "cứu", 5], [27.363, "nhiều", 5], [27.6, "thread", 5], [27.825, "cùng", 5], [28.012, "đọc", 5], [28.175, "ghi,", 5], [28.675, "thư", 5], [28.863, "viện", 5], [29.075, "Java", 5], [29.462, "có", 5], [29.6, "sẵn", 5], [29.8, "lớp", 5], [30.038, "an", 5], [30.225, "toàn", 5], [30.438, "đồng", 5], [30.613, "thời", 5], [30.812, "như", 5], [31.012, "ConcurrentHashMap.", 5], [32.95, "Các", 6], [33.175, "lớp", 6], [33.375, "đó", 6], [33.625, "đã", 6], [33.725, "được", 6], [33.9, "thiết", 6], [34.087, "kế", 6], [34.325, "và", 6], [34.45, "kiểm", 6], [34.7, "thử", 6], [34.938, "cho", 6], [35.087, "truy", 6], [35.25, "cập", 6], [35.438, "đồng", 6], [35.638, "thời,", 6], [36.175, "nên", 6], [36.487, "dùng", 6], [36.725, "chúng", 6], [36.925, "an", 6], [37.112, "toàn", 6], [37.375, "hơn", 6], [37.6, "tự", 6], [37.775, "đồng", 6], [37.987, "bộ", 6], [38.188, "hóa", 6], [38.4, "lại.", 6]], "cues": [20.312], "lang": 9.6}, {"ten": "Slide 6. Hàng đợi đầy thì put() chờ đến khi worker lấy bớt", "loai": "slide", "slide": "S06", "dung": "Mã phía trên, kết quả phía dưới; dòng 6 và dòng 8 của kết quả được tô nền (hai lần put phải chờ). Chương trình chạy là BufferDemo; thời điểm in theo thứ tự thời gian.\nHiện dần: bước 1 khi đọc “Mình chạy với hàng đợi”.", "start": 269.97, "audio": "audio/052cad4854133519.mp3", "dur": 34.7, "words": [[0.1, "Trong", 0], [0.412, "mã", 0], [0.625, "của", 0], [0.762, "hàng", 0], [0.938, "đợi,", 0], [1.425, "phương", 0], [1.688, "thức", 0], [1.875, "put", 0], [2.1, "kiểm", 0], [2.362, "tra", 0], [2.55, "điều", 0], [2.675, "kiện", 0], [2.938, "đầy", 0], [3.125, "trong", 0], [3.325, "vòng", 0], [3.525, "lặp", 0], [3.712, "while,", 0], [4.213, "và", 0], [4.388, "còn", 0], [4.612, "đầy", 0], [4.8, "thì", 0], [4.95, "gọi", 0], [5.15, "phương", 0], [5.4, "thức", 0], [5.562, "wait.", 0], [6.725, "Khi", 1], [6.963, "có", 1], [7.088, "chỗ,", 1], [7.675, "phương", 1], [7.963, "thức", 1], [8.162, "put", 1], [8.387, "đưa", 1], [8.55, "phần", 1], [8.812, "tử", 1], [9.062, "vào", 1], [9.213, "rồi", 1], [9.4, "gọi", 1], [9.6, "phương", 1], [9.8, "thức", 1], [10.037, "notifyAll.", 1], [11.8, "Phương", 2], [12.125, "thức", 2], [12.3, "take", 2], [12.562, "viết", 2], [12.775, "đối", 2], [12.975, "xứng:", 2], [13.537, "hàng", 2], [13.787, "đợi", 2], [13.963, "rỗng", 2], [14.225, "thì", 2], [14.363, "chờ,", 2], [14.9, "lấy", 2], [15.113, "được", 2], [15.25, "phần", 2], [15.488, "tử", 2], [15.8, "thì", 2], [15.975, "đánh", 2], [16.175, "thức", 2], [16.375, "thread", 2], [16.663, "đang", 2], [16.875, "chờ.", 2], [18.038, "Mình", 3], [18.425, "chạy", 3], [18.65, "với", 3], [18.762, "hàng", 3], [18.95, "đợi", 3], [19.137, "hai", 3], [19.288, "phần", 3], [19.512, "tử:", 3], [20.137, "acceptor", 3], [20.788, "đưa", 3], [20.975, "vào", 3], [21.137, "năm", 3], [21.337, "kết", 3], [21.538, "nối,", 3], [22.05, "còn", 3], [22.363, "worker", 3], [22.738, "xử", 3], [22.925, "lý", 3], [23.137, "mỗi", 3], [23.337, "kết", 3], [23.562, "nối", 3], [23.762, "300", 3], [24.225, "mili", 3], [24.55, "giây.", 3], [25.688, "Các", 4], [25.887, "bạn", 4], [26.137, "để", 4], [26.25, "ý", 4], [26.45, "dòng", 4], [26.663, "đưa", 4], [26.775, "kết", 4], [27.025, "nối", 4], [27.188, "thứ", 4], [27.337, "tư", 4], [27.538, "vào", 4], [27.7, "hàng", 4], [27.9, "đợi:", 4], [28.438, "acceptor", 4], [28.975, "phải", 4], [29.15, "chờ", 4], [29.363, "khoảng", 4], [29.637, "300", 4], [30.025, "mili", 4], [30.312, "giây,", 4], [30.837, "vì", 4], [31.025, "hàng", 4], [31.212, "đợi", 4], [31.375, "đầy", 4], [31.6, "cho", 4], [31.725, "đến", 4], [31.9, "khi", 4], [32.15, "worker", 4], [32.6, "lấy", 4], [32.775, "kết", 4], [33.038, "nối", 4], [33.212, "thứ", 4], [33.413, "hai", 4], [33.6, "ra.", 4]], "cues": [18.038], "lang": 9.6}, {"ten": "Slide 7. wait() phải nằm trong while: thread tỉnh dậy chưa chắc điều kiện đã đúng", "loai": "slide", "slide": "S07", "dung": "Mã phía trên, kết quả phía dưới. Sau câu \"nhận được gì\", dừng khoảng 2 giây trước khi khung kết quả hiện. Thứ tự worker-1 và worker-2 có thể đổi giữa các lần chạy; luôn có một worker nhận ngoại lệ.\nHiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Lý do là”; bước 3 khi đọc “Ngoài ra”.", "start": 314.27, "audio": "audio/a0b0a933e6ffd8bc.mp3", "dur": 46.82, "words": [[0.1, "Lỗi", 0], [0.438, "hay", 0], [0.575, "gặp", 0], [0.775, "nhất", 0], [0.988, "với", 0], [1.175, "wait", 0], [1.462, "là", 0], [1.562, "đặt", 0], [1.738, "lời", 0], [1.962, "gọi", 0], [2.175, "đó", 0], [2.425, "trong", 0], [2.712, "if", 0], [2.875, "thay", 0], [3.075, "vì", 0], [3.25, "while.", 0], [4.425, "Mình", 1], [4.787, "viết", 1], [4.987, "một", 1], [5.138, "phiên", 1], [5.35, "bản", 1], [5.537, "khác", 1], [5.775, "của", 1], [5.9, "phương", 1], [6.125, "thức", 1], [6.287, "take,", 1], [6.763, "kiểm", 1], [6.975, "tra", 1], [7.15, "điều", 1], [7.275, "kiện", 1], [7.537, "bằng", 1], [7.75, "if,", 1], [8.188, "cho", 1], [8.412, "hai", 1], [8.625, "worker", 1], [9.05, "cùng", 1], [9.512, "chờ", 1], [9.738, "trên", 1], [9.925, "hàng", 1], [10.113, "đợi", 1], [10.275, "rỗng,", 1], [10.825, "rồi", 1], [11.1, "đưa", 1], [11.275, "vào", 1], [11.425, "đúng", 1], [11.625, "một", 1], [11.775, "kết", 1], [11.963, "nối.", 1], [13.137, "Các", 2], [13.338, "bạn", 2], [13.575, "đoán", 2], [13.8, "hai", 2], [14.037, "worker", 2], [14.488, "nhận", 2], [14.8, "được", 2], [14.963, "gì.", 2], [16.1, "Kết", 3], [16.3, "quả:", 3], [16.913, "worker-1", 3], [17.637, "lấy", 3], [17.863, "được", 3], [18.025, "kết", 3], [18.225, "nối,", 3], [18.738, "còn", 3], [19.05, "worker-2", 3], [19.675, "nhận", 3], [19.913, "NoSuchElementException.", 3], [22.25, "Lý", 4], [22.562, "do", 4], [22.75, "là", 4], [22.85, "lời", 4], [23.05, "gọi", 4], [23.312, "notifyAll", 4], [24.188, "đánh", 4], [24.375, "thức", 4], [24.562, "cả", 4], [24.762, "hai", 4], [24.988, "worker.", 4], [26.312, "Worker-1", 5], [27.175, "lấy", 5], [27.375, "phần", 5], [27.587, "tử", 5], [27.788, "trước,", 5], [28.312, "còn", 5], [28.575, "worker-2", 5], [29.212, "không", 5], [29.413, "kiểm", 5], [29.65, "tra", 5], [29.825, "lại", 5], [30.0, "điều", 5], [30.15, "kiện,", 5], [30.725, "nên", 5], [31.0, "lấy", 5], [31.212, "từ", 5], [31.35, "một", 5], [31.512, "hàng", 5], [31.75, "đợi", 5], [31.962, "đã", 5], [32.1, "rỗng.", 5], [33.325, "Ngoài", 6], [33.638, "ra,", 6], [34.087, "đặc", 6], [34.3, "tả", 6], [34.513, "Java", 6], [34.875, "cho", 6], [35.025, "phép", 6], [35.263, "thread", 6], [35.513, "tỉnh", 6], [35.763, "dậy", 6], [35.95, "khỏi", 6], [36.2, "wait", 6], [36.462, "mà", 6], [36.6, "không", 6], [36.825, "do", 6], [37.0, "ai", 6], [37.15, "đánh", 6], [37.325, "thức,", 6], [37.763, "gọi", 6], [38.038, "là", 6], [38.188, "spurious", 6], [38.737, "wakeup,", 6], [39.438, "hay", 6], [39.663, "đánh", 6], [39.862, "thức", 6], [40.062, "giả.", 6], [41.362, "Vì", 7], [41.65, "cả", 7], [41.812, "hai", 7], [41.975, "lý", 7], [42.138, "do,", 7], [42.675, "lời", 7], [42.925, "gọi", 7], [43.163, "wait", 7], [43.337, "luôn", 7], [43.538, "phải", 7], [43.725, "nằm", 7], [43.962, "trong", 7], [44.175, "vòng", 7], [44.388, "lặp", 7], [44.587, "while", 7], [44.775, "kiểm", 7], [45.038, "tra", 7], [45.263, "lại", 7], [45.45, "điều", 7], [45.6, "kiện.", 7]], "cues": [16.1, 22.25, 33.325], "lang": 9.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án C được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 370.69, "audio": "audio/35f78dd691fa4f19.mp3", "dur": 4.03, "words": [[0.1, "Lỗi", 0], [0.438, "của", 0], [0.738, "worker-2", 0], [1.35, "vừa", 0], [1.525, "rồi", 0], [1.8, "là", 0], [1.95, "chất", 0], [2.163, "liệu", 0], [2.388, "cho", 0], [2.525, "câu", 0], [2.7, "hỏi", 0], [2.9, "đầu.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/667b80015a008acb.mp3", "dur2": 11.47, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.688, "là", 0], [0.8, "C.", 0], [1.163, "Phương", 1], [1.475, "án", 1], [1.712, "A", 1], [1.85, "nghe", 1], [2.025, "hợp", 1], [2.2, "lý", 1], [2.462, "vì", 1], [2.6, "mẫu", 1], [2.812, "mã", 1], [3.0, "nào", 1], [3.237, "cũng", 1], [3.438, "đặt", 1], [3.6, "wait", 1], [3.812, "trong", 1], [4.025, "vòng", 1], [4.225, "lặp,", 1], [4.65, "nhưng", 1], [4.963, "Java", 1], [5.375, "không", 1], [5.588, "bắt", 1], [5.713, "buộc", 1], [5.862, "điều", 1], [6.037, "đó:", 1], [6.575, "dùng", 1], [6.838, "if", 1], [7.025, "vẫn", 1], [7.225, "biên", 1], [7.425, "dịch", 1], [7.575, "được,", 1], [7.987, "và", 1], [8.175, "chỉ", 1], [8.375, "sai", 1], [8.562, "khi", 1], [8.725, "chạy,", 1], [9.275, "như", 1], [9.537, "worker-2", 1], [10.225, "vừa", 1], [10.387, "gặp.", 1]], "dap_an": "C", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án A.", "start": 392.79, "audio": "audio/39047ba132e7f6ce.mp3", "dur": 4.66, "words": [[0.1, "Câu", 0], [0.3, "tiếp", 0], [0.55, "theo", 0], [0.713, "dùng", 0], [0.95, "lại", 0], [1.137, "hai", 0], [1.312, "đối", 0], [1.462, "tượng", 0], [1.738, "counter", 0], [2.188, "và", 0], [2.375, "other", 0], [2.788, "trong", 0], [2.987, "hình", 0], [3.2, "monitor.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/16007a0cd15accb6.mp3", "dur2": 13.03, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.65, "là", 0], [0.838, "A.", 0], [1.188, "Phương", 1], [1.512, "án", 1], [1.688, "B", 1], [1.9, "là", 1], [2.038, "hiểu", 1], [2.225, "nhầm", 1], [2.462, "phổ", 1], [2.65, "biến:", 1], [3.15, "synchronized", 1], [3.837, "không", 1], [4.075, "khóa", 1], [4.275, "đoạn", 1], [4.475, "mã,", 1], [5.025, "mà", 1], [5.275, "khóa", 1], [5.525, "monitor", 1], [6.088, "của", 1], [6.225, "đối", 1], [6.375, "tượng", 1], [6.638, "đang", 1], [6.838, "gọi.", 1], [8.012, "Hai", 2], [8.262, "đối", 2], [8.4, "tượng", 2], [8.637, "khác", 2], [8.875, "nhau", 2], [9.088, "có", 2], [9.225, "hai", 2], [9.412, "monitor,", 2], [10.287, "nên", 2], [10.562, "hai", 2], [10.762, "thread", 2], [11.0, "không", 2], [11.25, "loại", 2], [11.438, "trừ", 2], [11.662, "lẫn", 2], [11.863, "nhau.", 2]], "dap_an": "A", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “Dữ liệu dùng chung”; bước 2 khi đọc “Thay đổi nhìn thấy được”; bước 3 khi đọc “Còn để chờ điều kiện”; bước 4 khi đọc “Trên slide là sáu từ khóa”.", "start": 417.08, "audio": "audio/bc0300f3666650a0.mp3", "dur": 31.51, "words": [[0.1, "Dữ", 0], [0.35, "liệu", 0], [0.562, "dùng", 0], [0.775, "chung", 0], [1.025, "được", 0], [1.15, "bảo", 0], [1.35, "vệ", 0], [1.538, "bằng", 0], [1.738, "synchronized:", 0], [2.625, "trên", 0], [2.888, "cùng", 0], [3.062, "một", 0], [3.2, "đối", 0], [3.362, "tượng,", 0], [3.913, "monitor", 0], [4.525, "chỉ", 0], [4.725, "cho", 0], [4.825, "một", 0], [5.013, "thread", 0], [5.275, "vào", 0], [5.425, "critical", 0], [6.0, "section", 0], [6.5, "tại", 0], [6.675, "một", 0], [6.875, "thời", 0], [7.037, "điểm.", 0], [8.225, "Thay", 1], [8.425, "đổi", 1], [8.575, "nhìn", 1], [8.775, "thấy", 1], [9.012, "được", 1], [9.162, "khi", 1], [9.35, "có", 1], [9.475, "quan", 1], [9.675, "hệ", 1], [9.863, "happens-before,", 1], [11.037, "như", 1], [11.262, "nhả", 1], [11.588, "rồi", 1], [11.75, "lấy", 1], [11.912, "cùng", 1], [12.113, "một", 1], [12.287, "monitor,", 1], [13.15, "hay", 1], [13.35, "ghi", 1], [13.537, "rồi", 1], [13.675, "đọc", 1], [13.85, "một", 1], [14.025, "biến", 1], [14.3, "volatile.", 1], [15.775, "Còn", 2], [16.075, "để", 2], [16.2, "chờ", 2], [16.413, "điều", 2], [16.562, "kiện,", 2], [17.137, "thread", 2], [17.425, "gọi", 2], [17.637, "phương", 2], [17.85, "thức", 2], [18.025, "wait", 2], [18.275, "trong", 2], [18.475, "vòng", 2], [18.675, "lặp", 2], [18.863, "while,", 2], [19.363, "và", 2], [19.538, "được", 2], [19.7, "đánh", 2], [19.887, "thức", 2], [20.062, "bằng", 2], [20.288, "lời", 2], [20.462, "gọi", 2], [20.738, "notifyAll.", 2], [22.488, "Trên", 3], [22.863, "slide", 3], [23.212, "là", 3], [23.312, "sáu", 3], [23.562, "từ", 3], [23.725, "khóa", 3], [23.975, "của", 3], [24.15, "phần:", 3], [24.663, "critical", 3], [25.238, "section,", 3], [25.938, "synchronized,", 3], [26.875, "monitor,", 3], [27.775, "happens-before,", 3], [28.925, "wait/notify", 3], [29.837, "và", 3], [30.025, "volatile.", 3]], "cues": [0.1, 8.225, 15.775, 22.488], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Gói java.util.concurrent”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 449.19, "audio": "audio/83b5029202d32859.mp3", "dur": 22.03, "words": [[0.1, "Gói", 0], [0.425, "java.util.concurrent", 0], [1.913, "có", 0], [2.025, "những", 0], [2.237, "công", 0], [2.425, "cụ", 0], [2.612, "thay", 0], [2.775, "cho", 0], [2.95, "synchronized", 0], [3.6, "và", 0], [3.712, "wait/notify", 0], [4.487, "tự", 0], [4.713, "viết,", 0], [5.213, "như", 0], [5.475, "ReentrantLock,", 0], [6.312, "Condition", 0], [7.075, "và", 0], [7.225, "BlockingQueue.", 0], [8.85, "Khi", 1], [9.125, "một", 1], [9.3, "thread", 1], [9.55, "cần", 1], [9.775, "giữ", 1], [9.95, "nhiều", 1], [10.162, "khóa,", 1], [10.75, "các", 1], [10.925, "bạn", 1], [11.125, "nên", 1], [11.3, "đọc", 1], [11.475, "thêm", 1], [11.738, "về", 1], [11.9, "deadlock", 1], [12.463, "và", 1], [12.662, "thứ", 1], [12.838, "tự", 1], [13.05, "lấy", 1], [13.225, "khóa.", 1], [14.475, "Bài", 2], [14.713, "tập", 2], [14.925, "mở", 2], [15.125, "rộng", 2], [15.4, "là", 2], [15.562, "thay", 2], [15.775, "BoundedBuffer", 2], [16.525, "tự", 2], [16.788, "viết", 2], [16.988, "bằng", 2], [17.262, "ArrayBlockingQueue,", 2], [18.413, "rồi", 2], [18.7, "so", 2], [18.9, "sánh", 2], [19.113, "số", 2], [19.363, "dòng", 2], [19.6, "mã", 2], [19.863, "và", 2], [19.988, "hành", 2], [20.212, "vi", 2], [20.387, "khi", 2], [20.575, "hàng", 2], [20.775, "đợi", 2], [20.938, "đầy.", 2]], "cues": [0.1, 14.475], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 471.82, "audio": "audio/de0e07717effb205.mp3", "dur": 14.42, "words": [[0.1, "Server", 0], [0.613, "đã", 0], [0.725, "có", 0], [0.85, "công", 0], [1.062, "cụ", 0], [1.312, "để", 0], [1.425, "nhiều", 0], [1.637, "thread", 0], [1.925, "dùng", 0], [2.188, "chung", 0], [2.438, "dữ", 0], [2.612, "liệu", 0], [2.862, "an", 0], [3.062, "toàn.", 0], [4.213, "Nhưng", 1], [4.525, "tạo", 1], [4.75, "một", 1], [4.95, "thread", 1], [5.188, "mới", 1], [5.425, "cho", 1], [5.562, "mỗi", 1], [5.75, "kết", 1], [5.963, "nối", 1], [6.225, "thì", 1], [6.475, "không", 1], [6.725, "giới", 1], [6.888, "hạn", 1], [7.138, "được", 1], [7.287, "tài", 1], [7.487, "nguyên.", 1], [8.688, "Phần", 2], [8.963, "tiếp", 2], [9.175, "theo,", 2], [9.65, "về", 2], [9.963, "Executor,", 2], [10.825, "thread", 2], [11.075, "pool", 2], [11.363, "và", 2], [11.5, "virtual", 2], [11.887, "thread,", 2], [12.4, "giải", 2], [12.65, "quyết", 2], [12.887, "vấn", 2], [13.088, "đề", 2], [13.225, "đó.", 2]], "cues": [], "lang": 0.6}], "video_sau": "Đa luồng: Executor, thread pool và virtual thread"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

@@ -1,0 +1,471 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V13 — Đa luồng: Executor, thread pool và virtual thread · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-2/06-executor">Mã</a>
+<h1>V13 · Đa luồng: Executor, thread pool và virtual thread</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 2</div><div class="ten">Đa luồng: Executor, thread pool và virtual thread</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Mỗi kết nối một thread mới thì không giới hạn được tài nguyên</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Mỗi kết nối một thread mới: số thread tăng theo số kết nối, <b>không có giới hạn</b></li><li data-s="2">Mỗi <b>platform thread</b> chiếm một thread hệ điều hành và một stack riêng: nhiều thread thì cạn bộ nhớ, CPU tốn công chuyển qua lại</li><li data-s="3">Cần <b>tách việc gửi tác vụ khỏi việc chạy tác vụ</b>, và có quy tắc khi quá tải</li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> giới hạn số thread thế nào, làm gì khi quá tải, và phục vụ nhiều kết nối chủ yếu chờ I/O ra sao?</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Executor tách gửi tác vụ khỏi chạy tác vụ, thread pool giới hạn số thread</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 560" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Executor tách gửi tác vụ khỏi chạy tác vụ. Thread main gọi execute để gửi tác vụ; tác vụ vào hàng đợi tối đa 5 phần tử; 4 worker thread của pool lấy tác vụ ra chạy. Khi hàng đợi đầy và mọi thread đều bận, saturation policy quyết định: AbortPolicy ném RejectedExecutionException, CallerRunsPolicy chạy tác vụ trên chính thread gửi.">
+  <defs>
+    <marker id="ex-navy" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="ex-err" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#BC2626"/></marker>
+  </defs>
+
+  <!-- ① thread gửi tác vụ -->
+  <g data-s="1">
+    <rect x="40" y="120" width="300" height="130" rx="6" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="190" y="166" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">thread <tspan font-family="Consolas, monospace">main</tspan></text>
+    <text x="190" y="210" text-anchor="middle" font-size="22" fill="#373D4E" font-family="Consolas, monospace">execute(task)</text>
+    <line x1="340" y1="185" x2="472" y2="185" stroke="#051A53" stroke-width="3" marker-end="url(#ex-navy)"/>
+    <text x="406" y="170" text-anchor="middle" font-size="21" fill="#051A53">gửi</text>
+  </g>
+
+  <!-- ② hàng đợi tác vụ -->
+  <g data-s="2">
+    <rect x="480" y="110" width="560" height="150" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="760" y="146" text-anchor="middle" font-size="23" font-weight="500" fill="#6B4E06">hàng đợi tác vụ, tối đa 5</text>
+    <g fill="#FFFFFF" stroke="#8A6508" stroke-width="2">
+      <rect x="505" y="170" width="94" height="66" rx="4"/>
+      <rect x="610" y="170" width="94" height="66" rx="4"/>
+      <rect x="715" y="170" width="94" height="66" rx="4"/>
+      <rect x="820" y="170" width="94" height="66" rx="4"/>
+      <rect x="925" y="170" width="94" height="66" rx="4"/>
+    </g>
+    <g font-size="21" fill="#6B4E06" text-anchor="middle" font-family="Consolas, monospace">
+      <text x="552" y="211">task</text><text x="657" y="211">task</text><text x="762" y="211">task</text><text x="867" y="211">task</text><text x="972" y="211">task</text>
+    </g>
+  </g>
+
+  <!-- ③ pool: 4 worker thread lấy tác vụ ra chạy -->
+  <g data-s="3">
+    <line x1="1040" y1="185" x2="1172" y2="185" stroke="#051A53" stroke-width="3" marker-end="url(#ex-navy)"/>
+    <text x="1106" y="170" text-anchor="middle" font-size="21" fill="#051A53">lấy ra</text>
+    <rect x="1180" y="40" width="540" height="300" rx="8" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1450" y="78" text-anchor="middle" font-size="24" font-weight="500" fill="#051A53">thread pool: 4 worker thread</text>
+    <g fill="#FFFFFF" stroke="#051A53" stroke-width="2">
+      <rect x="1210" y="100" width="230" height="100" rx="4"/>
+      <rect x="1460" y="100" width="230" height="100" rx="4"/>
+      <rect x="1210" y="216" width="230" height="100" rx="4"/>
+      <rect x="1460" y="216" width="230" height="100" rx="4"/>
+    </g>
+    <g font-size="21" fill="#051A53" text-anchor="middle" font-family="Consolas, monospace">
+      <text x="1325" y="144">thread-1</text><text x="1575" y="144">thread-2</text>
+      <text x="1325" y="260">thread-3</text><text x="1575" y="260">thread-4</text>
+    </g>
+    <g font-size="20" fill="#5B6478" text-anchor="middle">
+      <text x="1325" y="178">đang chạy task</text><text x="1575" y="178">đang chạy task</text>
+      <text x="1325" y="294">đang chạy task</text><text x="1575" y="294">đang chạy task</text>
+    </g>
+  </g>
+
+  <!-- ④ đầy: saturation policy -->
+  <g data-s="4">
+    <rect x="480" y="370" width="1240" height="160" rx="6" fill="#FFFFFF" stroke="#BC2626" stroke-width="2.5"/>
+    <text x="510" y="412" font-size="24" font-weight="500" fill="#BC2626">hàng đợi đầy, mọi thread đều bận: saturation policy quyết định</text>
+    <text x="510" y="456" font-size="22" fill="#051A53"><tspan font-family="Consolas, monospace">AbortPolicy</tspan> (mặc định): ném <tspan font-family="Consolas, monospace">RejectedExecutionException</tspan></text>
+    <text x="510" y="496" font-size="22" fill="#051A53"><tspan font-family="Consolas, monospace">CallerRunsPolicy</tspan>: chạy tác vụ trên chính thread gửi</text>
+    <path d="M480,480 H190 V258" fill="none" stroke="#BC2626" stroke-width="3" marker-end="url(#ex-err)"/>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b>Executor</b> nhận tác vụ, <b>thread pool</b> chạy tác vụ bằng một số thread có giới hạn; hàng đợi đầy thì <b>saturation policy</b> quyết định.</p></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Virtual thread nhả carrier thread khi chờ I/O</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 560" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Platform thread và virtual thread. Bên trái: mỗi platform thread là một thread của hệ điều hành; thread chờ I/O thì thread hệ điều hành cũng chờ. Bên phải: nhiều virtual thread do JVM lập lịch trên ít carrier thread; virtual thread chờ I/O thì nhả carrier, carrier chạy virtual thread khác.">
+  <defs>
+    <marker id="pv-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- ① platform thread: một thread Java, một thread hệ điều hành -->
+  <g data-s="1">
+    <text x="40" y="44" font-size="26" font-weight="500" fill="#051A53">Platform thread</text>
+    <g fill="#FFFFFF" stroke="#051A53" stroke-width="2.5">
+      <rect x="40" y="76" width="220" height="70" rx="4"/>
+      <rect x="290" y="76" width="220" height="70" rx="4"/>
+      <rect x="540" y="76" width="220" height="70" rx="4"/>
+    </g>
+    <g font-size="22" fill="#051A53" text-anchor="middle">
+      <text x="150" y="119">thread Java</text><text x="400" y="119">thread Java</text><text x="650" y="119">thread Java</text>
+    </g>
+    <g stroke="#051A53" stroke-width="2.5">
+      <line x1="150" y1="146" x2="150" y2="206"/><line x1="400" y1="146" x2="400" y2="206"/><line x1="650" y1="146" x2="650" y2="206"/>
+    </g>
+    <g fill="#EAF2FC" stroke="#1F5FA8" stroke-width="2.5">
+      <rect x="40" y="206" width="220" height="70" rx="4"/>
+      <rect x="290" y="206" width="220" height="70" rx="4"/>
+      <rect x="540" y="206" width="220" height="70" rx="4"/>
+    </g>
+    <g font-size="21" fill="#123A6B" text-anchor="middle">
+      <text x="150" y="248">thread hệ điều hành</text><text x="400" y="248">thread hệ điều hành</text><text x="650" y="248">thread hệ điều hành</text>
+    </g>
+    <line x1="400" y1="276" x2="400" y2="300" stroke="#8A6508" stroke-width="2.5"/>
+    <rect x="250" y="300" width="300" height="56" rx="4" fill="#FFF6DD" stroke="#8A6508" stroke-width="2"/>
+    <text x="400" y="336" text-anchor="middle" font-size="21" fill="#6B4E06">chờ I/O: cả hai cùng chờ</text>
+    <text x="400" y="410" text-anchor="middle" font-size="22" fill="#373D4E">một thread Java giữ một thread hệ điều hành,</text>
+    <text x="400" y="442" text-anchor="middle" font-size="22" fill="#373D4E">kể cả khi chỉ đang chờ</text>
+  </g>
+
+  <!-- ② virtual thread: nhiều virtual thread trên ít carrier thread -->
+  <g data-s="2">
+    <text x="900" y="44" font-size="26" font-weight="500" fill="#051A53">Virtual thread</text>
+    <g fill="#EEF9F0" stroke="#2F855A" stroke-width="2">
+      <rect x="900" y="76" width="150" height="56" rx="4"/>
+      <rect x="1065" y="76" width="150" height="56" rx="4"/>
+      <rect x="1230" y="76" width="150" height="56" rx="4"/>
+      <rect x="1395" y="76" width="150" height="56" rx="4"/>
+      <rect x="1560" y="76" width="150" height="56" rx="4"/>
+    </g>
+    <g font-size="21" fill="#22603F" text-anchor="middle">
+      <text x="975" y="111">virtual</text><text x="1140" y="111">virtual</text><text x="1305" y="111">virtual</text><text x="1470" y="111">virtual</text><text x="1635" y="111">virtual</text>
+    </g>
+    <text x="1720" y="44" text-anchor="end" font-size="21" fill="#5B6478">JVM lập lịch: mỗi lúc một virtual chạy trên một carrier</text>
+    <g fill="#EAF2FC" stroke="#1F5FA8" stroke-width="2.5">
+      <rect x="1000" y="206" width="280" height="70" rx="4"/>
+      <rect x="1330" y="206" width="280" height="70" rx="4"/>
+    </g>
+    <g font-size="22" fill="#123A6B" text-anchor="middle">
+      <text x="1140" y="248">carrier thread</text><text x="1470" y="248">carrier thread</text>
+    </g>
+    <g stroke="#2F855A" stroke-width="2.5">
+      <line x1="975" y1="132" x2="1100" y2="204"/>
+      <line x1="1470" y1="132" x2="1450" y2="204"/>
+    </g>
+  </g>
+
+  <!-- ③ chờ I/O: virtual thread nhả carrier -->
+  <g data-s="3">
+    <line x1="1060" y1="276" x2="1060" y2="300" stroke="#8A6508" stroke-width="2.5" stroke-dasharray="6 5"/>
+    <rect x="910" y="300" width="300" height="56" rx="4" fill="#FFF6DD" stroke="#8A6508" stroke-width="2"/>
+    <text x="1060" y="336" text-anchor="middle" font-size="21" fill="#6B4E06">virtual chờ I/O: rời carrier</text>
+    <line x1="1305" y1="132" x2="1200" y2="200" stroke="#2F855A" stroke-width="3" marker-end="url(#pv-ok)"/>
+    <text x="1305" y="410" text-anchor="middle" font-size="22" fill="#373D4E">carrier rảnh chạy virtual thread khác:</text>
+    <text x="1305" y="442" text-anchor="middle" font-size="22" fill="#373D4E">hàng nghìn virtual thread chờ I/O trên vài carrier</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Virtual thread</b>: JVM lập lịch trên ít <b>carrier thread</b>; chờ I/O thì nhả carrier. Hợp với tác vụ <b>chủ yếu chờ</b>, không làm phép tính chạy nhanh hơn.</p></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Pool 4 thread, hàng đợi 5 tác vụ: tác vụ thứ 10 chạy trên thread main</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">ThreadPoolExecutor</span> pool = <span class="hl-k">new</span> <span class="hl-m">ThreadPoolExecutor</span>(
+        <span class="hl-n">4</span>, <span class="hl-n">4</span>, <span class="hl-n">0</span>, <span class="hl-t">TimeUnit</span>.<span class="hl-t">SECONDS</span>,                    <span class="hl-c">// đúng 4 thread</span>
+        <span class="hl-k">new</span> <span class="hl-t">ArrayBlockingQueue</span>&lt;&gt;(<span class="hl-n">5</span>),                  <span class="hl-c">// hàng đợi tối đa 5 tác vụ</span>
+        <span class="hl-k">new</span> <span class="hl-t">ThreadPoolExecutor</span>.<span class="hl-m">CallerRunsPolicy</span>());   <span class="hl-c">// đầy: chạy trên thread gọi execute</span>
+<span class="hl-k">for</span> (<span class="hl-k">int</span> i = <span class="hl-n">1</span>; i &lt;= <span class="hl-n">10</span>; i++) {
+    <span class="hl-k">int</span> task = i;
+    pool.<span class="hl-m">execute</span>(() -&gt; <span class="hl-m">work</span>(task));  <span class="hl-c">// gửi tác vụ; pool quyết định thread nào chạy</span>
+}
+pool.<span class="hl-m">shutdown</span>();  <span class="hl-c">// không nhận tác vụ mới, chạy nốt tác vụ đã nhận</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>   6 ms  task 1 runs on pool-1-thread-1
+   6 ms  task 2 runs on pool-1-thread-2
+   6 ms  task 3 runs on pool-1-thread-3
+<span class="noi-bat">   6 ms  task 10 runs on main</span>
+   6 ms  task 4 runs on pool-1-thread-4
+ 542 ms  task 6 runs on pool-1-thread-1
+ 542 ms  task 5 runs on pool-1-thread-4
+ 542 ms  task 8 runs on pool-1-thread-3
+ 542 ms  task 7 runs on pool-1-thread-2
+1053 ms  task 9 runs on pool-1-thread-1</pre></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>10 000 virtual thread cùng chờ 1 giây, xong trong khoảng 1 giây</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">try</span> (<span class="hl-t">ExecutorService</span> executor = <span class="hl-t">Executors</span>.<span class="hl-m">newVirtualThreadPerTaskExecutor</span>()) {  <span class="hl-c">// mỗi tác vụ một virtual thread</span>
+    <span class="hl-k">for</span> (<span class="hl-k">int</span> i = <span class="hl-n">0</span>; i &lt; <span class="hl-n">10_000</span>; i++) {
+        executor.<span class="hl-m">submit</span>(() -&gt; {
+            carriers.<span class="hl-m">add</span>(<span class="hl-m">carrierOf</span>(<span class="hl-t">Thread</span>.<span class="hl-m">currentThread</span>()));
+            <span class="hl-t">Thread</span>.<span class="hl-m">sleep</span>(<span class="hl-n">1_000</span>);  <span class="hl-c">// chờ: virtual thread nhả carrier thread</span>
+            <span class="hl-k">return</span> <span class="hl-k">null</span>;
+        });
+    }
+}  <span class="hl-c">// close(): chờ mọi tác vụ xong</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>10000 tasks done in 1102 ms
+carrier threads used: 8 (CPU cores: 8)</pre></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>Hai cấu hình mặc định của Executors không giới hạn tài nguyên</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">var</span> fixed = (<span class="hl-t">ThreadPoolExecutor</span>) <span class="hl-t">Executors</span>.<span class="hl-m">newFixedThreadPool</span>(<span class="hl-n">4</span>);  <span class="hl-c">// hàng đợi không giới hạn</span>
+<span class="hl-k">var</span> cached = (<span class="hl-t">ThreadPoolExecutor</span>) <span class="hl-t">Executors</span>.<span class="hl-m">newCachedThreadPool</span>();  <span class="hl-c">// số thread không giới hạn</span>
+<span class="hl-t">Runnable</span> slow = () -&gt; <span class="hl-t">PoolDemo</span>.<span class="hl-m">sleep</span>(<span class="hl-n">1_000</span>);
+<span class="hl-k">for</span> (<span class="hl-k">int</span> i = <span class="hl-n">0</span>; i &lt; <span class="hl-n">2_000</span>; i++) {
+    fixed.<span class="hl-m">execute</span>(slow);
+    cached.<span class="hl-m">execute</span>(slow);
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>fixed:  threads = 4, queued tasks = 1996
+cached: threads = 2000, queued tasks = 0</pre></div><ul class="y-nho"><li data-s="2">Không pool nào <b>từ chối</b> tác vụ: quá tải chỉ lộ ra khi hết bộ nhớ hoặc hết thread</li><li data-s="3">Dùng <code>ThreadPoolExecutor</code>, khai báo rõ <b>số thread tối đa, dung lượng hàng đợi, saturation policy</b></li></ul></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Thread pool có 4 thread, hàng đợi tối đa 5 tác vụ, saturation policy là CallerRunsPolicy. Thread main gửi liên tiếp 10 tác vụ chạy lâu. Tác vụ thứ 10 chạy trên thread nào?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Trên thread đầu tiên của pool xong việc.</div></div><div class=""><span>B</span><div>Trên một thread thứ năm mà pool tạo thêm.</div></div><div class=""><span>C</span><div>Không chạy: bị từ chối với RejectedExecutionException.</div></div><div class="dung"><span>D</span><div>Trên thread main, thread đã gửi tác vụ.</div></div></div><div class="giai-thich">Tác vụ 1–4 chiếm 4 thread, 5–9 lấp đầy hàng đợi. Tác vụ 10 gặp hàng đợi đầy và pool đã đủ số thread tối đa, nên saturation policy quyết định: CallerRunsPolicy chạy tác vụ trên thread gửi. Nếu là AbortPolicy (mặc định) thì mới bị từ chối.</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Thread pool có 4 thread, hàng đợi tối đa 5 tác vụ, saturation policy là CallerRunsPolicy. Thread main gửi liên tiếp 10 tác vụ chạy lâu. Tác vụ thứ 10 chạy trên thread nào?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Trên thread đầu tiên của pool xong việc.</div></div><div class=""><span>B</span><div>Trên một thread thứ năm mà pool tạo thêm.</div></div><div class=""><span>C</span><div>Không chạy: bị từ chối với RejectedExecutionException.</div></div><div class="dung"><span>D</span><div>Trên thread main, thread đã gửi tác vụ.</div></div></div><div class="giai-thich">Tác vụ 1–4 chiếm 4 thread, 5–9 lấp đầy hàng đợi. Tác vụ 10 gặp hàng đợi đầy và pool đã đủ số thread tối đa, nên saturation policy quyết định: CallerRunsPolicy chạy tác vụ trên thread gửi. Nếu là AbortPolicy (mặc định) thì mới bị từ chối.</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Loại tác vụ nào có lợi nhất khi chuyển từ platform thread sang virtual thread?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Tác vụ chủ yếu chờ I/O, như xử lý một kết nối đang chờ client gửi dữ liệu.</div></div><div class=""><span>B</span><div>Tác vụ tính toán nặng, dùng CPU liên tục.</div></div><div class=""><span>C</span><div>Tác vụ cần chạy nhanh hơn trên một lõi CPU.</div></div><div class=""><span>D</span><div>Một tác vụ duy nhất, chạy rất lâu.</div></div></div><div class="giai-thich">Virtual thread nhả carrier thread khi chờ, nên nhiều tác vụ chờ I/O dùng chung vài carrier. Virtual thread không làm phép tính nhanh hơn; tác vụ nặng CPU vẫn bị giới hạn bởi số lõi.</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Loại tác vụ nào có lợi nhất khi chuyển từ platform thread sang virtual thread?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Tác vụ chủ yếu chờ I/O, như xử lý một kết nối đang chờ client gửi dữ liệu.</div></div><div class=""><span>B</span><div>Tác vụ tính toán nặng, dùng CPU liên tục.</div></div><div class=""><span>C</span><div>Tác vụ cần chạy nhanh hơn trên một lõi CPU.</div></div><div class=""><span>D</span><div>Một tác vụ duy nhất, chạy rất lâu.</div></div></div><div class="giai-thich">Virtual thread nhả carrier thread khi chờ, nên nhiều tác vụ chờ I/O dùng chung vài carrier. Virtual thread không làm phép tính nhanh hơn; tác vụ nặng CPU vẫn bị giới hạn bởi số lõi.</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>Executor</b> tách gửi tác vụ khỏi chạy tác vụ; <b>thread pool</b> giới hạn số thread</div></div><div class="the" data-s="2"><span class="so">2</span><div>Hàng đợi đầy: <b>saturation policy</b> quyết định (từ chối, hoặc chạy trên thread gửi); khai báo rõ bằng <code>ThreadPoolExecutor</code></div></div><div class="the" data-s="3"><span class="so">3</span><div><b>Virtual thread</b> chạy trên ít <b>carrier thread</b>, nhả carrier khi chờ I/O</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>Executor</span><span>ExecutorService</span><span>thread pool</span><span>saturation policy</span><span>virtual thread</span><span>carrier thread</span></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>Structured concurrency (Java 21, preview)</li><li>Pinning: virtual thread không nhả carrier khi chờ trong khối synchronized</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Đo thời gian hoàn tất 1 000 tác vụ chờ I/O với pool 10 thread và với virtual thread; giải thích chênh lệch.</p></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Bài toán ứng dụng: server tra cứu phục vụ nhiều client</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Nếu server tạo một thread mới cho mỗi kết nối, một đợt tải lớn có thể tạo hàng nghìn thread và làm cạn tài nguyên. Vậy server giao việc cho thread thế nào để vẫn giữ được giới hạn tài nguyên?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:13</span>
+      <h3>Slide 1. Mỗi kết nối một thread mới thì không giới hạn được tài nguyên</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Mỗi kết nối một thread mới: số thread tăng theo số kết nối, **không có giới hạn**</li><li>Mỗi **platform thread** chiếm một thread hệ điều hành và một stack riêng: nhiều thread thì cạn bộ nhớ, CPU tốn công chuyển qua lại</li><li>Cần **tách việc gửi tác vụ khỏi việc chạy tác vụ**, và có quy tắc khi quá tải</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** giới hạn số thread thế nào, làm gì khi quá tải, và phục vụ nhiều kết nối chủ yếu chờ I/O ra sao?</div></div>
+    <div class="kb-thoai"><p>Với các công cụ từ hai phần trước, cách đơn giản nhất để server phục vụ song song là tạo một thread mới cho mỗi kết nối. Cách này không có giới hạn: một nghìn kết nối cùng lúc là một nghìn thread. Mỗi thread như vậy, gọi là platform thread, chiếm một thread của hệ điều hành cùng một stack riêng, nên quá nhiều thread làm cạn bộ nhớ, và CPU mất nhiều thời gian chuyển qua lại giữa chúng. Server cần tách việc gửi tác vụ khỏi việc chạy tác vụ, để giới hạn số thread và có quy tắc rõ ràng khi quá tải. Ba câu hỏi của phần này là: giới hạn số thread thế nào, làm gì khi quá tải, và phục vụ nhiều kết nối mà phần lớn thời gian chỉ chờ I/O ra sao?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Với các công cụ”; bước 2 khi đọc “Mỗi thread như vậy”; bước 3 khi đọc “Server cần tách”; bước 4 khi đọc “Ba câu hỏi”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:52</span>
+      <h3>Slide 2. Executor tách gửi tác vụ khỏi chạy tác vụ, thread pool giới hạn số thread</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Executor** nhận tác vụ, **thread pool** chạy tác vụ bằng một số thread có giới hạn; hàng đợi đầy thì **saturation policy** quyết định.</li></ul></div></div>
+    <div class="kb-thoai"><p>Java tách hai việc đó bằng Executor, một interface nhận tác vụ để chạy. Thread main chỉ gửi tác vụ bằng phương thức execute, còn tác vụ chạy trên thread nào, lúc nào là việc của Executor. Các tác vụ được gửi tới nằm trong một hàng đợi. Một nhóm thread cố định, gọi là thread pool, lấy tác vụ ra chạy, xong thì lấy tác vụ tiếp, nên số thread không tăng theo số kết nối. Khi hàng đợi đầy và mọi thread đều bận, pool phải quyết định làm gì với tác vụ mới. Quy tắc đó gọi là saturation policy. Mặc định, pool dùng AbortPolicy và ném RejectedExecutionException. Còn với CallerRunsPolicy, tác vụ chạy luôn trên thread đã gửi nó. Như vậy, thread pool cùng một hàng đợi có giới hạn giới hạn được cả số thread lẫn số tác vụ chờ. Trong mã, các bạn sẽ gặp ExecutorService, tức Executor có thêm quản lý vòng đời: phương thức submit trả về một Future đại diện cho kết quả sẽ có, còn phương thức shutdown ngừng nhận tác vụ mới.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình executor: bốn bước của hình, bước 5 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Thread main chỉ gửi”; bước 2 khi đọc “Các tác vụ được gửi tới”; bước 3 khi đọc “Một nhóm thread cố định”; bước 4 khi đọc “Khi hàng đợi đầy”; bước 5 khi đọc “Như vậy, thread pool”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:55</span>
+      <h3>Slide 3. Virtual thread nhả carrier thread khi chờ I/O</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Virtual thread**: JVM lập lịch trên ít **carrier thread**; chờ I/O thì nhả carrier. Hợp với tác vụ **chủ yếu chờ**, không làm phép tính chạy nhanh hơn.</li></ul></div></div>
+    <div class="kb-thoai"><p>Thread pool giới hạn được số thread, nhưng với server, phần lớn thời gian của một kết nối là chờ client gửi dữ liệu. Bên trái hình, mỗi platform thread gắn với một thread của hệ điều hành, và khi thread chờ I/O, thread hệ điều hành cũng bị chặn theo. Bên phải là virtual thread, có từ Java 21: thread nhẹ do JVM quản lý. JVM lập lịch nhiều virtual thread trên một số ít platform thread, gọi là carrier thread. Khi một virtual thread chờ I/O hay chờ trong lời gọi sleep, JVM tách nó khỏi carrier, và carrier chạy ngay một virtual thread khác. Vì vậy, hàng nghìn kết nối đang chờ chỉ cần vài carrier thread. Tuy vậy, virtual thread không làm phép tính chạy nhanh hơn: tác vụ nặng về CPU vẫn cần lõi CPU như cũ.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình platform-virtual: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Bên trái hình”; bước 2 khi đọc “Bên phải là virtual thread”; bước 3 khi đọc “Khi một virtual thread chờ”; bước 4 khi đọc “Vì vậy, hàng nghìn”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:44</span>
+      <h3>Slide 4. Pool 4 thread, hàng đợi 5 tác vụ: tác vụ thứ 10 chạy trên thread main</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/pool/PoolDemo.java</span><pre><code>ThreadPoolExecutor pool = new ThreadPoolExecutor(
+        4, 4, 0, TimeUnit.SECONDS,                    // đúng 4 thread
+        new ArrayBlockingQueue&lt;&gt;(5),                  // hàng đợi tối đa 5 tác vụ
+        new ThreadPoolExecutor.CallerRunsPolicy());   // đầy: chạy trên thread gọi execute
+for (int i = 1; i &lt;= 10; i++) {
+    int task = i;
+    pool.execute(() -&gt; work(task));  // gửi tác vụ; pool quyết định thread nào chạy
+}
+pool.shutdown();  // không nhận tác vụ mới, chạy nốt tác vụ đã nhận</code></pre></div></div>
+    <div class="kb-thoai"><p>Mình tạo thread pool bằng lớp ThreadPoolExecutor và khai báo đủ ba giới hạn: đúng 4 thread, hàng đợi tối đa 5 tác vụ, và saturation policy là CallerRunsPolicy. Sau đó thread main gửi 10 tác vụ, mỗi tác vụ in thời điểm bắt đầu và tên thread đang chạy nó, rồi chạy 500 mili giây. Các bạn thử đoán tác vụ thứ 10 chạy trên thread nào. Kết quả: tác vụ 1 đến 4 chạy ngay trên bốn thread của pool, tác vụ 5 đến 9 nằm trong hàng đợi và chạy sau. Tác vụ thứ 10 gặp hàng đợi đầy, nên chạy trên chính thread main. Với server, thread gửi tác vụ là thread chạy vòng lặp accept. Khi thread đó phải tự xử lý một kết nối, nó tạm ngừng gọi phương thức accept, và các kết nối mới nằm chờ trong backlog, nên quá tải được đẩy ngược về phía client thay vì làm server cạn tài nguyên.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới; dòng task 10 runs on main được tô nền. Sau câu &quot;chạy trên thread nào&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện. Thứ tự năm dòng đầu (cùng thời điểm) có thể khác giữa các lần chạy.
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:42</span>
+      <h3>Slide 5. 10 000 virtual thread cùng chờ 1 giây, xong trong khoảng 1 giây</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/pool/VirtualThreadDemo.java</span><pre><code>try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {  // mỗi tác vụ một virtual thread
+    for (int i = 0; i &lt; 10_000; i++) {
+        executor.submit(() -&gt; {
+            carriers.add(carrierOf(Thread.currentThread()));
+            Thread.sleep(1_000);  // chờ: virtual thread nhả carrier thread
+            return null;
+        });
+    }
+}  // close(): chờ mọi tác vụ xong</code></pre></div></div>
+    <div class="kb-thoai"><p>Với virtual thread, cách dùng vẫn qua một executor. Phương thức newVirtualThreadPerTaskExecutor của lớp Executors tạo một executor giao mỗi tác vụ cho một virtual thread mới, không cần pool. Mình gửi 10 000 tác vụ, mỗi tác vụ ghi lại carrier thread đang chạy nó rồi chờ một giây, giống một kết nối đang chờ dữ liệu. Khối try-with-resources đóng executor ở cuối, và lời gọi close chờ mọi tác vụ xong. Các bạn đoán xem mất bao lâu. Kết quả: khoảng 1,1 giây cho cả 10 000 tác vụ, và chỉ 8 carrier thread được dùng, bằng số lõi CPU của máy. Theo tính toán, pool 4 thread như vừa rồi sẽ cần khoảng 2 500 giây cho cùng số tác vụ.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới. Sau câu &quot;mất bao lâu&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện. Máy biên soạn có 8 lõi; số carrier thread mặc định bằng số lõi.
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:33</span>
+      <h3>Slide 6. Hai cấu hình mặc định của Executors không giới hạn tài nguyên</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Không pool nào **từ chối** tác vụ: quá tải chỉ lộ ra khi hết bộ nhớ hoặc hết thread</li><li>Dùng `ThreadPoolExecutor`, khai báo rõ **số thread tối đa, dung lượng hàng đợi, saturation policy**</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/pool/OverloadDemo.java</span><pre><code>var fixed = (ThreadPoolExecutor) Executors.newFixedThreadPool(4);  // hàng đợi không giới hạn
+var cached = (ThreadPoolExecutor) Executors.newCachedThreadPool();  // số thread không giới hạn
+Runnable slow = () -&gt; PoolDemo.sleep(1_000);
+for (int i = 0; i &lt; 2_000; i++) {
+    fixed.execute(slow);
+    cached.execute(slow);
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Lớp Executors có sẵn các phương thức tạo pool rất tiện, nhưng hai phương thức hay dùng nhất che giấu quá tải. Mình gửi 2 000 tác vụ chậm vào mỗi loại pool. Kết quả: pool tạo bằng phương thức newFixedThreadPool giữ đúng 4 thread, nhưng dồn 1 996 tác vụ vào một hàng đợi không giới hạn. Còn pool tạo bằng phương thức newCachedThreadPool sinh đủ 2 000 thread, mỗi tác vụ một thread. Không pool nào từ chối tác vụ, nên server cứ nhận thêm việc cho đến khi hết bộ nhớ hoặc hết thread. Vì vậy, với server, các bạn dùng ThreadPoolExecutor và khai báo rõ số thread tối đa, dung lượng hàng đợi và saturation policy, như ở chương trình PoolDemo.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới.
+Hiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Không pool nào”; bước 3 khi đọc “Vì vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:24</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Ở câu hỏi đầu, các bạn áp cấu hình pool vừa chạy vào một tình huống quá tải.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Thread pool có 4 thread, hàng đợi tối đa 5 tác vụ, saturation policy là CallerRunsPolicy. Thread main gửi liên tiếp 10 tác vụ chạy lâu. Tác vụ thứ 10 chạy trên thread nào?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Trên thread đầu tiên của pool xong việc.</li>
+      <li><b>B.</b> Trên một thread thứ năm mà pool tạo thêm.</li>
+      <li><b>C.</b> Không chạy: bị từ chối với RejectedExecutionException.</li>
+      <li><b>D.</b> Trên thread main, thread đã gửi tác vụ.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: D</b> — <span>Tác vụ 1–4 chiếm 4 thread, 5–9 lấp đầy hàng đợi. Tác vụ 10 gặp hàng đợi đầy và pool đã đủ số thread tối đa, nên saturation policy quyết định: CallerRunsPolicy chạy tác vụ trên thread gửi. Nếu là AbortPolicy (mặc định) thì mới bị từ chối.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là D. Phương án C đúng với saturation policy mặc định là AbortPolicy, nhưng pool này dùng CallerRunsPolicy, nên tác vụ chạy luôn trên thread đã gửi nó.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án D được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:47</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu tiếp theo, các bạn chọn loại tác vụ hợp nhất với virtual thread.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Loại tác vụ nào có lợi nhất khi chuyển từ platform thread sang virtual thread?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Tác vụ chủ yếu chờ I/O, như xử lý một kết nối đang chờ client gửi dữ liệu.</li>
+      <li><b>B.</b> Tác vụ tính toán nặng, dùng CPU liên tục.</li>
+      <li><b>C.</b> Tác vụ cần chạy nhanh hơn trên một lõi CPU.</li>
+      <li><b>D.</b> Một tác vụ duy nhất, chạy rất lâu.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: A</b> — <span>Virtual thread nhả carrier thread khi chờ, nên nhiều tác vụ chờ I/O dùng chung vài carrier. Virtual thread không làm phép tính nhanh hơn; tác vụ nặng CPU vẫn bị giới hạn bởi số lõi.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là A. Phương án B là hiểu nhầm hay gặp: virtual thread không làm phép tính nhanh hơn. Lợi ích đến từ việc nhả carrier khi chờ, nên chỉ thấy rõ với tác vụ chủ yếu chờ I/O.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án A.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:10</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**Executor** tách gửi tác vụ khỏi chạy tác vụ; **thread pool** giới hạn số thread</li><li>Hàng đợi đầy: **saturation policy** quyết định (từ chối, hoặc chạy trên thread gửi); khai báo rõ bằng `ThreadPoolExecutor`</li><li>**Virtual thread** chạy trên ít **carrier thread**, nhả carrier khi chờ I/O</li></ul></div>
+    <div class="kb-thoai"><p>Server không còn tạo thread cho mỗi kết nối: Executor nhận tác vụ, còn thread pool chạy chúng bằng một số thread có giới hạn. Khi hàng đợi đầy, saturation policy quyết định từ chối tác vụ hay cho chạy trên thread gửi, và các giới hạn này cần khai báo rõ bằng ThreadPoolExecutor. Với tác vụ chủ yếu chờ I/O, virtual thread chạy trên một số ít carrier thread, và nhả carrier mỗi khi chờ. Các từ khóa cần nhớ là Executor, ExecutorService, thread pool, saturation policy, virtual thread và carrier thread.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “Server không còn”; bước 2 khi đọc “Khi hàng đợi đầy”; bước 3 khi đọc “Với tác vụ chủ yếu chờ”; bước 4 khi đọc “Các từ khóa cần nhớ”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:42</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Java 21 còn có structured concurrency, ở dạng preview, để quản lý một nhóm tác vụ con như một đơn vị. Khi dùng virtual thread, các bạn cũng nên đọc về pinning: trong Java 21, virtual thread chờ bên trong khối synchronized không nhả được carrier. Bài tập mở rộng là đo thời gian hoàn tất 1 000 tác vụ chờ I/O với pool 10 thread và với virtual thread, rồi giải thích chênh lệch.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Java 21 còn có”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:06</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Executor và virtual thread cho server đủ công cụ để phục vụ nhiều client mà vẫn kiểm soát được tài nguyên. Phần cuối của chương ghép chúng vào bài toán ứng dụng: server tra cứu phục vụ nhiều client.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V13", "tieu_de": "Đa luồng: Executor, thread pool và virtual thread", "giong": "vi-VN-NamMinhNeural", "tong": 439.31, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/fb45cc48000c7c97.mp3", "dur": 13.06, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Nếu", 1], [2.288, "server", 1], [2.688, "tạo", 1], [2.9, "một", 1], [3.1, "thread", 1], [3.35, "mới", 1], [3.562, "cho", 1], [3.7, "mỗi", 1], [3.875, "kết", 1], [4.088, "nối,", 1], [4.6, "một", 1], [4.8, "đợt", 1], [5.013, "tải", 1], [5.175, "lớn", 1], [5.425, "có", 1], [5.525, "thể", 1], [5.688, "tạo", 1], [5.925, "hàng", 1], [6.125, "nghìn", 1], [6.338, "thread", 1], [6.612, "và", 1], [6.763, "làm", 1], [6.987, "cạn", 1], [7.237, "tài", 1], [7.388, "nguyên.", 1], [8.588, "Vậy", 2], [8.875, "server", 2], [9.213, "giao", 2], [9.438, "việc", 2], [9.675, "cho", 2], [9.825, "thread", 2], [10.1, "thế", 2], [10.25, "nào", 2], [10.488, "để", 2], [10.613, "vẫn", 2], [10.812, "giữ", 2], [11.05, "được", 2], [11.238, "giới", 2], [11.45, "hạn", 2], [11.7, "tài", 2], [11.887, "nguyên?", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Mỗi kết nối một thread mới thì không giới hạn được tài nguyên", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Với các công cụ”; bước 2 khi đọc “Mỗi thread như vậy”; bước 3 khi đọc “Server cần tách”; bước 4 khi đọc “Ba câu hỏi”.", "start": 13.66, "audio": "audio/41f30c660993b592.mp3", "dur": 38.59, "words": [[0.1, "Với", 0], [0.375, "các", 0], [0.575, "công", 0], [0.75, "cụ", 0], [0.988, "từ", 0], [1.188, "hai", 0], [1.363, "phần", 0], [1.575, "trước,", 0], [2.075, "cách", 0], [2.275, "đơn", 0], [2.487, "giản", 0], [2.7, "nhất", 0], [2.913, "để", 0], [3.1, "server", 0], [3.462, "phục", 0], [3.663, "vụ", 0], [3.9, "song", 0], [4.112, "song", 0], [4.35, "là", 0], [4.463, "tạo", 0], [4.675, "một", 0], [4.862, "thread", 0], [5.1, "mới", 0], [5.325, "cho", 0], [5.487, "mỗi", 0], [5.675, "kết", 0], [5.9, "nối.", 0], [7.075, "Cách", 1], [7.287, "này", 1], [7.5, "không", 1], [7.725, "có", 1], [7.838, "giới", 1], [8.025, "hạn:", 1], [8.537, "một", 1], [8.762, "nghìn", 1], [9.0, "kết", 1], [9.2, "nối", 1], [9.438, "cùng", 1], [9.7, "lúc", 1], [9.938, "là", 1], [10.1, "một", 1], [10.312, "nghìn", 1], [10.537, "thread.", 1], [11.662, "Mỗi", 2], [12.025, "thread", 2], [12.312, "như", 2], [12.463, "vậy,", 2], [12.887, "gọi", 2], [13.125, "là", 2], [13.275, "platform", 2], [13.775, "thread,", 2], [14.275, "chiếm", 2], [14.5, "một", 2], [14.662, "thread", 2], [14.9, "của", 2], [15.037, "hệ", 2], [15.213, "điều", 2], [15.375, "hành", 2], [15.613, "cùng", 2], [15.812, "một", 2], [15.975, "stack", 2], [16.238, "riêng,", 2], [16.8, "nên", 2], [17.075, "quá", 2], [17.262, "nhiều", 2], [17.462, "thread", 2], [17.725, "làm", 2], [17.938, "cạn", 2], [18.163, "bộ", 2], [18.337, "nhớ,", 2], [18.875, "và", 2], [19.275, "CPU", 2], [19.675, "mất", 2], [19.887, "nhiều", 2], [20.087, "thời", 2], [20.25, "gian", 2], [20.462, "chuyển", 2], [20.7, "qua", 2], [20.913, "lại", 2], [21.113, "giữa", 2], [21.3, "chúng.", 2], [22.5, "Server", 3], [23.012, "cần", 3], [23.387, "tách", 3], [23.575, "việc", 3], [23.762, "gửi", 3], [23.95, "tác", 3], [24.163, "vụ", 3], [24.363, "khỏi", 3], [24.55, "việc", 3], [24.75, "chạy", 3], [24.938, "tác", 3], [25.125, "vụ,", 3], [25.65, "để", 3], [25.812, "giới", 3], [26.0, "hạn", 3], [26.2, "số", 3], [26.425, "thread", 3], [26.762, "và", 3], [26.962, "có", 3], [27.1, "quy", 3], [27.275, "tắc", 3], [27.475, "rõ", 3], [27.712, "ràng", 3], [27.962, "khi", 3], [28.137, "quá", 3], [28.325, "tải.", 3], [29.6, "Ba", 4], [29.825, "câu", 4], [29.988, "hỏi", 4], [30.188, "của", 4], [30.325, "phần", 4], [30.512, "này", 4], [30.65, "là:", 4], [31.137, "giới", 4], [31.363, "hạn", 4], [31.562, "số", 4], [31.788, "thread", 4], [32.038, "thế", 4], [32.163, "nào,", 4], [32.638, "làm", 4], [32.913, "gì", 4], [33.112, "khi", 4], [33.263, "quá", 4], [33.425, "tải,", 4], [34.038, "và", 4], [34.225, "phục", 4], [34.413, "vụ", 4], [34.638, "nhiều", 4], [34.85, "kết", 4], [35.062, "nối", 4], [35.275, "mà", 4], [35.438, "phần", 4], [35.65, "lớn", 4], [35.913, "thời", 4], [36.062, "gian", 4], [36.337, "chỉ", 4], [36.525, "chờ", 4], [36.9, "I/O", 4], [37.275, "ra", 4], [37.4, "sao?", 4]], "cues": [0.1, 11.662, 22.5, 29.6], "lang": 0.6}, {"ten": "Slide 2. Executor tách gửi tác vụ khỏi chạy tác vụ, thread pool giới hạn số thread", "loai": "slide", "slide": "S02", "dung": "Hình executor: bốn bước của hình, bước 5 là ô kết luận.\nHiện dần: bước 1 khi đọc “Thread main chỉ gửi”; bước 2 khi đọc “Các tác vụ được gửi tới”; bước 3 khi đọc “Một nhóm thread cố định”; bước 4 khi đọc “Khi hàng đợi đầy”; bước 5 khi đọc “Như vậy, thread pool”.", "start": 52.85, "audio": "audio/b235978342262eac.mp3", "dur": 60.19, "words": [[0.1, "Java", 0], [0.575, "tách", 0], [0.775, "hai", 0], [0.963, "việc", 0], [1.125, "đó", 0], [1.363, "bằng", 0], [1.663, "Executor,", 0], [2.475, "một", 0], [2.812, "interface", 0], [3.425, "nhận", 0], [3.688, "tác", 0], [3.888, "vụ", 0], [4.112, "để", 0], [4.25, "chạy.", 0], [5.45, "Thread", 1], [5.812, "main", 1], [6.05, "chỉ", 1], [6.213, "gửi", 1], [6.4, "tác", 1], [6.588, "vụ", 1], [6.8, "bằng", 1], [7.013, "phương", 1], [7.237, "thức", 1], [7.463, "execute,", 1], [8.238, "còn", 1], [8.475, "tác", 1], [8.65, "vụ", 1], [8.838, "chạy", 1], [9.05, "trên", 1], [9.25, "thread", 1], [9.475, "nào,", 1], [9.925, "lúc", 1], [10.137, "nào", 1], [10.387, "là", 1], [10.512, "việc", 1], [10.738, "của", 1], [10.988, "Executor.", 1], [12.412, "Các", 2], [12.625, "tác", 2], [12.825, "vụ", 2], [13.062, "được", 2], [13.225, "gửi", 2], [13.425, "tới", 2], [13.675, "nằm", 2], [13.925, "trong", 2], [14.1, "một", 2], [14.25, "hàng", 2], [14.463, "đợi.", 2], [15.588, "Một", 3], [15.988, "nhóm", 3], [16.25, "thread", 3], [16.5, "cố", 3], [16.7, "định,", 3], [17.163, "gọi", 3], [17.425, "là", 3], [17.562, "thread", 3], [17.8, "pool,", 3], [18.312, "lấy", 3], [18.562, "tác", 3], [18.775, "vụ", 3], [18.975, "ra", 3], [19.113, "chạy,", 3], [19.637, "xong", 3], [19.95, "thì", 3], [20.113, "lấy", 3], [20.275, "tác", 3], [20.475, "vụ", 3], [20.65, "tiếp,", 3], [21.188, "nên", 3], [21.438, "số", 3], [21.663, "thread", 3], [21.9, "không", 3], [22.15, "tăng", 3], [22.35, "theo", 3], [22.5, "số", 3], [22.712, "kết", 3], [22.938, "nối.", 3], [24.1, "Khi", 4], [24.4, "hàng", 4], [24.587, "đợi", 4], [24.762, "đầy", 4], [24.975, "và", 4], [25.087, "mọi", 4], [25.3, "thread", 4], [25.575, "đều", 4], [25.75, "bận,", 4], [26.288, "pool", 4], [26.55, "phải", 4], [26.7, "quyết", 4], [26.875, "định", 4], [27.087, "làm", 4], [27.35, "gì", 4], [27.587, "với", 4], [27.712, "tác", 4], [27.9, "vụ", 4], [28.087, "mới.", 4], [29.312, "Quy", 5], [29.525, "tắc", 5], [29.725, "đó", 5], [30.0, "gọi", 5], [30.3, "là", 5], [30.462, "saturation", 5], [31.2, "policy.", 5], [32.65, "Mặc", 6], [33.013, "định,", 6], [33.487, "pool", 6], [33.75, "dùng", 6], [34.025, "AbortPolicy", 6], [34.9, "và", 6], [35.05, "ném", 6], [35.325, "RejectedExecutionException.", 6], [37.85, "Còn", 7], [38.15, "với", 7], [38.325, "CallerRunsPolicy,", 7], [39.888, "tác", 7], [40.1, "vụ", 7], [40.325, "chạy", 7], [40.538, "luôn", 7], [40.775, "trên", 7], [40.962, "thread", 7], [41.212, "đã", 7], [41.362, "gửi", 7], [41.562, "nó.", 7], [42.775, "Như", 8], [43.013, "vậy,", 8], [43.5, "thread", 8], [43.775, "pool", 8], [44.05, "cùng", 8], [44.237, "một", 8], [44.375, "hàng", 8], [44.587, "đợi", 8], [44.812, "có", 8], [44.938, "giới", 8], [45.1, "hạn", 8], [45.312, "giới", 8], [45.5, "hạn", 8], [45.75, "được", 8], [45.913, "cả", 8], [46.038, "số", 8], [46.25, "thread", 8], [46.587, "lẫn", 8], [46.788, "số", 8], [47.038, "tác", 8], [47.25, "vụ", 8], [47.438, "chờ.", 8], [48.6, "Trong", 9], [48.9, "mã,", 9], [49.438, "các", 9], [49.612, "bạn", 9], [49.825, "sẽ", 9], [49.95, "gặp", 9], [50.237, "ExecutorService,", 9], [51.375, "tức", 9], [51.675, "Executor", 9], [52.163, "có", 9], [52.325, "thêm", 9], [52.562, "quản", 9], [52.788, "lý", 9], [52.962, "vòng", 9], [53.138, "đời:", 9], [53.587, "phương", 9], [53.825, "thức", 9], [53.975, "submit", 9], [54.362, "trả", 9], [54.65, "về", 9], [54.763, "một", 9], [54.95, "Future", 9], [55.4, "đại", 9], [55.562, "diện", 9], [55.837, "cho", 9], [55.962, "kết", 9], [56.163, "quả", 9], [56.4, "sẽ", 9], [56.55, "có,", 9], [57.112, "còn", 9], [57.362, "phương", 9], [57.55, "thức", 9], [57.7, "shutdown", 9], [58.138, "ngừng", 9], [58.375, "nhận", 9], [58.625, "tác", 9], [58.8, "vụ", 9], [58.975, "mới.", 9]], "cues": [5.45, 12.412, 15.588, 24.1, 42.775], "lang": 2.6}, {"ten": "Slide 3. Virtual thread nhả carrier thread khi chờ I/O", "loai": "slide", "slide": "S03", "dung": "Hình platform-virtual: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Bên trái hình”; bước 2 khi đọc “Bên phải là virtual thread”; bước 3 khi đọc “Khi một virtual thread chờ”; bước 4 khi đọc “Vì vậy, hàng nghìn”.", "start": 115.64, "audio": "audio/46716a9001bae2fe.mp3", "dur": 45.84, "words": [[0.1, "Thread", 0], [0.4, "pool", 0], [0.65, "giới", 0], [0.825, "hạn", 0], [1.025, "được", 0], [1.15, "số", 0], [1.35, "thread,", 0], [1.887, "nhưng", 0], [2.188, "với", 0], [2.325, "server,", 0], [3.038, "phần", 0], [3.263, "lớn", 0], [3.487, "thời", 0], [3.625, "gian", 0], [3.888, "của", 0], [3.987, "một", 0], [4.15, "kết", 0], [4.338, "nối", 0], [4.562, "là", 0], [4.688, "chờ", 0], [4.95, "client", 0], [5.35, "gửi", 0], [5.575, "dữ", 0], [5.775, "liệu.", 0], [6.95, "Bên", 1], [7.225, "trái", 1], [7.412, "hình,", 1], [7.862, "mỗi", 1], [8.1, "platform", 1], [8.637, "thread", 1], [8.9, "gắn", 1], [9.188, "với", 1], [9.287, "một", 1], [9.488, "thread", 1], [9.738, "của", 1], [9.875, "hệ", 1], [10.062, "điều", 1], [10.238, "hành,", 1], [10.7, "và", 1], [10.925, "khi", 1], [11.137, "thread", 1], [11.387, "chờ", 1], [11.849, "I/O,", 1], [12.312, "thread", 1], [12.55, "hệ", 1], [12.713, "điều", 1], [12.875, "hành", 1], [13.113, "cũng", 1], [13.312, "bị", 1], [13.438, "chặn", 1], [13.675, "theo.", 1], [14.812, "Bên", 2], [15.113, "phải", 2], [15.312, "là", 2], [15.438, "virtual", 2], [15.812, "thread,", 2], [16.288, "có", 2], [16.438, "từ", 2], [16.663, "Java", 2], [17.087, "21:", 2], [17.875, "thread", 2], [18.2, "nhẹ", 2], [18.438, "do", 2], [18.838, "JVM", 2], [19.238, "quản", 2], [19.488, "lý.", 2], [20.431, "JVM", 3], [21.375, "lập", 3], [21.55, "lịch", 3], [21.75, "nhiều", 3], [21.975, "virtual", 3], [22.363, "thread", 3], [22.762, "trên", 3], [22.938, "một", 3], [23.075, "số", 3], [23.325, "ít", 3], [23.5, "platform", 3], [23.95, "thread,", 3], [24.462, "gọi", 3], [24.775, "là", 3], [24.938, "carrier", 3], [25.262, "thread.", 3], [26.413, "Khi", 4], [26.663, "một", 4], [26.837, "virtual", 4], [27.212, "thread", 4], [27.45, "chờ", 4], [27.819, "I/O", 4], [28.188, "hay", 4], [28.325, "chờ", 4], [28.562, "trong", 4], [28.75, "lời", 4], [28.9, "gọi", 4], [29.113, "sleep,", 4], [29.7, "JVM", 4], [30.288, "tách", 4], [30.488, "nó", 4], [30.637, "khỏi", 4], [30.887, "carrier,", 4], [31.55, "và", 4], [31.8, "carrier", 4], [32.163, "chạy", 4], [32.4, "ngay", 4], [32.587, "một", 4], [32.775, "virtual", 4], [33.175, "thread", 4], [33.362, "khác.", 4], [34.5, "Vì", 5], [34.75, "vậy,", 5], [35.237, "hàng", 5], [35.45, "nghìn", 5], [35.663, "kết", 5], [35.85, "nối", 5], [36.062, "đang", 5], [36.275, "chờ", 5], [36.55, "chỉ", 5], [36.75, "cần", 5], [37.013, "vài", 5], [37.175, "carrier", 5], [37.525, "thread.", 5], [38.65, "Tuy", 6], [38.85, "vậy,", 6], [39.275, "virtual", 6], [39.737, "thread", 6], [39.962, "không", 6], [40.225, "làm", 6], [40.388, "phép", 6], [40.6, "tính", 6], [40.812, "chạy", 6], [40.987, "nhanh", 6], [41.2, "hơn:", 6], [41.688, "tác", 6], [41.875, "vụ", 6], [42.038, "nặng", 6], [42.288, "về", 6], [42.694, "CPU", 6], [43.1, "vẫn", 6], [43.288, "cần", 6], [43.5, "lõi", 6], [43.938, "CPU", 6], [44.375, "như", 6], [44.55, "cũ.", 6]], "cues": [6.95, 14.812, 26.413, 34.5], "lang": 2.6}, {"ten": "Slide 4. Pool 4 thread, hàng đợi 5 tác vụ: tác vụ thứ 10 chạy trên thread main", "loai": "slide", "slide": "S04", "dung": "Mã phía trên, kết quả phía dưới; dòng task 10 runs on main được tô nền. Sau câu \"chạy trên thread nào\", dừng khoảng 2 giây trước khi khung kết quả hiện. Thứ tự năm dòng đầu (cùng thời điểm) có thể khác giữa các lần chạy.\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 164.08, "audio": "audio/0d79bc733b0e620f.mp3", "dur": 48.7, "words": [[0.1, "Mình", 0], [0.463, "tạo", 0], [0.662, "thread", 0], [0.875, "pool", 0], [1.125, "bằng", 0], [1.325, "lớp", 0], [1.525, "ThreadPoolExecutor", 0], [2.513, "và", 0], [2.65, "khai", 0], [2.9, "báo", 0], [3.15, "đủ", 0], [3.337, "ba", 0], [3.55, "giới", 0], [3.763, "hạn:", 0], [4.312, "đúng", 0], [4.55, "4", 0], [4.763, "thread,", 0], [5.263, "hàng", 0], [5.475, "đợi", 0], [5.625, "tối", 0], [5.85, "đa", 0], [6.025, "5", 0], [6.225, "tác", 0], [6.412, "vụ,", 0], [6.925, "và", 0], [7.175, "saturation", 0], [7.888, "policy", 0], [8.463, "là", 0], [8.625, "CallerRunsPolicy.", 0], [10.738, "Sau", 1], [11.025, "đó", 1], [11.225, "thread", 1], [11.537, "main", 1], [11.762, "gửi", 1], [11.938, "10", 1], [12.125, "tác", 1], [12.325, "vụ,", 1], [12.825, "mỗi", 1], [13.025, "tác", 1], [13.225, "vụ", 1], [13.425, "in", 1], [13.625, "thời", 1], [13.775, "điểm", 1], [13.988, "bắt", 1], [14.137, "đầu", 1], [14.375, "và", 1], [14.488, "tên", 1], [14.7, "thread", 1], [14.938, "đang", 1], [15.137, "chạy", 1], [15.338, "nó,", 1], [15.85, "rồi", 1], [16.125, "chạy", 1], [16.387, "500", 1], [16.825, "mili", 1], [17.125, "giây.", 1], [18.25, "Các", 2], [18.45, "bạn", 2], [18.663, "thử", 2], [18.887, "đoán", 2], [19.125, "tác", 2], [19.325, "vụ", 2], [19.512, "thứ", 2], [19.712, "10", 2], [19.962, "chạy", 2], [20.25, "trên", 2], [20.462, "thread", 2], [20.712, "nào.", 2], [21.825, "Kết", 3], [22.025, "quả:", 3], [22.637, "tác", 3], [22.837, "vụ", 3], [23.038, "1", 3], [23.25, "đến", 3], [23.475, "4", 3], [23.725, "chạy", 3], [23.925, "ngay", 3], [24.15, "trên", 3], [24.35, "bốn", 3], [24.562, "thread", 3], [24.8, "của", 3], [24.95, "pool,", 3], [25.5, "tác", 3], [25.675, "vụ", 3], [25.875, "5", 3], [26.125, "đến", 3], [26.325, "9", 3], [26.613, "nằm", 3], [26.788, "trong", 3], [26.962, "hàng", 3], [27.15, "đợi", 3], [27.375, "và", 3], [27.488, "chạy", 3], [27.688, "sau.", 3], [28.85, "Tác", 4], [29.062, "vụ", 4], [29.238, "thứ", 4], [29.462, "10", 4], [29.7, "gặp", 4], [29.887, "hàng", 4], [30.113, "đợi", 4], [30.288, "đầy,", 4], [30.762, "nên", 4], [31.075, "chạy", 4], [31.337, "trên", 4], [31.562, "chính", 4], [31.8, "thread", 4], [32.062, "main.", 4], [33.212, "Với", 5], [33.525, "server,", 5], [34.237, "thread", 5], [34.562, "gửi", 5], [34.75, "tác", 5], [34.975, "vụ", 5], [35.237, "là", 5], [35.4, "thread", 5], [35.675, "chạy", 5], [35.85, "vòng", 5], [36.1, "lặp", 5], [36.362, "accept.", 5], [37.612, "Khi", 6], [37.888, "thread", 6], [38.15, "đó", 6], [38.375, "phải", 6], [38.538, "tự", 6], [38.725, "xử", 6], [38.9, "lý", 6], [39.1, "một", 6], [39.288, "kết", 6], [39.45, "nối,", 6], [39.962, "nó", 6], [40.138, "tạm", 6], [40.362, "ngừng", 6], [40.6, "gọi", 6], [40.788, "phương", 6], [40.987, "thức", 6], [41.212, "accept,", 6], [41.825, "và", 6], [42.075, "các", 6], [42.263, "kết", 6], [42.45, "nối", 6], [42.625, "mới", 6], [42.862, "nằm", 6], [43.075, "chờ", 6], [43.325, "trong", 6], [43.513, "backlog,", 6], [44.163, "nên", 6], [44.438, "quá", 6], [44.612, "tải", 6], [44.8, "được", 6], [44.95, "đẩy", 6], [45.112, "ngược", 6], [45.35, "về", 6], [45.487, "phía", 6], [45.712, "client", 6], [46.062, "thay", 6], [46.275, "vì", 6], [46.4, "làm", 6], [46.625, "server", 6], [47.038, "cạn", 6], [47.325, "tài", 6], [47.487, "nguyên.", 6]], "cues": [21.825], "lang": 9.6}, {"ten": "Slide 5. 10 000 virtual thread cùng chờ 1 giây, xong trong khoảng 1 giây", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, kết quả phía dưới. Sau câu \"mất bao lâu\", dừng khoảng 2 giây trước khi khung kết quả hiện. Máy biên soạn có 8 lõi; số carrier thread mặc định bằng số lõi.\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 222.38, "audio": "audio/99ae86b8ab296100.mp3", "dur": 41.98, "words": [[0.1, "Với", 0], [0.425, "virtual", 0], [0.812, "thread,", 0], [1.288, "cách", 0], [1.5, "dùng", 0], [1.8, "vẫn", 0], [2.013, "qua", 0], [2.225, "một", 0], [2.525, "executor.", 0], [3.875, "Phương", 1], [4.162, "thức", 1], [4.388, "newVirtualThreadPerTaskExecutor", 1], [6.138, "của", 1], [6.3, "lớp", 1], [6.625, "Executors", 1], [7.15, "tạo", 1], [7.362, "một", 1], [7.688, "executor", 1], [8.137, "giao", 1], [8.35, "mỗi", 1], [8.588, "tác", 1], [8.787, "vụ", 1], [9.0, "cho", 1], [9.125, "một", 1], [9.325, "virtual", 1], [9.713, "thread", 1], [9.938, "mới,", 1], [10.463, "không", 1], [10.713, "cần", 1], [10.925, "pool.", 1], [12.075, "Mình", 2], [12.463, "gửi", 2], [12.662, "10", 2], [12.887, "000", 2], [13.537, "tác", 2], [13.7, "vụ,", 2], [14.2, "mỗi", 2], [14.387, "tác", 2], [14.588, "vụ", 2], [14.8, "ghi", 2], [14.975, "lại", 2], [15.175, "carrier", 2], [15.512, "thread", 2], [15.812, "đang", 2], [16.05, "chạy", 2], [16.25, "nó", 2], [16.475, "rồi", 2], [16.625, "chờ", 2], [16.825, "một", 2], [17.0, "giây,", 2], [17.525, "giống", 2], [17.762, "một", 2], [17.913, "kết", 2], [18.075, "nối", 2], [18.275, "đang", 2], [18.475, "chờ", 2], [18.7, "dữ", 2], [18.887, "liệu.", 2], [20.05, "Khối", 3], [20.375, "try-with-resources", 3], [21.113, "đóng", 3], [21.425, "executor", 3], [21.938, "ở", 3], [22.062, "cuối,", 3], [22.637, "và", 3], [22.812, "lời", 3], [23.012, "gọi", 3], [23.25, "close", 3], [23.6, "chờ", 3], [23.85, "mọi", 3], [24.075, "tác", 3], [24.275, "vụ", 3], [24.438, "xong.", 3], [25.613, "Các", 4], [25.812, "bạn", 4], [26.062, "đoán", 4], [26.288, "xem", 4], [26.538, "mất", 4], [26.725, "bao", 4], [26.938, "lâu.", 4], [28.075, "Kết", 5], [28.288, "quả:", 5], [28.887, "khoảng", 5], [29.125, "1,1", 5], [29.637, "giây", 5], [29.863, "cho", 5], [30.0, "cả", 5], [30.163, "10", 5], [30.375, "000", 5], [30.988, "tác", 5], [31.15, "vụ,", 5], [31.663, "và", 5], [31.875, "chỉ", 5], [32.062, "8", 5], [32.337, "carrier", 5], [32.612, "thread", 5], [32.862, "được", 5], [33.038, "dùng,", 5], [33.538, "bằng", 5], [33.775, "số", 5], [34.0, "lõi", 5], [34.431, "CPU", 5], [34.862, "của", 5], [35.013, "máy.", 5], [36.212, "Theo", 6], [36.45, "tính", 6], [36.675, "toán,", 6], [37.188, "pool", 6], [37.45, "4", 6], [37.688, "thread", 6], [38.0, "như", 6], [38.175, "vừa", 6], [38.362, "rồi", 6], [38.612, "sẽ", 6], [38.763, "cần", 6], [38.987, "khoảng", 6], [39.25, "2", 6], [39.45, "500", 6], [39.85, "giây", 6], [40.075, "cho", 6], [40.212, "cùng", 6], [40.413, "số", 6], [40.625, "tác", 6], [40.812, "vụ.", 6]], "cues": [28.075], "lang": 9.6}, {"ten": "Slide 6. Hai cấu hình mặc định của Executors không giới hạn tài nguyên", "loai": "slide", "slide": "S06", "dung": "Mã phía trên, kết quả phía dưới.\nHiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Không pool nào”; bước 3 khi đọc “Vì vậy”.", "start": 273.96, "audio": "audio/7e1ba4c4010c6e70.mp3", "dur": 41.06, "words": [[0.1, "Lớp", 0], [0.512, "Executors", 0], [1.113, "có", 0], [1.275, "sẵn", 0], [1.512, "các", 0], [1.637, "phương", 0], [1.875, "thức", 0], [2.05, "tạo", 0], [2.275, "pool", 0], [2.525, "rất", 0], [2.688, "tiện,", 0], [3.237, "nhưng", 0], [3.525, "hai", 0], [3.712, "phương", 0], [3.9, "thức", 0], [4.088, "hay", 0], [4.263, "dùng", 0], [4.475, "nhất", 0], [4.7, "che", 0], [4.9, "giấu", 0], [5.112, "quá", 0], [5.325, "tải.", 0], [6.6, "Mình", 1], [6.987, "gửi", 1], [7.188, "2", 1], [7.412, "000", 1], [8.037, "tác", 1], [8.188, "vụ", 1], [8.363, "chậm", 1], [8.662, "vào", 1], [8.838, "mỗi", 1], [9.05, "loại", 1], [9.238, "pool.", 1], [10.425, "Kết", 2], [10.625, "quả:", 2], [11.225, "pool", 2], [11.475, "tạo", 2], [11.713, "bằng", 2], [11.9, "phương", 2], [12.1, "thức", 2], [12.287, "newFixedThreadPool", 2], [13.35, "giữ", 2], [13.55, "đúng", 2], [13.75, "4", 2], [13.988, "thread,", 2], [14.512, "nhưng", 2], [14.812, "dồn", 2], [15.025, "1", 2], [15.188, "996", 2], [16.1, "tác", 2], [16.288, "vụ", 2], [16.512, "vào", 2], [16.625, "một", 2], [16.788, "hàng", 2], [17.012, "đợi", 2], [17.212, "không", 2], [17.45, "giới", 2], [17.613, "hạn.", 2], [18.8, "Còn", 3], [19.062, "pool", 3], [19.288, "tạo", 3], [19.525, "bằng", 3], [19.725, "phương", 3], [19.925, "thức", 3], [20.137, "newCachedThreadPool", 3], [21.188, "sinh", 3], [21.438, "đủ", 3], [21.637, "2", 3], [21.863, "000", 3], [22.475, "thread,", 3], [22.95, "mỗi", 3], [23.188, "tác", 3], [23.375, "vụ", 3], [23.575, "một", 3], [23.788, "thread.", 3], [24.913, "Không", 4], [25.2, "pool", 4], [25.375, "nào", 4], [25.587, "từ", 4], [25.788, "chối", 4], [26.0, "tác", 4], [26.188, "vụ,", 4], [26.712, "nên", 4], [27.012, "server", 4], [27.4, "cứ", 4], [27.587, "nhận", 4], [27.863, "thêm", 4], [28.1, "việc", 4], [28.325, "cho", 4], [28.45, "đến", 4], [28.637, "khi", 4], [28.812, "hết", 4], [28.975, "bộ", 4], [29.163, "nhớ", 4], [29.425, "hoặc", 4], [29.637, "hết", 4], [29.825, "thread.", 4], [30.95, "Vì", 5], [31.2, "vậy,", 5], [31.6, "với", 5], [31.812, "server,", 5], [32.5, "các", 5], [32.675, "bạn", 5], [32.875, "dùng", 5], [33.062, "ThreadPoolExecutor", 5], [34.075, "và", 5], [34.212, "khai", 5], [34.462, "báo", 5], [34.725, "rõ", 5], [34.888, "số", 5], [35.112, "thread", 5], [35.362, "tối", 5], [35.6, "đa,", 5], [36.112, "dung", 5], [36.337, "lượng", 5], [36.575, "hàng", 5], [36.775, "đợi", 5], [36.987, "và", 5], [37.112, "saturation", 5], [37.825, "policy,", 5], [38.7, "như", 5], [39.013, "ở", 5], [39.15, "chương", 5], [39.388, "trình", 5], [39.6, "PoolDemo.", 5]], "cues": [10.425, 24.913, 30.95], "lang": 9.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án D được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 324.62, "audio": "audio/2ba5c5ca547d5727.mp3", "dur": 5.02, "words": [[0.1, "Ở", 0], [0.275, "câu", 0], [0.438, "hỏi", 0], [0.625, "đầu,", 0], [1.087, "các", 0], [1.262, "bạn", 0], [1.525, "áp", 0], [1.675, "cấu", 0], [1.9, "hình", 0], [2.087, "pool", 0], [2.362, "vừa", 0], [2.5, "chạy", 0], [2.788, "vào", 0], [2.9, "một", 0], [3.1, "tình", 0], [3.325, "huống", 0], [3.538, "quá", 0], [3.725, "tải.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/01826425cad4db1c.mp3", "dur2": 10.78, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.65, "là", 0], [0.762, "D.", 0], [1.1, "Phương", 1], [1.413, "án", 1], [1.587, "C", 1], [1.788, "đúng", 1], [2.0, "với", 1], [2.138, "saturation", 1], [2.862, "policy", 1], [3.462, "mặc", 1], [3.65, "định", 1], [3.888, "là", 1], [4.088, "AbortPolicy,", 1], [5.312, "nhưng", 1], [5.612, "pool", 1], [5.825, "này", 1], [5.975, "dùng", 1], [6.2, "CallerRunsPolicy,", 1], [7.7, "nên", 1], [7.987, "tác", 1], [8.188, "vụ", 1], [8.375, "chạy", 1], [8.6, "luôn", 1], [8.8, "trên", 1], [8.975, "thread", 1], [9.225, "đã", 1], [9.375, "gửi", 1], [9.55, "nó.", 1]], "dap_an": "D", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án A.", "start": 347.02, "audio": "audio/a399e34d8040500a.mp3", "dur": 4.46, "words": [[0.1, "Câu", 0], [0.338, "tiếp", 0], [0.537, "theo,", 0], [1.062, "các", 0], [1.225, "bạn", 0], [1.438, "chọn", 0], [1.7, "loại", 0], [1.863, "tác", 0], [2.087, "vụ", 0], [2.288, "hợp", 0], [2.513, "nhất", 0], [2.737, "với", 0], [2.938, "virtual", 0], [3.35, "thread.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/66e6e1a5a2d8ab1d.mp3", "dur2": 12.02, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.662, "là", 0], [0.85, "A.", 0], [1.212, "Phương", 1], [1.562, "án", 1], [1.738, "B", 1], [1.938, "là", 1], [2.075, "hiểu", 1], [2.275, "nhầm", 1], [2.538, "hay", 1], [2.688, "gặp:", 1], [3.188, "virtual", 1], [3.65, "thread", 1], [3.888, "không", 1], [4.162, "làm", 1], [4.35, "phép", 1], [4.575, "tính", 1], [4.8, "nhanh", 1], [4.963, "hơn.", 1], [6.112, "Lợi", 2], [6.463, "ích", 2], [6.65, "đến", 2], [6.888, "từ", 2], [7.025, "việc", 2], [7.225, "nhả", 2], [7.463, "carrier", 2], [7.812, "khi", 2], [7.987, "chờ,", 2], [8.562, "nên", 2], [8.85, "chỉ", 2], [9.012, "thấy", 2], [9.2, "rõ", 2], [9.425, "với", 2], [9.537, "tác", 2], [9.738, "vụ", 2], [9.938, "chủ", 2], [10.188, "yếu", 2], [10.438, "chờ", 2], [10.438, "I/O.", 2]], "dap_an": "A", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “Server không còn”; bước 2 khi đọc “Khi hàng đợi đầy”; bước 3 khi đọc “Với tác vụ chủ yếu chờ”; bước 4 khi đọc “Các từ khóa cần nhớ”.", "start": 370.1, "audio": "audio/c16e74597994b031.mp3", "dur": 31.51, "words": [[0.1, "Server", 0], [0.588, "không", 0], [0.825, "còn", 0], [1.012, "tạo", 0], [1.212, "thread", 0], [1.475, "cho", 0], [1.587, "mỗi", 0], [1.775, "kết", 0], [1.988, "nối:", 0], [2.538, "Executor", 0], [3.125, "nhận", 0], [3.425, "tác", 0], [3.6, "vụ,", 0], [4.138, "còn", 0], [4.375, "thread", 0], [4.638, "pool", 0], [4.862, "chạy", 0], [5.062, "chúng", 0], [5.275, "bằng", 0], [5.425, "một", 0], [5.575, "số", 0], [5.812, "thread", 0], [6.075, "có", 0], [6.2, "giới", 0], [6.375, "hạn.", 0], [7.562, "Khi", 1], [7.838, "hàng", 1], [8.012, "đợi", 1], [8.188, "đầy,", 1], [8.588, "saturation", 1], [9.375, "policy", 1], [9.912, "quyết", 1], [10.225, "định", 1], [10.463, "từ", 1], [10.662, "chối", 1], [10.887, "tác", 1], [11.1, "vụ", 1], [11.312, "hay", 1], [11.463, "cho", 1], [11.6, "chạy", 1], [11.812, "trên", 1], [12.012, "thread", 1], [12.238, "gửi,", 1], [12.812, "và", 1], [13.037, "các", 1], [13.225, "giới", 1], [13.375, "hạn", 1], [13.575, "này", 1], [13.75, "cần", 1], [13.95, "khai", 1], [14.15, "báo", 1], [14.387, "rõ", 1], [14.625, "bằng", 1], [14.838, "ThreadPoolExecutor.", 1], [16.75, "Với", 2], [17.012, "tác", 2], [17.225, "vụ", 2], [17.413, "chủ", 2], [17.663, "yếu", 2], [17.9, "chờ", 2], [18.368, "I/O,", 2], [18.837, "virtual", 2], [19.3, "thread", 2], [19.55, "chạy", 2], [19.762, "trên", 2], [19.925, "một", 2], [20.062, "số", 2], [20.3, "ít", 2], [20.488, "carrier", 2], [20.775, "thread,", 2], [21.288, "và", 2], [21.5, "nhả", 2], [21.775, "carrier", 2], [22.125, "mỗi", 2], [22.375, "khi", 2], [22.538, "chờ.", 2], [23.7, "Các", 3], [23.913, "từ", 3], [24.087, "khóa", 3], [24.325, "cần", 3], [24.538, "nhớ", 3], [24.788, "là", 3], [24.95, "Executor,", 3], [25.738, "ExecutorService,", 3], [26.887, "thread", 3], [27.113, "pool,", 3], [27.613, "saturation", 3], [28.288, "policy,", 3], [29.137, "virtual", 3], [29.6, "thread", 3], [29.887, "và", 3], [30.087, "carrier", 3], [30.387, "thread.", 3]], "cues": [0.1, 7.562, 16.75, 23.7], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Java 21 còn có”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 402.21, "audio": "audio/4dbbaff4520bdd4e.mp3", "dur": 24.02, "words": [[0.1, "Java", 0], [0.575, "21", 0], [1.075, "còn", 0], [1.3, "có", 0], [1.475, "structured", 0], [2.038, "concurrency,", 0], [2.875, "ở", 0], [3.125, "dạng", 0], [3.4, "preview,", 0], [4.213, "để", 0], [4.388, "quản", 0], [4.638, "lý", 0], [4.825, "một", 0], [5.037, "nhóm", 0], [5.312, "tác", 0], [5.513, "vụ", 0], [5.688, "con", 0], [5.95, "như", 0], [6.1, "một", 0], [6.263, "đơn", 0], [6.487, "vị.", 0], [7.6, "Khi", 1], [7.85, "dùng", 1], [8.062, "virtual", 1], [8.412, "thread,", 1], [8.875, "các", 1], [9.075, "bạn", 1], [9.3, "cũng", 1], [9.463, "nên", 1], [9.625, "đọc", 1], [9.775, "về", 1], [9.938, "pinning:", 1], [10.675, "trong", 1], [11.0, "Java", 1], [11.363, "21,", 1], [12.137, "virtual", 1], [12.575, "thread", 1], [12.812, "chờ", 1], [12.988, "bên", 1], [13.2, "trong", 1], [13.35, "khối", 1], [13.562, "synchronized", 1], [14.175, "không", 1], [14.412, "nhả", 1], [14.675, "được", 1], [14.875, "carrier.", 1], [16.113, "Bài", 2], [16.363, "tập", 2], [16.575, "mở", 2], [16.762, "rộng", 2], [17.05, "là", 2], [17.225, "đo", 2], [17.413, "thời", 2], [17.575, "gian", 2], [17.788, "hoàn", 2], [18.0, "tất", 2], [18.212, "1", 2], [18.4, "000", 2], [18.988, "tác", 2], [19.15, "vụ", 2], [19.325, "chờ", 2], [19.694, "I/O", 2], [20.062, "với", 2], [20.175, "pool", 2], [20.363, "10", 2], [20.55, "thread", 2], [20.887, "và", 2], [21.062, "với", 2], [21.2, "virtual", 2], [21.562, "thread,", 2], [22.087, "rồi", 2], [22.363, "giải", 2], [22.575, "thích", 2], [22.762, "chênh", 2], [22.962, "lệch.", 2]], "cues": [0.1, 16.113], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 426.83, "audio": "audio/cb3a21af7b578a7e.mp3", "dur": 11.88, "words": [[0.1, "Executor", 0], [0.675, "và", 0], [0.825, "virtual", 0], [1.238, "thread", 0], [1.512, "cho", 0], [1.675, "server", 0], [2.087, "đủ", 0], [2.288, "công", 0], [2.475, "cụ", 0], [2.712, "để", 0], [2.825, "phục", 0], [3.0, "vụ", 0], [3.225, "nhiều", 0], [3.462, "client", 0], [3.938, "mà", 0], [4.138, "vẫn", 0], [4.362, "kiểm", 0], [4.562, "soát", 0], [4.775, "được", 0], [4.938, "tài", 0], [5.138, "nguyên.", 0], [6.338, "Phần", 1], [6.638, "cuối", 1], [6.838, "của", 1], [6.987, "chương", 1], [7.25, "ghép", 1], [7.45, "chúng", 1], [7.713, "vào", 1], [7.85, "bài", 1], [8.025, "toán", 1], [8.325, "ứng", 1], [8.475, "dụng:", 1], [8.975, "server", 1], [9.4, "tra", 1], [9.637, "cứu", 1], [9.9, "phục", 1], [10.1, "vụ", 1], [10.338, "nhiều", 1], [10.588, "client.", 1]], "cues": [], "lang": 0.6}], "video_sau": "Bài toán ứng dụng: server tra cứu phục vụ nhiều client"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

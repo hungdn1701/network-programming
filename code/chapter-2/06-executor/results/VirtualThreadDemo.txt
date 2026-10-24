@@ -1,0 +1,2 @@
+10000 tasks done in 1102 ms
+carrier threads used: 8 (CPU cores: 8)

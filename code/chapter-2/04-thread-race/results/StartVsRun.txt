@@ -1,0 +1,3 @@
+task runs on main
+task runs on worker
+Thread.stop(): UnsupportedOperationException

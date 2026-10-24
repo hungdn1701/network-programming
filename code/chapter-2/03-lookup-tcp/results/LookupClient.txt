@@ -1,0 +1,5 @@
+hanoi -> OK Thủ đô của Việt Nam (17 ms)
+huế -> OK Cố đô triều Nguyễn (0 ms)
+atlantis -> NOTFOUND (0 ms)
+(empty line) -> ERR empty key (0 ms)
+xxxxxxxxxxxxxxxxxxxx… (300 bytes) -> ERR line too long (8 ms)

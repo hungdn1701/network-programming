@@ -1,0 +1,2 @@
+plain field:    worker still running after 2 s = true
+volatile field: worker still running after 2 s = false

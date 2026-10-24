@@ -1,0 +1,2 @@
+pool: 200 connections, 200 OK replies, slowest reply after 24388 ms, all done in 25497 ms
+virtual: 200 connections, 200 OK replies, slowest reply after 202 ms, all done in 1238 ms

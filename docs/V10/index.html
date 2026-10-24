@@ -1,0 +1,508 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V10 — Bài toán ứng dụng: dịch vụ tra cứu qua TCP · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-2/03-lookup-tcp">Mã</a>
+<h1>V10 · Bài toán ứng dụng: dịch vụ tra cứu qua TCP</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 2</div><div class="ten">Bài toán ứng dụng: dịch vụ tra cứu qua TCP</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Dịch vụ tra cứu ghép đặc tả, kết nối và timeout vào một server thật</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Đã có: <b>đặc tả</b> giao thức tra cứu, kết nối TCP, read timeout, <span style="white-space:nowrap">half-close</span></li><li data-s="2">Cần: trả lời <b>nhiều yêu cầu</b> trong một kết nối, phục vụ <b>nhiều client</b>, trả đúng mã lỗi</li><li data-s="3">Và cần <b>kiểm thử tự động</b>: chạy lại các trường hợp thử của đặc tả sau mỗi lần sửa mã</li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> ghép các cơ chế đã học thành dịch vụ tra cứu như thế nào, và kiểm thử dịch vụ đó ra sao?</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Server tuần tự phục vụ xong một kết nối rồi mới accept kết nối sau</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 580" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Server tuần tự. Vòng lặp ngoài: accept lấy một kết nối. Vòng lặp trong: đọc một dòng là khóa, tính phản hồi theo đặc tả, ghi một dòng và flush, lặp lại đến khi readLine trả null hoặc hết read timeout. Server đóng kết nối rồi quay lại accept. Trong lúc đó, các kết nối khác chờ trong backlog.">
+  <defs>
+    <marker id="vl-navy" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="vl-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+    <marker id="vl-q" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#8A6508"/></marker>
+  </defs>
+
+  <!-- ① vòng ngoài: accept lấy một kết nối -->
+  <g data-s="1">
+    <rect x="360" y="200" width="250" height="100" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="485" y="244" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53" font-family="Consolas, monospace">accept()</text>
+    <text x="485" y="280" text-anchor="middle" font-size="22" fill="#373D4E">lấy một kết nối</text>
+    <line x1="610" y1="250" x2="716" y2="250" stroke="#051A53" stroke-width="3" marker-end="url(#vl-navy)"/>
+  </g>
+
+  <!-- ② vòng trong: mỗi yêu cầu một vòng -->
+  <g data-s="2">
+    <rect x="724" y="70" width="640" height="370" rx="10" fill="#F8FAFC" stroke="#2F855A" stroke-width="2.5" stroke-dasharray="10 7"/>
+    <text x="1044" y="108" text-anchor="middle" font-size="24" font-weight="500" fill="#22603F">vòng trong: mỗi yêu cầu một vòng</text>
+    <rect x="764" y="140" width="260" height="96" rx="6" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="894" y="182" text-anchor="middle" font-size="24" fill="#051A53" font-family="Consolas, monospace">readLine()</text>
+    <text x="894" y="216" text-anchor="middle" font-size="22" fill="#373D4E">đọc một khóa</text>
+    <rect x="1064" y="140" width="260" height="96" rx="6" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1194" y="182" text-anchor="middle" font-size="24" fill="#051A53" font-family="Consolas, monospace">reply(key)</text>
+    <text x="1194" y="216" text-anchor="middle" font-size="22" fill="#373D4E">phản hồi theo đặc tả</text>
+    <rect x="914" y="300" width="260" height="96" rx="6" fill="#FFFFFF" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1044" y="342" text-anchor="middle" font-size="24" fill="#051A53" font-family="Consolas, monospace">write, flush()</text>
+    <text x="1044" y="376" text-anchor="middle" font-size="22" fill="#373D4E">gửi một dòng</text>
+    <line x1="1024" y1="188" x2="1056" y2="188" stroke="#2F855A" stroke-width="3" marker-end="url(#vl-ok)"/>
+    <path d="M1194,236 V348 H1182" fill="none" stroke="#2F855A" stroke-width="3" marker-end="url(#vl-ok)"/>
+    <path d="M914,348 H894 V244" fill="none" stroke="#2F855A" stroke-width="3" marker-end="url(#vl-ok)"/>
+  </g>
+
+  <!-- ③ hết yêu cầu: đóng kết nối, quay lại accept -->
+  <g data-s="3">
+    <line x1="1364" y1="250" x2="1452" y2="250" stroke="#051A53" stroke-width="3" marker-end="url(#vl-navy)"/>
+    <rect x="1460" y="200" width="260" height="100" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1590" y="244" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53" font-family="Consolas, monospace">close()</text>
+    <text x="1590" y="280" text-anchor="middle" font-size="22" fill="#373D4E">đóng kết nối</text>
+    <text x="1590" y="150" text-anchor="middle" font-size="22" fill="#051A53"><tspan font-family="Consolas, monospace">readLine()</tspan> trả <tspan font-family="Consolas, monospace">null</tspan></text>
+    <text x="1590" y="180" text-anchor="middle" font-size="22" fill="#051A53">hoặc hết read timeout</text>
+    <path d="M1590,300 V520 H485 V308" fill="none" stroke="#051A53" stroke-width="3" marker-end="url(#vl-navy)"/>
+    <text x="1040" y="506" text-anchor="middle" font-size="24" fill="#051A53">vòng ngoài: accept kết nối tiếp theo</text>
+  </g>
+
+  <!-- ④ các kết nối khác chờ trong backlog -->
+  <g data-s="4">
+    <rect x="40" y="170" width="240" height="160" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="160" y="206" text-anchor="middle" font-size="24" font-weight="500" fill="#6B4E06">backlog</text>
+    <rect x="64" y="226" width="192" height="36" rx="4" fill="#FFFFFF" stroke="#8A6508" stroke-width="2"/>
+    <text x="160" y="252" text-anchor="middle" font-size="20" fill="#6B4E06">kết nối chờ</text>
+    <rect x="64" y="274" width="192" height="36" rx="4" fill="#FFFFFF" stroke="#8A6508" stroke-width="2"/>
+    <text x="160" y="300" text-anchor="middle" font-size="20" fill="#6B4E06">kết nối chờ</text>
+    <line x1="280" y1="250" x2="352" y2="250" stroke="#8A6508" stroke-width="3" marker-end="url(#vl-q)"/>
+    <text x="160" y="370" text-anchor="middle" font-size="22" fill="#6B4E06">chờ đến khi kết nối</text>
+    <text x="160" y="400" text-anchor="middle" font-size="22" fill="#6B4E06">trước được đóng</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b>Server tuần tự</b>: vòng ngoài accept từng kết nối, vòng trong trả lời từng yêu cầu; kết nối sau chờ trong backlog.</p></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Mọi kết nối cùng local port 9199, phân biệt bằng <span style="white-space:nowrap">4-tuple</span></h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Một listening socket ở port 9199 cho ra ba kết nối. 4-tuple của ba kết nối, lấy từ log của server: địa chỉ client 127.0.0.1, port client 53094, 53095, 53096; địa chỉ server 127.0.0.1, port server 9199. Chỉ port client khác nhau, nên ba kết nối khác nhau.">
+  <!-- ① listening socket và tiêu đề bảng -->
+  <g data-s="1">
+    <rect x="40" y="150" width="300" height="140" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="190" y="196" text-anchor="middle" font-size="26" font-weight="500" fill="#6B4E06">listening socket</text>
+    <text x="190" y="236" text-anchor="middle" font-size="22" fill="#6B4E06" font-family="Consolas, monospace">port 9199</text>
+    <text x="190" y="270" text-anchor="middle" font-size="20" fill="#6B4E06">không trao đổi dữ liệu</text>
+    <g font-size="22" font-weight="500" fill="#051A53" text-anchor="middle">
+      <text x="520" y="60">kết nối</text>
+      <text x="780" y="60">địa chỉ client</text>
+      <text x="1050" y="60">port client</text>
+      <text x="1320" y="60">địa chỉ server</text>
+      <text x="1590" y="60">port server</text>
+    </g>
+    <line x1="420" y1="80" x2="1720" y2="80" stroke="#051A53" stroke-width="2"/>
+  </g>
+
+  <!-- ② kết nối thứ nhất -->
+  <g data-s="2">
+    <path d="M340,220 H380 V130 H412" fill="none" stroke="#8A6508" stroke-width="2.5"/>
+    <g font-size="24" fill="#051A53" text-anchor="middle" font-family="Consolas, monospace">
+      <text x="520" y="138" font-family="Roboto, 'Segoe UI', sans-serif">#1</text>
+      <text x="780" y="138">127.0.0.1</text>
+      <text x="1050" y="138">53094</text>
+      <text x="1320" y="138">127.0.0.1</text>
+      <text x="1590" y="138">9199</text>
+    </g>
+    <line x1="420" y1="164" x2="1720" y2="164" stroke="#D5DAE5" stroke-width="2"/>
+  </g>
+
+  <!-- ③ hai kết nối sau -->
+  <g data-s="3">
+    <path d="M340,220 H412" fill="none" stroke="#8A6508" stroke-width="2.5"/>
+    <path d="M380,220 V302 H412" fill="none" stroke="#8A6508" stroke-width="2.5"/>
+    <g font-size="24" fill="#051A53" text-anchor="middle" font-family="Consolas, monospace">
+      <text x="520" y="222" font-family="Roboto, 'Segoe UI', sans-serif">#2</text>
+      <text x="780" y="222">127.0.0.1</text>
+      <text x="1050" y="222">53095</text>
+      <text x="1320" y="222">127.0.0.1</text>
+      <text x="1590" y="222">9199</text>
+      <text x="520" y="306" font-family="Roboto, 'Segoe UI', sans-serif">#3</text>
+      <text x="780" y="306">127.0.0.1</text>
+      <text x="1050" y="306">53096</text>
+      <text x="1320" y="306">127.0.0.1</text>
+      <text x="1590" y="306">9199</text>
+    </g>
+    <line x1="420" y1="248" x2="1720" y2="248" stroke="#D5DAE5" stroke-width="2"/>
+    <line x1="420" y1="332" x2="1720" y2="332" stroke="#051A53" stroke-width="2"/>
+  </g>
+
+  <!-- ④ chỉ port client khác nhau -->
+  <g data-s="4">
+    <rect x="960" y="96" width="180" height="228" rx="6" fill="none" stroke="#1F5FA8" stroke-width="3.5"/>
+    <text x="1050" y="380" text-anchor="middle" font-size="24" font-weight="500" fill="#1F5FA8">khác nhau: ephemeral port</text>
+    <text x="1050" y="412" text-anchor="middle" font-size="22" fill="#123A6B">hệ điều hành phía client cấp</text>
+    <text x="1320" y="380" text-anchor="middle" font-size="22" fill="#5B6478">ba cột còn lại</text>
+    <text x="1320" y="412" text-anchor="middle" font-size="22" fill="#5B6478">giống nhau</text>
+    <text x="1070" y="480" text-anchor="middle" font-size="25" fill="#051A53">chỉ cần một trong bốn giá trị khác nhau là <tspan font-weight="500">hai kết nối khác nhau</tspan></text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b><span style="white-space:nowrap">4-tuple</span></b> (địa chỉ và port của hai đầu) định danh một kết nối TCP. Server không cấp port mới cho mỗi client.</p></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Vòng lặp ngoài: một kết nối tại một thời điểm, lỗi của một kết nối không dừng server</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">void</span> <span class="hl-m">serve</span>() {
+    <span class="hl-k">while</span> (!listener.<span class="hl-m">isClosed</span>()) {
+        <span class="hl-k">try</span> (<span class="hl-t">Socket</span> connected = listener.<span class="hl-m">accept</span>()) {  <span class="hl-c">// một kết nối tại một thời điểm</span>
+            connected.<span class="hl-m">setSoTimeout</span>(<span class="hl-n">5_000</span>);  <span class="hl-c">// read timeout: client không gửi gì quá 5 giây</span>
+            log.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">accepted </span><span class="hl-s">"</span> + <span class="hl-m">fourTuple</span>(connected));
+            <span class="hl-k">int</span> requests = <span class="hl-m">handle</span>(connected);  <span class="hl-c">// phục vụ đến khi client đóng chiều gửi</span>
+            log.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">closed, requests: </span><span class="hl-s">"</span> + requests);
+        } <span class="hl-k">catch</span> (<span class="hl-t">IOException</span> e) {  <span class="hl-c">// gồm cả SocketTimeoutException: lỗi của một kết nối không dừng server</span>
+            log.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">connection error: </span><span class="hl-s">"</span> + e.<span class="hl-m">getMessage</span>());
+        }
+    }
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>listening on port 9199
+accepted local 127.0.0.1:9199, remote 127.0.0.1:53094
+closed, requests: 5
+accepted local 127.0.0.1:9199, remote 127.0.0.1:53095
+closed, requests: 1
+accepted local 127.0.0.1:9199, remote 127.0.0.1:53096
+closed, requests: 1</pre></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Vòng lặp trong: mỗi dòng nhận được là một khóa, trả đúng một dòng</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">int</span> <span class="hl-m">handle</span>(<span class="hl-t">Socket</span> connected) <span class="hl-k">throws</span> <span class="hl-t">IOException</span> {
+    <span class="hl-k">var</span> in = <span class="hl-k">new</span> <span class="hl-m">BufferedReader</span>(<span class="hl-k">new</span> <span class="hl-m">InputStreamReader</span>(connected.<span class="hl-m">getInputStream</span>(), <span class="hl-t">UTF_8</span>));
+    <span class="hl-k">var</span> out = <span class="hl-k">new</span> <span class="hl-m">BufferedWriter</span>(<span class="hl-k">new</span> <span class="hl-m">OutputStreamWriter</span>(connected.<span class="hl-m">getOutputStream</span>(), <span class="hl-t">UTF_8</span>));
+    <span class="hl-k">int</span> requests = <span class="hl-n">0</span>;
+    <span class="hl-k">for</span> (<span class="hl-t">String</span> key; (key = in.<span class="hl-m">readLine</span>()) != <span class="hl-k">null</span>; requests++) {  <span class="hl-c">// null: client đã đóng chiều gửi</span>
+        out.<span class="hl-m">write</span>(<span class="hl-m">reply</span>(key) + <span class="hl-s">"</span><span class="hl-s">\</span><span class="hl-s">n</span><span class="hl-s">"</span>);  <span class="hl-c">// OK &lt;giá trị&gt;, NOTFOUND hoặc ERR &lt;lý do&gt;</span>
+        out.<span class="hl-m">flush</span>();
+    }
+    <span class="hl-k">return</span> requests;
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>hanoi -&gt; OK Thủ đô của Việt Nam (17 ms)
+huế -&gt; OK Cố đô triều Nguyễn (0 ms)
+atlantis -&gt; NOTFOUND (0 ms)
+(empty line) -&gt; ERR empty key (0 ms)
+xxxxxxxxxxxxxxxxxxxx… (300 bytes) -&gt; ERR line too long (8 ms)</pre></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>Integration test chạy server thật ở port 0 và kiểm các trường hợp của đặc tả</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-a">@BeforeAll</span>
+<span class="hl-k">static</span> <span class="hl-k">void</span> <span class="hl-m">startServer</span>() <span class="hl-k">throws</span> <span class="hl-t">IOException</span> {
+    listener = <span class="hl-k">new</span> <span class="hl-m">ServerSocket</span>(<span class="hl-n">0</span>, <span class="hl-n">50</span>, <span class="hl-t">InetAddress</span>.<span class="hl-m">getLoopbackAddress</span>());  <span class="hl-c">// port 0: hệ điều hành cấp port trống</span>
+    <span class="hl-t">Thread</span> server = <span class="hl-k">new</span> <span class="hl-m">Thread</span>(() -&gt; <span class="hl-k">new</span> <span class="hl-m">LookupServer</span>(listener, <span class="hl-t">NO_LOG</span>).<span class="hl-m">serve</span>());
+    server.<span class="hl-m">setDaemon</span>(<span class="hl-k">true</span>);
+    server.<span class="hl-m">start</span>();  <span class="hl-c">// server chạy song song với test; thread học ở nhóm đa luồng</span>
+}
+
+<span class="hl-a">@Test</span>
+<span class="hl-k">void</span> <span class="hl-m">knownKey</span>() <span class="hl-k">throws</span> <span class="hl-t">IOException</span> {
+    <span class="hl-m">assertEquals</span>(<span class="hl-s">"</span><span class="hl-s">OK Thủ đô của Việt Nam</span><span class="hl-s">"</span>, <span class="hl-m">ask</span>(<span class="hl-s">"</span><span class="hl-s">hanoi</span><span class="hl-s">"</span>));
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>╷
+└─ JUnit Jupiter ✔
+   └─ LookupServerTest ✔
+      ├─ portZeroGetsEphemeralPort() ✔
+      ├─ knownKey() ✔
+      ├─ unknownKey() ✔
+      ├─ emptyLine() ✔
+      ├─ lineLongerThan256Bytes() ✔
+      └─ crlfIsAccepted() ✔
+
+Test run finished after 175 ms</pre></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S07"><header><h1>Một client không gửi gì làm mọi client sau phải chờ</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span>connected.<span class="hl-m">setSoTimeout</span>(<span class="hl-n">5_000</span>);  <span class="hl-c">// read timeout: client không gửi gì quá 5 giây</span>
+<span class="hl-k">int</span> requests = <span class="hl-m">handle</span>(connected);  <span class="hl-c">// phục vụ đến khi client đóng chiều gửi</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>listening on port 9199
+accepted local 127.0.0.1:9199, remote 127.0.0.1:53098
+connection error: Read timed out
+accepted local 127.0.0.1:9199, remote 127.0.0.1:53099
+closed, requests: 1</pre></div><ul class="y-nho"><li data-s="2">Client tra cứu <code>hanoi</code> đến sau <b>1 giây</b>: nhận phản hồi sau <b>3983 ms</b>, thay vì vài mili giây</li><li data-s="3">Server tuần tự bị chặn ở <code>readLine()</code> của kết nối đầu; kết nối sau đã bắt tay xong, <b>nằm chờ trong backlog</b></li></ul></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Ba client trên cùng một máy kết nối lần lượt tới server tra cứu ở port 9199. Ba kết nối được phân biệt bằng gì?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Bằng <span style="white-space:nowrap">4-tuple</span>: địa chỉ và port của hai đầu; ở đây ba kết nối khác nhau ở port client.</div></div><div class=""><span>B</span><div>Server cấp cho mỗi kết nối một port mới sau khi accept.</div></div><div class=""><span>C</span><div>Bằng thứ tự gọi accept: kết nối thứ nhất, thứ hai, thứ ba.</div></div><div class=""><span>D</span><div>Bằng địa chỉ IP của client.</div></div></div><div class="giai-thich">Một kết nối TCP được định danh bằng <span style="white-space:nowrap">4-tuple</span>. Cả ba kết nối có local port 9199 và cùng địa chỉ 127.0.0.1 ở hai đầu; chỉ port client (ephemeral port) khác nhau. Server không cấp port mới cho kết nối.</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Ba client trên cùng một máy kết nối lần lượt tới server tra cứu ở port 9199. Ba kết nối được phân biệt bằng gì?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Bằng <span style="white-space:nowrap">4-tuple</span>: địa chỉ và port của hai đầu; ở đây ba kết nối khác nhau ở port client.</div></div><div class=""><span>B</span><div>Server cấp cho mỗi kết nối một port mới sau khi accept.</div></div><div class=""><span>C</span><div>Bằng thứ tự gọi accept: kết nối thứ nhất, thứ hai, thứ ba.</div></div><div class=""><span>D</span><div>Bằng địa chỉ IP của client.</div></div></div><div class="giai-thich">Một kết nối TCP được định danh bằng <span style="white-space:nowrap">4-tuple</span>. Cả ba kết nối có local port 9199 và cùng địa chỉ 127.0.0.1 ở hai đầu; chỉ port client (ephemeral port) khác nhau. Server không cấp port mới cho kết nối.</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Một client kết nối tới server tra cứu tuần tự nhưng không gửi dòng nào. Vì sao các client đến sau phải chờ?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Backlog chỉ chứa được một kết nối.</div></div><div class=""><span>B</span><div>Kết nối của các client sau bị từ chối (connection refused) cho đến khi client đầu đóng.</div></div><div class=""><span>C</span><div>TCP chỉ cho phép một kết nối tới mỗi port tại một thời điểm.</div></div><div class="dung"><span>D</span><div>Server đang bị chặn ở <code>readLine()</code> của kết nối đầu, nên chưa gọi <code>accept()</code> cho các kết nối sau.</div></div></div><div class="giai-thich">Kết nối của client sau đã bắt tay xong và nằm trong backlog; chỉ có server chưa gọi <code>accept()</code> vì còn chờ ở <code>readLine()</code> của kết nối đầu, đến khi read timeout hết hạn. TCP cho phép nhiều kết nối tới cùng một port.</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Một client kết nối tới server tra cứu tuần tự nhưng không gửi dòng nào. Vì sao các client đến sau phải chờ?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Backlog chỉ chứa được một kết nối.</div></div><div class=""><span>B</span><div>Kết nối của các client sau bị từ chối (connection refused) cho đến khi client đầu đóng.</div></div><div class=""><span>C</span><div>TCP chỉ cho phép một kết nối tới mỗi port tại một thời điểm.</div></div><div class="dung"><span>D</span><div>Server đang bị chặn ở <code>readLine()</code> của kết nối đầu, nên chưa gọi <code>accept()</code> cho các kết nối sau.</div></div></div><div class="giai-thich">Kết nối của client sau đã bắt tay xong và nằm trong backlog; chỉ có server chưa gọi <code>accept()</code> vì còn chờ ở <code>readLine()</code> của kết nối đầu, đến khi read timeout hết hạn. TCP cho phép nhiều kết nối tới cùng một port.</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>Server tuần tự</b>: vòng ngoài accept từng kết nối, vòng trong trả lời từng yêu cầu đến khi <code>readLine()</code> trả <code>null</code></div></div><div class="the" data-s="2"><span class="so">2</span><div>Mọi kết nối cùng port 9199, phân biệt bằng <b><span style="white-space:nowrap">4-tuple</span></b>; port client là <b>ephemeral port</b></div></div><div class="the" data-s="3"><span class="so">3</span><div><b>Integration test</b> chạy server thật ở <b>port 0</b>, kiểm các trường hợp thử của đặc tả</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>server tuần tự</span><span>4-tuple</span><span>integration test</span><span>port 0</span><span>ephemeral port</span></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>Đọc dòng có giới hạn: dừng ở byte thứ 257 thay vì giữ cả dòng trong bộ nhớ</li><li>Integration test cho lỗi mạng: client đóng giữa chừng, kết nối bị reset</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Hiện thực lệnh STATS theo đặc tả đã bổ sung ở Chương 1; viết integration test cho lệnh mới.</p></div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Đa luồng: thread và race condition</div></main><footer><span>Chương 2 · Lập trình socket TCP và đa luồng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Giao thức tra cứu đã có đặc tả, còn chương trình Java đã biết kết nối, đặt timeout và đóng một chiều. Ghép những cơ chế đó thành một dịch vụ tra cứu hoàn chỉnh như thế nào, và làm sao kiểm thử dịch vụ đó tự động?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:15</span>
+      <h3>Slide 1. Dịch vụ tra cứu ghép đặc tả, kết nối và timeout vào một server thật</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Đã có: **đặc tả** giao thức tra cứu, kết nối TCP, read timeout, half-close</li><li>Cần: trả lời **nhiều yêu cầu** trong một kết nối, phục vụ **nhiều client**, trả đúng mã lỗi</li><li>Và cần **kiểm thử tự động**: chạy lại các trường hợp thử của đặc tả sau mỗi lần sửa mã</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** ghép các cơ chế đã học thành dịch vụ tra cứu như thế nào, và kiểm thử dịch vụ đó ra sao?</div></div>
+    <div class="kb-thoai"><p>Ở Chương 1, giao thức tra cứu đã có đặc tả và được thử bằng NetCat, với mình đóng vai server. Các phần về kết nối TCP và về timeout, half-close đã cho chương trình Java đủ cơ chế để thay vai đó. Theo đặc tả, một kết nối gửi được nhiều yêu cầu lần lượt, nên server phải trả lời từng dòng cho đến khi client đóng kết nối. Server cũng phải phục vụ nhiều client, và trả đúng mã lỗi khi dòng sai đặc tả. Ngoài ra, các trường hợp thử ở Chương 1 cần chạy lại được sau mỗi lần sửa mã, tức là cần kiểm thử tự động. Từ những yêu cầu đó, câu hỏi của phần là: ghép các cơ chế đã học thành dịch vụ tra cứu như thế nào, và kiểm thử dịch vụ đó ra sao?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Ở Chương 1”; bước 2 khi đọc “Theo đặc tả”; bước 3 khi đọc “Ngoài ra”; bước 4 khi đọc “câu hỏi của phần”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:56</span>
+      <h3>Slide 2. Server tuần tự phục vụ xong một kết nối rồi mới accept kết nối sau</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Server tuần tự**: vòng ngoài accept từng kết nối, vòng trong trả lời từng yêu cầu; kết nối sau chờ trong backlog.</li></ul></div></div>
+    <div class="kb-thoai"><p>Trước khi viết mã, mình xem thiết kế của server. Vòng lặp ngoài bắt đầu bằng lời gọi accept, lấy một kết nối khỏi backlog. Với kết nối đó, server chạy một vòng lặp trong: đọc một dòng làm khóa, tính phản hồi theo đặc tả, ghi đúng một dòng phản hồi, rồi gọi phương thức flush để gửi đi ngay. Vòng lặp trong dừng khi lời gọi readLine trả về null, tức client đã đóng chiều gửi, hoặc khi hết read timeout. Server đóng kết nối, rồi quay lại lời gọi accept để lấy kết nối tiếp theo. Trong lúc đó, các kết nối khác đã bắt tay xong vẫn nằm chờ trong backlog. Cách tổ chức này gọi là server tuần tự, hay iterative server: các kết nối được phục vụ lần lượt, mỗi lần một kết nối.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình vong-lap-tuan-tu: bốn bước của hình, bước 5 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Vòng lặp ngoài bắt đầu”; bước 2 khi đọc “Với kết nối đó”; bước 3 khi đọc “Vòng lặp trong dừng”; bước 4 khi đọc “Trong lúc đó”; bước 5 khi đọc “Cách tổ chức này”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:42</span>
+      <h3>Slide 3. Mọi kết nối cùng local port 9199, phân biệt bằng 4-tuple</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**4-tuple** (địa chỉ và port của hai đầu) định danh một kết nối TCP. Server không cấp port mới cho mỗi client.</li></ul></div></div>
+    <div class="kb-thoai"><p>Khi nhiều client lần lượt kết nối, mọi kết nối đều có local port 9199 ở phía server. Vậy hệ điều hành phân biệt chúng bằng gì? Câu trả lời là 4-tuple, bộ bốn giá trị gồm địa chỉ và port của hai đầu kết nối. Bảng trong hình lấy từ log của server ở lần chạy ba client mà các bạn sẽ thấy ngay sau đây. Kết nối thứ nhất đến từ port 53094 của client, còn hai kết nối sau đến từ port 53095 và 53096. Trong bốn giá trị, chỉ port client thay đổi, ba giá trị còn lại giữ nguyên. Port client này là ephemeral port, hay port tạm, do hệ điều hành phía client cấp cho mỗi kết nối. Theo định nghĩa của 4-tuple, chỉ cần một trong bốn giá trị khác nhau là hai kết nối khác nhau, nên server không cần cấp port mới cho mỗi client.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình bon-gia-tri: bốn bước của hình, bước 5 là ô kết luận. Số port trong bảng lấy từ results/LookupServer.txt.
+Hiện dần: bước 1 khi đọc “Khi nhiều client lần lượt kết nối”; bước 2 khi đọc “Kết nối thứ nhất”; bước 3 khi đọc “còn hai kết nối sau”; bước 4 khi đọc “Trong bốn giá trị”; bước 5 khi đọc “Theo định nghĩa”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:34</span>
+      <h3>Slide 4. Vòng lặp ngoài: một kết nối tại một thời điểm, lỗi của một kết nối không dừng server</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/lookup/LookupServer.java</span><pre><code>void serve() {
+    while (!listener.isClosed()) {
+        try (Socket connected = listener.accept()) {  // một kết nối tại một thời điểm
+            connected.setSoTimeout(5_000);  // read timeout: client không gửi gì quá 5 giây
+            log.println(&quot;accepted &quot; + fourTuple(connected));
+            int requests = handle(connected);  // phục vụ đến khi client đóng chiều gửi
+            log.println(&quot;closed, requests: &quot; + requests);
+        } catch (IOException e) {  // gồm cả SocketTimeoutException: lỗi của một kết nối không dừng server
+            log.println(&quot;connection error: &quot; + e.getMessage());
+        }
+    }
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Mã của vòng lặp ngoài nằm trong phương thức serve. Lời gọi accept đặt trong khối try-with-resources, nên connected socket luôn được đóng khi phục vụ xong. Server đặt read timeout 5 giây cho kết nối, ghi log 4-tuple, rồi chuyển kết nối cho phương thức handle. Khối catch bắt IOException, kể cả SocketTimeoutException, nhờ đó lỗi ở một kết nối chỉ kết thúc kết nối ấy, còn server vẫn chạy tiếp. Mình chạy server, rồi chạy ba client nối tiếp nhau. Trong log, mỗi dòng accepted đi kèm dòng closed của chính kết nối đó, rồi kết nối sau mới được nhận.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, log của server phía dưới. Highlight lần lượt: dòng listener.accept(), dòng setSoTimeout(5_000), dòng handle(connected), khối catch. Có thể thay khung kết quả bằng clip replay ba terminal (server, client thứ nhất, hai client sau: results/LookupClient*.txt).
+Hiện dần: bước 1 khi đọc “Mình chạy server”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:20</span>
+      <h3>Slide 5. Vòng lặp trong: mỗi dòng nhận được là một khóa, trả đúng một dòng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/lookup/LookupServer.java</span><pre><code>int handle(Socket connected) throws IOException {
+    var in = new BufferedReader(new InputStreamReader(connected.getInputStream(), UTF_8));
+    var out = new BufferedWriter(new OutputStreamWriter(connected.getOutputStream(), UTF_8));
+    int requests = 0;
+    for (String key; (key = in.readLine()) != null; requests++) {  // null: client đã đóng chiều gửi
+        out.write(reply(key) + &quot;\n&quot;);  // OK &lt;giá trị&gt;, NOTFOUND hoặc ERR &lt;lý do&gt;
+        out.flush();
+    }
+    return requests;
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Còn vòng lặp trong nằm ở phương thức handle. Hai stream BufferedReader và BufferedWriter dùng UTF-8, như ở phần về charset và framing của Chương 1. Mỗi vòng đọc một dòng làm khóa, chuyển khóa cho phương thức reply để tính phản hồi, rồi ghi phản hồi kèm ký tự LF. Lời gọi flush đứng ngay sau, vì client đang chờ phản hồi này rồi mới gửi yêu cầu tiếp. Phương thức reply trả về một trong ba dạng của đặc tả: OK kèm giá trị, NOTFOUND, hoặc ERR kèm lý do. Để kiểm chứng, client đầu tiên gửi lần lượt các trường hợp thử của đặc tả. Các bạn đoán trước dòng dài 300 byte nhận phản hồi gì. Kết quả: hai khóa hanoi và huế, khóa có dấu, đều có giá trị, còn atlantis không có. Dòng rỗng và dòng 300 byte nhận đúng hai mã lỗi của đặc tả.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả của client phía dưới. Highlight dòng readLine() rồi dòng reply(key) khi đọc tới. Phương thức reply (mười dòng, ánh xạ ba dạng phản hồi và hai mã lỗi) ở README của mã, không đưa lên slide.
+Hiện dần: bước 1 khi đọc “Kết quả: hai khóa”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:21</span>
+      <h3>Slide 6. Integration test chạy server thật ở port 0 và kiểm các trường hợp của đặc tả</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">test/netlab/lookup/LookupServerTest.java</span><pre><code>@BeforeAll
+static void startServer() throws IOException {
+    listener = new ServerSocket(0, 50, InetAddress.getLoopbackAddress());  // port 0: hệ điều hành cấp port trống
+    Thread server = new Thread(() -&gt; new LookupServer(listener, NO_LOG).serve());
+    server.setDaemon(true);
+    server.start();  // server chạy song song với test; thread học ở nhóm đa luồng
+}
+
+@Test
+void knownKey() throws IOException {
+    assertEquals(&quot;OK Thủ đô của Việt Nam&quot;, ask(&quot;hanoi&quot;));
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Gõ lại các trường hợp thử bằng tay sau mỗi lần sửa mã thì chậm và dễ sót. Integration test, hay kiểm thử tích hợp, chạy server thật và client thật qua một kết nối thật, rồi kiểm phản hồi. Mình viết test bằng JUnit 5, framework kiểm thử cho Java. Trước mọi test, server mở listening socket trên loopback với port 0. Port 0 nghĩa là để hệ điều hành cấp một ephemeral port còn trống, nên test không xung đột với server đang chạy ở port 9199. Phương thức ask đọc lại port được cấp bằng phương thức getLocalPort, kết nối tới đó, gửi khóa và trả về phản hồi. Server chạy trên một thread riêng để server và test chạy cùng lúc; thread là nội dung của nhóm đa luồng ngay sau. Kết quả: sáu test đều đạt, gồm các trường hợp của đặc tả, kiểm tra port 0 và một client gửi CRLF.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, cây kết quả JUnit phía dưới. Highlight dòng new ServerSocket(0, …) khi đọc &quot;port 0&quot;, dòng server.start() khi đọc &quot;thread riêng&quot;. Kết quả là phần cây của lệnh JUnit Console Launcher (README của mã).
+Hiện dần: bước 1 khi đọc “Kết quả: sáu test”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:21</span>
+      <h3>Slide 7. Một client không gửi gì làm mọi client sau phải chờ</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Client tra cứu `hanoi` đến sau **1 giây**: nhận phản hồi sau **3983 ms**, thay vì vài mili giây</li><li>Server tuần tự bị chặn ở `readLine()` của kết nối đầu; kết nối sau đã bắt tay xong, **nằm chờ trong backlog**</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/lookup/LookupServer.java</span><pre><code>connected.setSoTimeout(5_000);  // read timeout: client không gửi gì quá 5 giây
+int requests = handle(connected);  // phục vụ đến khi client đóng chiều gửi</code></pre></div></div>
+    <div class="kb-thoai"><p>Server tuần tự còn một giới hạn. Mình chạy một client chỉ kết nối mà không gửi gì, rồi một giây sau chạy client tra cứu hanoi. Các bạn thử đoán client thứ hai chờ bao lâu. Log của server cho biết lý do: sau khi nhận kết nối đầu, server bị chặn ở lời gọi readLine của kết nối đó cho đến khi read timeout 5 giây hết hạn, và chỉ sau đó mới nhận kết nối thứ hai. Phía client tra cứu, phản hồi đến sau gần 4 giây, trong khi bình thường chỉ mất vài mili giây. Trong thời gian đó, kết nối thứ hai đã bắt tay xong và nằm trong backlog, chỉ là server chưa gọi lại phương thức accept. Như vậy, chỉ một client chậm, hay cố ý không gửi gì, cũng làm mọi client đến sau phải chờ.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã hai dòng phía trên, log của server phía dưới. Sau câu &quot;chờ bao lâu&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện. Client chậm là IdleClient (results/IdleClient.txt); kết quả của client tra cứu ở results/LookupClient-after-idle.txt, hiện thu nhỏ cạnh log khi đọc &quot;Phía client tra cứu&quot;.
+Hiện dần: bước 1 khi đọc “Log của server”; bước 2 khi đọc “Phía client tra cứu”; bước 3 khi đọc “Trong thời gian đó”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:13</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu hỏi đầu dùng lại bảng 4-tuple của ba kết nối.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Ba client trên cùng một máy kết nối lần lượt tới server tra cứu ở port 9199. Ba kết nối được phân biệt bằng gì?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Bằng 4-tuple: địa chỉ và port của hai đầu; ở đây ba kết nối khác nhau ở port client.</li>
+      <li><b>B.</b> Server cấp cho mỗi kết nối một port mới sau khi accept.</li>
+      <li><b>C.</b> Bằng thứ tự gọi accept: kết nối thứ nhất, thứ hai, thứ ba.</li>
+      <li><b>D.</b> Bằng địa chỉ IP của client.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: A</b> — <span>Một kết nối TCP được định danh bằng 4-tuple. Cả ba kết nối có local port 9199 và cùng địa chỉ 127.0.0.1 ở hai đầu; chỉ port client (ephemeral port) khác nhau. Server không cấp port mới cho kết nối.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là A. Phương án B là hiểu nhầm phổ biến, nhưng log cho thấy cả ba kết nối đều có local port 9199: server không cấp port mới cho kết nối. Phương án D cũng không đủ, vì ba client chạy trên cùng một máy, cùng địa chỉ 127.0.0.1.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án A được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:41</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu tiếp theo đặt các bạn vào vị trí client đến sau một client chậm.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Một client kết nối tới server tra cứu tuần tự nhưng không gửi dòng nào. Vì sao các client đến sau phải chờ?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Backlog chỉ chứa được một kết nối.</li>
+      <li><b>B.</b> Kết nối của các client sau bị từ chối (connection refused) cho đến khi client đầu đóng.</li>
+      <li><b>C.</b> TCP chỉ cho phép một kết nối tới mỗi port tại một thời điểm.</li>
+      <li><b>D.</b> Server đang bị chặn ở readLine() của kết nối đầu, nên chưa gọi accept() cho các kết nối sau.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: D</b> — <span>Kết nối của client sau đã bắt tay xong và nằm trong backlog; chỉ có server chưa gọi accept() vì còn chờ ở readLine() của kết nối đầu, đến khi read timeout hết hạn. TCP cho phép nhiều kết nối tới cùng một port.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là D. Nhiều bạn chọn B, nhưng kết nối của client sau không bị từ chối: bắt tay đã xong và kết nối nằm trong backlog. Server chỉ chưa gọi lại phương thức accept, vì còn bị chặn ở lời gọi readLine của kết nối đầu.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án D.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:06</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**Server tuần tự**: vòng ngoài accept từng kết nối, vòng trong trả lời từng yêu cầu đến khi `readLine()` trả `null`</li><li>Mọi kết nối cùng port 9199, phân biệt bằng **4-tuple**; port client là **ephemeral port**</li><li>**Integration test** chạy server thật ở **port 0**, kiểm các trường hợp thử của đặc tả</li></ul></div>
+    <div class="kb-thoai"><p>Dịch vụ tra cứu đã chạy đúng đặc tả. Server tuần tự gồm hai vòng lặp: vòng ngoài nhận từng kết nối bằng lời gọi accept, vòng trong trả lời từng yêu cầu cho đến khi client đóng chiều gửi. Các kết nối dùng chung port 9199 và được phân biệt bằng 4-tuple, trong đó port client là ephemeral port. Việc kiểm thử do integration test đảm nhận: server thật chạy ở port 0, và các trường hợp thử của đặc tả chạy lại sau mỗi lần sửa mã. Các từ khóa của phần là server tuần tự, 4-tuple, integration test, port 0 và ephemeral port.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “Dịch vụ tra cứu đã”; bước 2 khi đọc “Các kết nối dùng chung”; bước 3 khi đọc “Việc kiểm thử”; bước 4 khi đọc “Các từ khóa của phần”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:40</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Bản server này còn hai chỗ có thể làm kỹ hơn. Một là đọc dòng có giới hạn: server dừng đọc ngay ở byte thứ 257, thay vì giữ cả dòng dài trong bộ nhớ như phương thức readLine. Hai là integration test cho lỗi mạng, như client đóng kết nối giữa chừng hay kết nối bị reset. Bài tập mở rộng là viết lệnh STATS cho server theo đặc tả đã bổ sung ở Chương 1, kèm integration test cho lệnh mới.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Bản server này còn hai chỗ”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-12" data-index="12">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">8:06</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(12)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(12, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Server tra cứu đã đúng đặc tả và có test, nhưng chỉ phục vụ một kết nối tại một thời điểm. Nhóm đa luồng bắt đầu từ phần tiếp theo, về thread và race condition, để server xử lý được nhiều kết nối song song.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V10", "tieu_de": "Bài toán ứng dụng: dịch vụ tra cứu qua TCP", "giong": "vi-VN-NamMinhNeural", "tong": 500.37, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/9d0146d3c3759de8.mp3", "dur": 14.66, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Giao", 1], [2.138, "thức", 1], [2.312, "tra", 1], [2.5, "cứu", 1], [2.812, "đã", 1], [2.925, "có", 1], [3.038, "đặc", 1], [3.225, "tả,", 1], [3.825, "còn", 1], [4.037, "chương", 1], [4.225, "trình", 1], [4.412, "Java", 1], [4.825, "đã", 1], [4.95, "biết", 1], [5.162, "kết", 1], [5.338, "nối,", 1], [5.875, "đặt", 1], [6.138, "timeout", 1], [6.6, "và", 1], [6.75, "đóng", 1], [6.975, "một", 1], [7.138, "chiều.", 1], [8.3, "Ghép", 2], [8.65, "những", 2], [8.863, "cơ", 2], [9.05, "chế", 2], [9.25, "đó", 2], [9.475, "thành", 2], [9.675, "một", 2], [9.825, "dịch", 2], [10.0, "vụ", 2], [10.2, "tra", 2], [10.4, "cứu", 2], [10.625, "hoàn", 2], [10.838, "chỉnh", 2], [11.075, "như", 2], [11.225, "thế", 2], [11.325, "nào,", 2], [11.775, "và", 2], [11.95, "làm", 2], [12.125, "sao", 2], [12.338, "kiểm", 2], [12.537, "thử", 2], [12.688, "dịch", 2], [12.875, "vụ", 2], [13.075, "đó", 2], [13.287, "tự", 2], [13.463, "động?", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Dịch vụ tra cứu ghép đặc tả, kết nối và timeout vào một server thật", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Ở Chương 1”; bước 2 khi đọc “Theo đặc tả”; bước 3 khi đọc “Ngoài ra”; bước 4 khi đọc “câu hỏi của phần”.", "start": 15.26, "audio": "audio/cd65a071cdc2f24a.mp3", "dur": 40.3, "words": [[0.1, "Ở", 0], [0.3, "Chương", 0], [0.537, "1,", 0], [0.975, "giao", 0], [1.212, "thức", 0], [1.4, "tra", 0], [1.575, "cứu", 0], [1.887, "đã", 0], [1.988, "có", 0], [2.125, "đặc", 0], [2.3, "tả", 0], [2.587, "và", 0], [2.737, "được", 0], [2.9, "thử", 0], [3.1, "bằng", 0], [3.337, "NetCat,", 0], [3.987, "với", 0], [4.188, "mình", 0], [4.425, "đóng", 0], [4.65, "vai", 0], [4.838, "server.", 0], [6.175, "Các", 1], [6.375, "phần", 1], [6.612, "về", 1], [6.737, "kết", 1], [6.938, "nối", 1], [7.351, "TCP", 1], [7.763, "và", 1], [7.888, "về", 1], [8.037, "timeout,", 1], [8.762, "half-close", 1], [9.375, "đã", 1], [9.525, "cho", 1], [9.662, "chương", 1], [9.887, "trình", 1], [10.113, "Java", 1], [10.463, "đủ", 1], [10.662, "cơ", 1], [10.863, "chế", 1], [11.15, "để", 1], [11.287, "thay", 1], [11.45, "vai", 1], [11.588, "đó.", 1], [12.775, "Theo", 2], [12.963, "đặc", 2], [13.125, "tả,", 2], [13.662, "một", 2], [13.863, "kết", 2], [14.037, "nối", 2], [14.238, "gửi", 2], [14.45, "được", 2], [14.637, "nhiều", 2], [14.887, "yêu", 2], [15.05, "cầu", 2], [15.262, "lần", 2], [15.438, "lượt,", 2], [15.912, "nên", 2], [16.225, "server", 2], [16.65, "phải", 2], [16.812, "trả", 2], [17.0, "lời", 2], [17.225, "từng", 2], [17.45, "dòng", 2], [17.688, "cho", 2], [17.812, "đến", 2], [17.988, "khi", 2], [18.188, "client", 2], [18.587, "đóng", 2], [18.812, "kết", 2], [19.025, "nối.", 2], [20.212, "Server", 3], [20.7, "cũng", 3], [20.913, "phải", 3], [21.087, "phục", 3], [21.262, "vụ", 3], [21.475, "nhiều", 3], [21.725, "client,", 3], [22.337, "và", 3], [22.575, "trả", 3], [22.775, "đúng", 3], [22.975, "mã", 3], [23.15, "lỗi", 3], [23.413, "khi", 3], [23.6, "dòng", 3], [23.825, "sai", 3], [24.05, "đặc", 3], [24.212, "tả.", 3], [25.475, "Ngoài", 4], [25.75, "ra,", 4], [26.238, "các", 4], [26.413, "trường", 4], [26.613, "hợp", 4], [26.8, "thử", 4], [27.038, "ở", 4], [27.175, "Chương", 4], [27.438, "1", 4], [27.6, "cần", 4], [27.775, "chạy", 4], [27.988, "lại", 4], [28.188, "được", 4], [28.325, "sau", 4], [28.562, "mỗi", 4], [28.775, "lần", 4], [28.962, "sửa", 4], [29.163, "mã,", 4], [29.788, "tức", 4], [30.012, "là", 4], [30.15, "cần", 4], [30.4, "kiểm", 4], [30.613, "thử", 4], [30.8, "tự", 4], [30.988, "động.", 4], [32.138, "Từ", 5], [32.425, "những", 5], [32.712, "yêu", 5], [32.875, "cầu", 5], [33.087, "đó,", 5], [33.575, "câu", 5], [33.763, "hỏi", 5], [33.975, "của", 5], [34.125, "phần", 5], [34.325, "là:", 5], [34.837, "ghép", 5], [35.087, "các", 5], [35.263, "cơ", 5], [35.388, "chế", 5], [35.675, "đã", 5], [35.775, "học", 5], [35.962, "thành", 5], [36.163, "dịch", 5], [36.325, "vụ", 5], [36.525, "tra", 5], [36.712, "cứu", 5], [36.987, "như", 5], [37.175, "thế", 5], [37.275, "nào,", 5], [37.737, "và", 5], [37.938, "kiểm", 5], [38.163, "thử", 5], [38.325, "dịch", 5], [38.525, "vụ", 5], [38.75, "đó", 5], [38.962, "ra", 5], [39.087, "sao?", 5]], "cues": [0.1, 12.775, 25.475, 33.575], "lang": 0.6}, {"ten": "Slide 2. Server tuần tự phục vụ xong một kết nối rồi mới accept kết nối sau", "loai": "slide", "slide": "S02", "dung": "Hình vong-lap-tuan-tu: bốn bước của hình, bước 5 là ô kết luận.\nHiện dần: bước 1 khi đọc “Vòng lặp ngoài bắt đầu”; bước 2 khi đọc “Với kết nối đó”; bước 3 khi đọc “Vòng lặp trong dừng”; bước 4 khi đọc “Trong lúc đó”; bước 5 khi đọc “Cách tổ chức này”.", "start": 56.16, "audio": "audio/a0ee1c93d06c68fe.mp3", "dur": 43.3, "words": [[0.1, "Trước", 0], [0.375, "khi", 0], [0.525, "viết", 0], [0.738, "mã,", 0], [1.288, "mình", 0], [1.538, "xem", 0], [1.837, "thiết", 0], [2.025, "kế", 0], [2.237, "của", 0], [2.487, "server.", 0], [3.837, "Vòng", 1], [4.15, "lặp", 1], [4.375, "ngoài", 1], [4.588, "bắt", 1], [4.763, "đầu", 1], [4.975, "bằng", 1], [5.188, "lời", 1], [5.4, "gọi", 1], [5.662, "accept,", 1], [6.35, "lấy", 1], [6.562, "một", 1], [6.775, "kết", 1], [6.963, "nối", 1], [7.175, "khỏi", 1], [7.438, "backlog.", 1], [8.738, "Với", 2], [9.025, "kết", 2], [9.262, "nối", 2], [9.412, "đó,", 2], [9.925, "server", 2], [10.338, "chạy", 2], [10.525, "một", 2], [10.713, "vòng", 2], [10.938, "lặp", 2], [11.137, "trong:", 2], [11.637, "đọc", 2], [11.85, "một", 2], [12.025, "dòng", 2], [12.287, "làm", 2], [12.475, "khóa,", 2], [13.05, "tính", 2], [13.3, "phản", 2], [13.525, "hồi", 2], [13.7, "theo", 2], [13.863, "đặc", 2], [14.025, "tả,", 2], [14.637, "ghi", 2], [14.863, "đúng", 2], [15.062, "một", 2], [15.188, "dòng", 2], [15.412, "phản", 2], [15.637, "hồi,", 2], [16.15, "rồi", 2], [16.425, "gọi", 2], [16.625, "phương", 2], [16.825, "thức", 2], [16.975, "flush", 2], [17.413, "để", 2], [17.6, "gửi", 2], [17.837, "đi", 2], [17.988, "ngay.", 2], [19.125, "Vòng", 3], [19.438, "lặp", 3], [19.663, "trong", 3], [19.825, "dừng", 3], [20.0, "khi", 3], [20.175, "lời", 3], [20.35, "gọi", 3], [20.55, "readLine", 3], [21.1, "trả", 3], [21.375, "về", 3], [21.525, "null,", 3], [22.025, "tức", 3], [22.225, "client", 3], [22.65, "đã", 3], [22.812, "đóng", 3], [23.025, "chiều", 3], [23.238, "gửi,", 3], [23.812, "hoặc", 3], [24.025, "khi", 3], [24.2, "hết", 3], [24.375, "read", 3], [24.55, "timeout.", 3], [25.875, "Server", 4], [26.363, "đóng", 4], [26.575, "kết", 4], [26.775, "nối,", 4], [27.275, "rồi", 4], [27.525, "quay", 4], [27.7, "lại", 4], [27.863, "lời", 4], [28.05, "gọi", 4], [28.288, "accept", 4], [28.725, "để", 4], [28.962, "lấy", 4], [29.113, "kết", 4], [29.35, "nối", 4], [29.525, "tiếp", 4], [29.738, "theo.", 4], [30.875, "Trong", 5], [31.212, "lúc", 5], [31.35, "đó,", 5], [31.863, "các", 5], [32.038, "kết", 5], [32.237, "nối", 5], [32.413, "khác", 5], [32.688, "đã", 5], [32.812, "bắt", 5], [32.987, "tay", 5], [33.212, "xong", 5], [33.462, "vẫn", 5], [33.638, "nằm", 5], [33.825, "chờ", 5], [34.1, "trong", 5], [34.337, "backlog.", 5], [35.587, "Cách", 6], [35.788, "tổ", 6], [35.95, "chức", 6], [36.15, "này", 6], [36.35, "gọi", 6], [36.538, "là", 6], [36.675, "server", 6], [37.062, "tuần", 6], [37.325, "tự,", 6], [37.875, "hay", 6], [38.138, "iterative", 6], [38.775, "server:", 6], [39.525, "các", 6], [39.7, "kết", 6], [39.913, "nối", 6], [40.15, "được", 6], [40.3, "phục", 6], [40.487, "vụ", 6], [40.7, "lần", 6], [40.9, "lượt,", 6], [41.312, "mỗi", 6], [41.525, "lần", 6], [41.737, "một", 6], [41.913, "kết", 6], [42.1, "nối.", 6]], "cues": [3.837, 8.738, 19.125, 30.875, 35.587], "lang": 2.6}, {"ten": "Slide 3. Mọi kết nối cùng local port 9199, phân biệt bằng 4-tuple", "loai": "slide", "slide": "S03", "dung": "Hình bon-gia-tri: bốn bước của hình, bước 5 là ô kết luận. Số port trong bảng lấy từ results/LookupServer.txt.\nHiện dần: bước 1 khi đọc “Khi nhiều client lần lượt kết nối”; bước 2 khi đọc “Kết nối thứ nhất”; bước 3 khi đọc “còn hai kết nối sau”; bước 4 khi đọc “Trong bốn giá trị”; bước 5 khi đọc “Theo định nghĩa”.", "start": 102.06, "audio": "audio/8bb434d6e15cb026.mp3", "dur": 49.46, "words": [[0.1, "Khi", 0], [0.375, "nhiều", 0], [0.6, "client", 0], [0.912, "lần", 0], [1.125, "lượt", 0], [1.288, "kết", 0], [1.45, "nối,", 0], [1.95, "mọi", 0], [2.163, "kết", 0], [2.375, "nối", 0], [2.625, "đều", 0], [2.775, "có", 0], [2.938, "local", 0], [3.362, "port", 0], [3.956, "9199", 0], [4.55, "ở", 0], [4.65, "phía", 0], [4.875, "server.", 0], [6.2, "Vậy", 1], [6.525, "hệ", 1], [6.775, "điều", 1], [6.938, "hành", 1], [7.15, "phân", 1], [7.4, "biệt", 1], [7.588, "chúng", 1], [7.825, "bằng", 1], [7.987, "gì?", 1], [9.113, "Câu", 2], [9.3, "trả", 2], [9.5, "lời", 2], [9.725, "là", 2], [10.281, "4-tuple,", 2], [10.838, "bộ", 2], [11.037, "bốn", 2], [11.275, "giá", 2], [11.438, "trị", 2], [11.662, "gồm", 2], [11.912, "địa", 2], [12.075, "chỉ", 2], [12.4, "và", 2], [12.55, "port", 2], [12.825, "của", 2], [13.0, "hai", 2], [13.175, "đầu", 2], [13.35, "kết", 2], [13.588, "nối.", 2], [14.75, "Bảng", 3], [15.075, "trong", 3], [15.25, "hình", 3], [15.412, "lấy", 3], [15.6, "từ", 3], [15.8, "log", 3], [16.087, "của", 3], [16.25, "server", 3], [16.738, "ở", 3], [16.887, "lần", 3], [17.125, "chạy", 3], [17.337, "ba", 3], [17.525, "client", 3], [18.05, "mà", 3], [18.275, "các", 3], [18.462, "bạn", 3], [18.675, "sẽ", 3], [18.825, "thấy", 3], [18.988, "ngay", 3], [19.212, "sau", 3], [19.4, "đây.", 3], [20.475, "Kết", 4], [20.712, "nối", 4], [20.863, "thứ", 4], [21.012, "nhất", 4], [21.275, "đến", 4], [21.512, "từ", 4], [21.688, "port", 4], [22.381, "53094", 4], [23.075, "của", 4], [23.25, "client,", 4], [23.887, "còn", 4], [24.15, "hai", 4], [24.325, "kết", 4], [24.525, "nối", 4], [24.712, "sau", 4], [24.938, "đến", 4], [25.125, "từ", 4], [25.3, "port", 4], [25.994, "53095", 4], [26.688, "và", 4], [26.875, "53096.", 4], [29.525, "Trong", 5], [29.875, "bốn", 5], [30.1, "giá", 5], [30.288, "trị,", 5], [30.825, "chỉ", 5], [31.062, "port", 5], [31.312, "client", 5], [31.663, "thay", 5], [31.837, "đổi,", 5], [32.4, "ba", 5], [32.663, "giá", 5], [32.862, "trị", 5], [33.087, "còn", 5], [33.325, "lại", 5], [33.513, "giữ", 5], [33.688, "nguyên.", 5], [34.913, "Port", 6], [35.175, "client", 6], [35.462, "này", 6], [35.65, "là", 6], [35.85, "ephemeral", 6], [36.35, "port,", 6], [36.875, "hay", 6], [37.087, "port", 6], [37.35, "tạm,", 6], [37.862, "do", 6], [38.087, "hệ", 6], [38.25, "điều", 6], [38.4, "hành", 6], [38.6, "phía", 6], [38.825, "client", 6], [39.163, "cấp", 6], [39.4, "cho", 6], [39.538, "mỗi", 6], [39.737, "kết", 6], [39.962, "nối.", 6], [41.138, "Theo", 7], [41.337, "định", 7], [41.513, "nghĩa", 7], [41.763, "của", 7], [42.287, "4-tuple,", 7], [42.812, "chỉ", 7], [43.0, "cần", 7], [43.212, "một", 7], [43.413, "trong", 7], [43.612, "bốn", 7], [43.825, "giá", 7], [43.987, "trị", 7], [44.163, "khác", 7], [44.4, "nhau", 7], [44.625, "là", 7], [44.737, "hai", 7], [44.938, "kết", 7], [45.163, "nối", 7], [45.312, "khác", 7], [45.513, "nhau,", 7], [46.025, "nên", 7], [46.3, "server", 7], [46.712, "không", 7], [46.938, "cần", 7], [47.138, "cấp", 7], [47.312, "port", 7], [47.55, "mới", 7], [47.775, "cho", 7], [47.95, "mỗi", 7], [48.175, "client.", 7]], "cues": [0.1, 20.475, 23.887, 29.525, 41.138], "lang": 2.6}, {"ten": "Slide 4. Vòng lặp ngoài: một kết nối tại một thời điểm, lỗi của một kết nối không dừng server", "loai": "slide", "slide": "S04", "dung": "Mã phía trên, log của server phía dưới. Highlight lần lượt: dòng listener.accept(), dòng setSoTimeout(5_000), dòng handle(connected), khối catch. Có thể thay khung kết quả bằng clip replay ba terminal (server, client thứ nhất, hai client sau: results/LookupClient*.txt).\nHiện dần: bước 1 khi đọc “Mình chạy server”.", "start": 154.12, "audio": "audio/3c3b6f1d0fdcc9c7.mp3", "dur": 37.1, "words": [[0.1, "Mã", 0], [0.537, "của", 0], [0.725, "vòng", 0], [0.938, "lặp", 0], [1.137, "ngoài", 0], [1.45, "nằm", 0], [1.725, "trong", 0], [1.925, "phương", 0], [2.138, "thức", 0], [2.288, "serve.", 0], [3.65, "Lời", 1], [3.95, "gọi", 1], [4.2, "accept", 1], [4.588, "đặt", 1], [4.838, "trong", 1], [5.05, "khối", 1], [5.287, "try-with-resources,", 1], [6.3, "nên", 1], [6.588, "connected", 1], [6.925, "socket", 1], [7.675, "luôn", 1], [7.9, "được", 1], [8.025, "đóng", 1], [8.25, "khi", 1], [8.438, "phục", 1], [8.625, "vụ", 1], [8.812, "xong.", 1], [9.988, "Server", 2], [10.45, "đặt", 2], [10.662, "read", 2], [10.875, "timeout", 2], [11.275, "5", 2], [11.488, "giây", 2], [11.675, "cho", 2], [11.812, "kết", 2], [12.012, "nối,", 2], [12.537, "ghi", 2], [12.775, "log", 2], [13.375, "4-tuple,", 2], [13.975, "rồi", 2], [14.213, "chuyển", 2], [14.475, "kết", 2], [14.675, "nối", 2], [14.9, "cho", 2], [15.037, "phương", 2], [15.262, "thức", 2], [15.45, "handle.", 2], [16.762, "Khối", 3], [17.075, "catch", 3], [17.325, "bắt", 3], [18.181, "IOException,", 3], [19.038, "kể", 3], [19.225, "cả", 3], [19.438, "SocketTimeoutException,", 3], [21.1, "nhờ", 3], [21.337, "đó", 3], [21.488, "lỗi", 3], [21.712, "ở", 3], [21.825, "một", 3], [22.025, "kết", 3], [22.225, "nối", 3], [22.438, "chỉ", 3], [22.65, "kết", 3], [22.863, "thúc", 3], [23.038, "kết", 3], [23.25, "nối", 3], [23.488, "ấy,", 3], [23.962, "còn", 3], [24.238, "server", 3], [24.625, "vẫn", 3], [24.837, "chạy", 3], [25.025, "tiếp.", 3], [26.137, "Mình", 4], [26.55, "chạy", 4], [26.762, "server,", 4], [27.462, "rồi", 4], [27.75, "chạy", 4], [28.0, "ba", 4], [28.212, "client", 4], [28.575, "nối", 4], [28.837, "tiếp", 4], [29.087, "nhau.", 4], [30.238, "Trong", 5], [30.587, "log,", 5], [31.075, "mỗi", 5], [31.288, "dòng", 5], [31.625, "accepted", 5], [32.312, "đi", 5], [32.475, "kèm", 5], [32.75, "dòng", 5], [32.987, "closed", 5], [33.312, "của", 5], [33.462, "chính", 5], [33.712, "kết", 5], [33.925, "nối", 5], [34.1, "đó,", 5], [34.625, "rồi", 5], [34.913, "kết", 5], [35.125, "nối", 5], [35.312, "sau", 5], [35.55, "mới", 5], [35.763, "được", 5], [35.913, "nhận.", 5]], "cues": [26.137], "lang": 9.6}, {"ten": "Slide 5. Vòng lặp trong: mỗi dòng nhận được là một khóa, trả đúng một dòng", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, kết quả của client phía dưới. Highlight dòng readLine() rồi dòng reply(key) khi đọc tới. Phương thức reply (mười dòng, ánh xạ ba dạng phản hồi và hai mã lỗi) ở README của mã, không đưa lên slide.\nHiện dần: bước 1 khi đọc “Kết quả: hai khóa”.", "start": 200.82, "audio": "audio/5332fde885e45813.mp3", "dur": 51.34, "words": [[0.1, "Còn", 0], [0.4, "vòng", 0], [0.613, "lặp", 0], [0.838, "trong", 0], [1.038, "nằm", 0], [1.312, "ở", 0], [1.4, "phương", 0], [1.625, "thức", 0], [1.825, "handle.", 0], [3.163, "Hai", 1], [3.425, "stream", 1], [3.737, "BufferedReader", 1], [4.412, "và", 1], [4.55, "BufferedWriter", 1], [5.463, "dùng", 1], [6.156, "UTF-8,", 1], [6.85, "như", 1], [7.112, "ở", 1], [7.25, "phần", 1], [7.475, "về", 1], [7.6, "charset", 1], [8.088, "và", 1], [8.3, "framing", 1], [8.863, "của", 1], [9.037, "Chương", 1], [9.275, "1.", 1], [10.338, "Mỗi", 2], [10.738, "vòng", 2], [10.95, "đọc", 2], [11.113, "một", 2], [11.262, "dòng", 2], [11.525, "làm", 2], [11.7, "khóa,", 2], [12.275, "chuyển", 2], [12.525, "khóa", 2], [12.775, "cho", 2], [12.9, "phương", 2], [13.113, "thức", 2], [13.312, "reply", 2], [13.825, "để", 2], [13.963, "tính", 2], [14.175, "phản", 2], [14.4, "hồi,", 2], [14.9, "rồi", 2], [15.175, "ghi", 2], [15.35, "phản", 2], [15.6, "hồi", 2], [15.75, "kèm", 2], [16.0, "ký", 2], [16.225, "tự", 2], [16.988, "LF.", 2], [17.75, "Lời", 3], [18.05, "gọi", 3], [18.288, "flush", 3], [18.637, "đứng", 3], [18.85, "ngay", 3], [18.975, "sau,", 3], [19.538, "vì", 3], [19.8, "client", 3], [20.25, "đang", 3], [20.425, "chờ", 3], [20.625, "phản", 3], [20.863, "hồi", 3], [21.025, "này", 3], [21.25, "rồi", 3], [21.425, "mới", 3], [21.65, "gửi", 3], [21.938, "yêu", 3], [22.15, "cầu", 3], [22.387, "tiếp.", 3], [23.5, "Phương", 4], [23.8, "thức", 4], [24.012, "reply", 4], [24.475, "trả", 4], [24.712, "về", 4], [24.825, "một", 4], [25.025, "trong", 4], [25.225, "ba", 4], [25.375, "dạng", 4], [25.65, "của", 4], [25.762, "đặc", 4], [25.925, "tả:", 4], [26.431, "OK", 4], [26.938, "kèm", 4], [27.2, "giá", 4], [27.375, "trị,", 4], [27.925, "NOTFOUND,", 4], [28.725, "hoặc", 4], [29.038, "ERR", 4], [29.337, "kèm", 4], [29.637, "lý", 4], [29.812, "do.", 4], [30.975, "Để", 5], [31.2, "kiểm", 5], [31.438, "chứng,", 5], [31.95, "client", 5], [32.413, "đầu", 5], [32.587, "tiên", 5], [32.875, "gửi", 5], [33.05, "lần", 5], [33.25, "lượt", 5], [33.438, "các", 5], [33.587, "trường", 5], [33.8, "hợp", 5], [33.987, "thử", 5], [34.237, "của", 5], [34.375, "đặc", 5], [34.55, "tả.", 5], [35.812, "Các", 6], [36.013, "bạn", 6], [36.225, "đoán", 6], [36.475, "trước", 6], [36.7, "dòng", 6], [36.962, "dài", 6], [37.212, "300", 6], [37.65, "byte", 6], [37.825, "nhận", 6], [38.1, "phản", 6], [38.337, "hồi", 6], [38.5, "gì.", 6], [39.625, "Kết", 7], [39.825, "quả:", 7], [40.438, "hai", 7], [40.663, "khóa", 7], [40.925, "hanoi", 7], [41.337, "và", 7], [41.5, "huế,", 7], [42.087, "khóa", 7], [42.375, "có", 7], [42.513, "dấu,", 7], [43.1, "đều", 7], [43.362, "có", 7], [43.513, "giá", 7], [43.712, "trị,", 7], [44.288, "còn", 7], [44.612, "atlantis", 7], [45.362, "không", 7], [45.612, "có.", 7], [46.825, "Dòng", 8], [47.163, "rỗng", 8], [47.438, "và", 8], [47.538, "dòng", 8], [47.788, "300", 8], [48.2, "byte", 8], [48.55, "nhận", 8], [48.862, "đúng", 8], [49.062, "hai", 8], [49.275, "mã", 8], [49.475, "lỗi", 8], [49.725, "của", 8], [49.862, "đặc", 8], [50.05, "tả.", 8]], "cues": [39.625], "lang": 9.6}, {"ten": "Slide 6. Integration test chạy server thật ở port 0 và kiểm các trường hợp của đặc tả", "loai": "slide", "slide": "S06", "dung": "Mã phía trên, cây kết quả JUnit phía dưới. Highlight dòng new ServerSocket(0, …) khi đọc \"port 0\", dòng server.start() khi đọc \"thread riêng\". Kết quả là phần cây của lệnh JUnit Console Launcher (README của mã).\nHiện dần: bước 1 khi đọc “Kết quả: sáu test”.", "start": 261.76, "audio": "audio/aaa1cceabe8d4b14.mp3", "dur": 50.35, "words": [[0.1, "Gõ", 0], [0.388, "lại", 0], [0.55, "các", 0], [0.725, "trường", 0], [0.938, "hợp", 0], [1.113, "thử", 0], [1.337, "bằng", 0], [1.562, "tay", 0], [1.887, "sau", 0], [2.1, "mỗi", 0], [2.263, "lần", 0], [2.45, "sửa", 0], [2.65, "mã", 0], [3.013, "thì", 0], [3.225, "chậm", 0], [3.55, "và", 0], [3.7, "dễ", 0], [3.888, "sót.", 0], [5.025, "Integration", 1], [5.875, "test,", 1], [6.362, "hay", 1], [6.537, "kiểm", 1], [6.775, "thử", 1], [6.95, "tích", 1], [7.15, "hợp,", 1], [7.625, "chạy", 1], [7.838, "server", 1], [8.2, "thật", 1], [8.45, "và", 1], [8.637, "client", 1], [9.012, "thật", 1], [9.213, "qua", 1], [9.412, "một", 1], [9.588, "kết", 1], [9.775, "nối", 1], [9.95, "thật,", 1], [10.412, "rồi", 1], [10.688, "kiểm", 1], [10.938, "phản", 1], [11.162, "hồi.", 1], [12.3, "Mình", 2], [12.688, "viết", 2], [12.9, "test", 2], [13.125, "bằng", 2], [13.556, "JUnit", 2], [13.988, "5,", 2], [14.463, "framework", 2], [15.113, "kiểm", 2], [15.363, "thử", 2], [15.613, "cho", 2], [15.775, "Java.", 2], [17.075, "Trước", 3], [17.375, "mọi", 3], [17.562, "test,", 3], [18.0, "server", 3], [18.425, "mở", 3], [18.65, "listening", 3], [19.113, "socket", 3], [19.525, "trên", 3], [19.75, "loopback", 3], [20.175, "với", 3], [20.35, "port", 3], [21.025, "0.", 3], [21.7, "Port", 4], [21.938, "0", 4], [22.175, "nghĩa", 4], [22.375, "là", 4], [22.525, "để", 4], [22.663, "hệ", 4], [22.863, "điều", 4], [23.012, "hành", 4], [23.212, "cấp", 4], [23.438, "một", 4], [23.7, "ephemeral", 4], [24.137, "port", 4], [24.363, "còn", 4], [24.575, "trống,", 4], [25.125, "nên", 4], [25.387, "test", 4], [25.613, "không", 4], [25.825, "xung", 4], [26.0, "đột", 4], [26.175, "với", 4], [26.275, "server", 4], [26.688, "đang", 4], [26.913, "chạy", 4], [27.163, "ở", 4], [27.275, "port", 4], [28.294, "9199.", 4], [29.312, "Phương", 5], [29.637, "thức", 5], [29.875, "ask", 5], [30.087, "đọc", 5], [30.312, "lại", 5], [30.475, "port", 5], [30.712, "được", 5], [30.875, "cấp", 5], [31.038, "bằng", 5], [31.275, "phương", 5], [31.475, "thức", 5], [31.688, "getLocalPort,", 5], [32.825, "kết", 5], [33.062, "nối", 5], [33.275, "tới", 5], [33.475, "đó,", 5], [34.0, "gửi", 5], [34.237, "khóa", 5], [34.562, "và", 5], [34.7, "trả", 5], [34.962, "về", 5], [35.087, "phản", 5], [35.325, "hồi.", 5], [36.462, "Server", 6], [36.938, "chạy", 6], [37.163, "trên", 6], [37.325, "một", 6], [37.475, "thread", 6], [37.7, "riêng", 6], [37.975, "để", 6], [38.125, "server", 6], [38.562, "và", 6], [38.712, "test", 6], [38.962, "chạy", 6], [39.138, "cùng", 6], [39.362, "lúc;", 6], [39.812, "thread", 6], [40.138, "là", 6], [40.3, "nội", 6], [40.538, "dung", 6], [40.775, "của", 6], [40.913, "nhóm", 6], [41.212, "đa", 6], [41.362, "luồng", 6], [41.587, "ngay", 6], [41.763, "sau.", 6], [42.925, "Kết", 7], [43.125, "quả:", 7], [43.675, "sáu", 7], [43.95, "test", 7], [44.2, "đều", 7], [44.388, "đạt,", 7], [44.837, "gồm", 7], [45.112, "các", 7], [45.288, "trường", 7], [45.487, "hợp", 7], [45.688, "của", 7], [45.8, "đặc", 7], [45.975, "tả,", 7], [46.587, "kiểm", 7], [46.8, "tra", 7], [46.987, "port", 7], [47.243, "0", 7], [47.5, "và", 7], [47.6, "một", 7], [47.825, "client", 7], [48.2, "gửi", 7], [48.2, "CRLF.", 7]], "cues": [42.925], "lang": 9.6}, {"ten": "Slide 7. Một client không gửi gì làm mọi client sau phải chờ", "loai": "slide", "slide": "S07", "dung": "Mã hai dòng phía trên, log của server phía dưới. Sau câu \"chờ bao lâu\", dừng khoảng 2 giây trước khi khung kết quả hiện. Client chậm là IdleClient (results/IdleClient.txt); kết quả của client tra cứu ở results/LookupClient-after-idle.txt, hiện thu nhỏ cạnh log khi đọc \"Phía client tra cứu\".\nHiện dần: bước 1 khi đọc “Log của server”; bước 2 khi đọc “Phía client tra cứu”; bước 3 khi đọc “Trong thời gian đó”.", "start": 321.71, "audio": "audio/332e698d748e5866.mp3", "dur": 42.58, "words": [[0.1, "Server", 0], [0.625, "tuần", 0], [1.0, "tự", 0], [1.25, "còn", 0], [1.45, "một", 0], [1.637, "giới", 0], [1.863, "hạn.", 0], [3.075, "Mình", 1], [3.475, "chạy", 1], [3.675, "một", 1], [3.875, "client", 1], [4.263, "chỉ", 1], [4.438, "kết", 1], [4.638, "nối", 1], [4.862, "mà", 1], [5.025, "không", 1], [5.237, "gửi", 1], [5.412, "gì,", 1], [5.912, "rồi", 1], [6.088, "một", 1], [6.275, "giây", 1], [6.438, "sau", 1], [6.625, "chạy", 1], [6.812, "client", 1], [7.15, "tra", 1], [7.338, "cứu", 1], [7.6, "hanoi.", 1], [8.925, "Các", 2], [9.125, "bạn", 2], [9.338, "thử", 2], [9.537, "đoán", 2], [9.8, "client", 2], [10.137, "thứ", 2], [10.35, "hai", 2], [10.55, "chờ", 2], [10.8, "bao", 2], [11.012, "lâu.", 2], [12.137, "Log", 3], [12.463, "của", 3], [12.65, "server", 3], [13.062, "cho", 3], [13.213, "biết", 3], [13.412, "lý", 3], [13.562, "do:", 3], [14.075, "sau", 3], [14.275, "khi", 3], [14.412, "nhận", 3], [14.65, "kết", 3], [14.85, "nối", 3], [15.025, "đầu,", 3], [15.45, "server", 3], [15.838, "bị", 3], [16.0, "chặn", 3], [16.325, "ở", 3], [16.413, "lời", 3], [16.637, "gọi", 3], [16.837, "readLine", 3], [17.413, "của", 3], [17.55, "kết", 3], [17.738, "nối", 3], [17.9, "đó", 3], [18.137, "cho", 3], [18.288, "đến", 3], [18.475, "khi", 3], [18.65, "read", 3], [18.85, "timeout", 3], [19.25, "5", 3], [19.462, "giây", 3], [19.625, "hết", 3], [19.775, "hạn,", 3], [20.288, "và", 3], [20.488, "chỉ", 3], [20.663, "sau", 3], [20.812, "đó", 3], [20.988, "mới", 3], [21.2, "nhận", 3], [21.45, "kết", 3], [21.675, "nối", 3], [21.85, "thứ", 3], [22.012, "hai.", 3], [23.175, "Phía", 4], [23.488, "client", 4], [23.837, "tra", 4], [24.012, "cứu,", 4], [24.562, "phản", 4], [24.812, "hồi", 4], [25.012, "đến", 4], [25.212, "sau", 4], [25.45, "gần", 4], [25.65, "4", 4], [25.887, "giây,", 4], [26.4, "trong", 4], [26.613, "khi", 4], [26.812, "bình", 4], [27.025, "thường", 4], [27.25, "chỉ", 4], [27.4, "mất", 4], [27.613, "vài", 4], [27.863, "mili", 4], [28.2, "giây.", 4], [29.325, "Trong", 5], [29.625, "thời", 5], [29.75, "gian", 5], [29.938, "đó,", 5], [30.425, "kết", 5], [30.637, "nối", 5], [30.812, "thứ", 5], [31.025, "hai", 5], [31.262, "đã", 5], [31.375, "bắt", 5], [31.55, "tay", 5], [31.75, "xong", 5], [32.075, "và", 5], [32.212, "nằm", 5], [32.45, "trong", 5], [32.663, "backlog,", 5], [33.263, "chỉ", 5], [33.462, "là", 5], [33.638, "server", 5], [34.05, "chưa", 5], [34.25, "gọi", 5], [34.462, "lại", 5], [34.638, "phương", 5], [34.862, "thức", 5], [35.112, "accept.", 5], [36.388, "Như", 6], [36.638, "vậy,", 6], [37.038, "chỉ", 6], [37.212, "một", 6], [37.45, "client", 6], [37.8, "chậm,", 6], [38.35, "hay", 6], [38.575, "cố", 6], [38.788, "ý", 6], [38.962, "không", 6], [39.163, "gửi", 6], [39.337, "gì,", 6], [39.837, "cũng", 6], [40.038, "làm", 6], [40.188, "mọi", 6], [40.35, "client", 6], [40.737, "đến", 6], [40.962, "sau", 6], [41.188, "phải", 6], [41.388, "chờ.", 6]], "cues": [12.137, 23.175, 29.325], "lang": 9.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án A được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 373.89, "audio": "audio/5ec278f3a2e0b28e.mp3", "dur": 3.86, "words": [[0.1, "Câu", 0], [0.3, "hỏi", 0], [0.512, "đầu", 0], [0.675, "dùng", 0], [0.925, "lại", 0], [1.113, "bảng", 0], [1.569, "4-tuple", 0], [2.025, "của", 0], [2.225, "ba", 0], [2.425, "kết", 0], [2.663, "nối.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/d56adbfa0c808251.mp3", "dur2": 16.68, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.662, "là", 0], [0.85, "A.", 0], [1.2, "Phương", 1], [1.525, "án", 1], [1.7, "B", 1], [1.9, "là", 1], [2.025, "hiểu", 1], [2.212, "nhầm", 1], [2.45, "phổ", 1], [2.638, "biến,", 1], [3.138, "nhưng", 1], [3.425, "log", 1], [3.638, "cho", 1], [3.763, "thấy", 1], [3.938, "cả", 1], [4.088, "ba", 1], [4.25, "kết", 1], [4.463, "nối", 1], [4.7, "đều", 1], [4.85, "có", 1], [5.0, "local", 1], [5.412, "port", 1], [6.062, "9199:", 1], [6.713, "server", 1], [7.15, "không", 1], [7.362, "cấp", 1], [7.537, "port", 1], [7.787, "mới", 1], [8.012, "cho", 1], [8.162, "kết", 1], [8.375, "nối.", 1], [9.537, "Phương", 2], [9.887, "án", 2], [10.088, "D", 2], [10.275, "cũng", 2], [10.475, "không", 2], [10.662, "đủ,", 2], [11.175, "vì", 2], [11.412, "ba", 2], [11.613, "client", 2], [11.975, "chạy", 2], [12.2, "trên", 2], [12.387, "cùng", 2], [12.575, "một", 2], [12.738, "máy,", 2], [13.25, "cùng", 2], [13.488, "địa", 2], [13.675, "chỉ", 2], [13.675, "127.0.0.1.", 2]], "dap_an": "A", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án D.", "start": 401.03, "audio": "audio/de169f24e8559a36.mp3", "dur": 4.39, "words": [[0.1, "Câu", 0], [0.3, "tiếp", 0], [0.562, "theo", 0], [0.738, "đặt", 0], [0.9, "các", 0], [1.038, "bạn", 0], [1.275, "vào", 0], [1.4, "vị", 0], [1.562, "trí", 0], [1.812, "client", 0], [2.225, "đến", 0], [2.425, "sau", 0], [2.688, "một", 0], [2.888, "client", 0], [3.2, "chậm.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/a49beefb725bbcda.mp3", "dur2": 14.02, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.675, "là", 0], [0.8, "D.", 0], [1.163, "Nhiều", 1], [1.4, "bạn", 1], [1.637, "chọn", 1], [1.887, "B,", 1], [2.375, "nhưng", 1], [2.663, "kết", 1], [2.875, "nối", 1], [3.075, "của", 1], [3.325, "client", 1], [3.75, "sau", 1], [3.962, "không", 1], [4.15, "bị", 1], [4.275, "từ", 1], [4.463, "chối:", 1], [5.037, "bắt", 1], [5.25, "tay", 1], [5.463, "đã", 1], [5.588, "xong", 1], [5.862, "và", 1], [5.975, "kết", 1], [6.188, "nối", 1], [6.388, "nằm", 1], [6.638, "trong", 1], [6.862, "backlog.", 1], [8.1, "Server", 2], [8.6, "chỉ", 2], [8.775, "chưa", 2], [8.975, "gọi", 2], [9.175, "lại", 2], [9.35, "phương", 2], [9.562, "thức", 2], [9.787, "accept,", 2], [10.387, "vì", 2], [10.588, "còn", 2], [10.825, "bị", 2], [10.95, "chặn", 2], [11.25, "ở", 2], [11.325, "lời", 2], [11.562, "gọi", 2], [11.762, "readLine", 2], [12.338, "của", 2], [12.5, "kết", 2], [12.713, "nối", 2], [12.887, "đầu.", 2]], "dap_an": "D", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “Dịch vụ tra cứu đã”; bước 2 khi đọc “Các kết nối dùng chung”; bước 3 khi đọc “Việc kiểm thử”; bước 4 khi đọc “Các từ khóa của phần”.", "start": 426.04, "audio": "audio/7b77ab8c67b614aa.mp3", "dur": 33.79, "words": [[0.1, "Dịch", 0], [0.362, "vụ", 0], [0.575, "tra", 0], [0.775, "cứu", 0], [1.087, "đã", 0], [1.212, "chạy", 0], [1.45, "đúng", 0], [1.688, "đặc", 0], [1.875, "tả.", 0], [3.138, "Server", 1], [3.6, "tuần", 1], [3.875, "tự", 1], [4.075, "gồm", 1], [4.325, "hai", 1], [4.5, "vòng", 1], [4.7, "lặp:", 1], [5.15, "vòng", 1], [5.375, "ngoài", 1], [5.6, "nhận", 1], [5.875, "từng", 1], [6.075, "kết", 1], [6.263, "nối", 1], [6.463, "bằng", 1], [6.675, "lời", 1], [6.862, "gọi", 1], [7.1, "accept,", 1], [7.763, "vòng", 1], [8.037, "trong", 1], [8.213, "trả", 1], [8.35, "lời", 1], [8.537, "từng", 1], [8.8, "yêu", 1], [8.925, "cầu", 1], [9.2, "cho", 1], [9.312, "đến", 1], [9.488, "khi", 1], [9.688, "client", 1], [10.088, "đóng", 1], [10.325, "chiều", 1], [10.537, "gửi.", 1], [11.762, "Các", 2], [11.963, "kết", 2], [12.162, "nối", 2], [12.363, "dùng", 2], [12.613, "chung", 2], [12.838, "port", 2], [13.425, "9199", 2], [14.012, "và", 2], [14.125, "được", 2], [14.287, "phân", 2], [14.488, "biệt", 2], [14.65, "bằng", 2], [15.225, "4-tuple,", 2], [15.8, "trong", 2], [16.025, "đó", 2], [16.188, "port", 2], [16.425, "client", 2], [16.8, "là", 2], [17.025, "ephemeral", 2], [17.5, "port.", 2], [18.613, "Việc", 3], [18.9, "kiểm", 3], [19.1, "thử", 3], [19.312, "do", 3], [19.525, "integration", 3], [20.288, "test", 3], [20.512, "đảm", 3], [20.725, "nhận:", 3], [21.2, "server", 3], [21.625, "thật", 3], [21.85, "chạy", 3], [22.075, "ở", 3], [22.2, "port", 3], [22.538, "0,", 3], [22.875, "và", 3], [23.1, "các", 3], [23.275, "trường", 3], [23.45, "hợp", 3], [23.625, "thử", 3], [23.85, "của", 3], [23.975, "đặc", 3], [24.15, "tả", 3], [24.363, "chạy", 3], [24.6, "lại", 3], [24.788, "sau", 3], [24.988, "mỗi", 3], [25.175, "lần", 3], [25.363, "sửa", 3], [25.55, "mã.", 3], [26.825, "Các", 4], [27.025, "từ", 4], [27.175, "khóa", 4], [27.45, "của", 4], [27.6, "phần", 4], [27.875, "là", 4], [28.038, "server", 4], [28.4, "tuần", 4], [28.663, "tự,", 4], [29.425, "4-tuple,", 4], [30.188, "integration", 4], [31.0, "test,", 4], [31.488, "port", 4], [31.738, "0", 4], [31.988, "và", 4], [32.2, "ephemeral", 4], [32.675, "port.", 4]], "cues": [0.1, 11.762, 18.613, 26.825], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Bản server này còn hai chỗ”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 460.43, "audio": "audio/32478eec4794ed0a.mp3", "dur": 25.49, "words": [[0.1, "Bản", 0], [0.388, "server", 0], [0.787, "này", 0], [1.012, "còn", 0], [1.238, "hai", 0], [1.413, "chỗ", 0], [1.663, "có", 0], [1.788, "thể", 0], [1.95, "làm", 0], [2.188, "kỹ", 0], [2.4, "hơn.", 0], [3.562, "Một", 1], [3.938, "là", 1], [4.075, "đọc", 1], [4.237, "dòng", 1], [4.487, "có", 1], [4.612, "giới", 1], [4.787, "hạn:", 1], [5.275, "server", 1], [5.725, "dừng", 1], [5.95, "đọc", 1], [6.138, "ngay", 1], [6.35, "ở", 1], [6.475, "byte", 1], [6.675, "thứ", 1], [6.888, "257,", 1], [8.113, "thay", 1], [8.312, "vì", 1], [8.463, "giữ", 1], [8.688, "cả", 1], [8.85, "dòng", 1], [9.075, "dài", 1], [9.3, "trong", 1], [9.475, "bộ", 1], [9.637, "nhớ", 1], [9.887, "như", 1], [10.062, "phương", 1], [10.287, "thức", 1], [10.475, "readLine.", 1], [11.95, "Hai", 2], [12.25, "là", 2], [12.4, "integration", 2], [13.162, "test", 2], [13.387, "cho", 2], [13.512, "lỗi", 2], [13.7, "mạng,", 2], [14.225, "như", 2], [14.488, "client", 2], [14.875, "đóng", 2], [15.088, "kết", 2], [15.312, "nối", 2], [15.512, "giữa", 2], [15.725, "chừng", 2], [16.012, "hay", 2], [16.137, "kết", 2], [16.35, "nối", 2], [16.562, "bị", 2], [16.75, "reset.", 2], [18.038, "Bài", 3], [18.275, "tập", 3], [18.488, "mở", 3], [18.675, "rộng", 3], [18.95, "là", 3], [19.087, "viết", 3], [19.288, "lệnh", 3], [19.512, "STATS", 3], [20.075, "cho", 3], [20.212, "server", 3], [20.625, "theo", 3], [20.775, "đặc", 3], [20.95, "tả", 3], [21.212, "đã", 3], [21.325, "bổ", 3], [21.525, "sung", 3], [21.837, "ở", 3], [21.938, "Chương", 3], [22.188, "1,", 3], [22.637, "kèm", 3], [22.975, "integration", 3], [23.7, "test", 3], [23.95, "cho", 3], [24.062, "lệnh", 3], [24.275, "mới.", 3]], "cues": [0.1, 18.038], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 486.52, "audio": "audio/1ec1e5534ae8f36a.mp3", "dur": 13.25, "words": [[0.1, "Server", 0], [0.537, "tra", 0], [0.762, "cứu", 0], [1.087, "đã", 0], [1.2, "đúng", 0], [1.387, "đặc", 0], [1.562, "tả", 0], [1.863, "và", 0], [1.988, "có", 0], [2.138, "test,", 0], [2.625, "nhưng", 0], [2.913, "chỉ", 0], [3.1, "phục", 0], [3.275, "vụ", 0], [3.487, "một", 0], [3.688, "kết", 0], [3.862, "nối", 0], [4.088, "tại", 0], [4.225, "một", 0], [4.425, "thời", 0], [4.575, "điểm.", 0], [5.775, "Nhóm", 1], [6.15, "đa", 1], [6.312, "luồng", 1], [6.525, "bắt", 1], [6.688, "đầu", 1], [6.9, "từ", 1], [7.088, "phần", 1], [7.3, "tiếp", 1], [7.5, "theo,", 1], [8.025, "về", 1], [8.25, "thread", 1], [8.55, "và", 1], [8.725, "race", 1], [9.075, "condition,", 1], [10.062, "để", 1], [10.275, "server", 1], [10.637, "xử", 1], [10.825, "lý", 1], [11.062, "được", 1], [11.225, "nhiều", 1], [11.438, "kết", 1], [11.675, "nối", 1], [11.875, "song", 1], [12.088, "song.", 1]], "cues": [], "lang": 0.6}], "video_sau": "Đa luồng: thread và race condition"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

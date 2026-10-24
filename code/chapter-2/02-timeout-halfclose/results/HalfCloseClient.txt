@@ -1,0 +1,3 @@
+sent 3 lines, output shut down
+reply: lines: 3
+next readLine(): null

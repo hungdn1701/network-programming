@@ -1,0 +1,5 @@
+worker: waiting for work
+worker: waiting for work
+worker: waiting for work
+worker: interrupted, cleaning up
+main: worker alive = false

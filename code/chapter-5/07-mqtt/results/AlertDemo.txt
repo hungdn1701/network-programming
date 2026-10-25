@@ -1,0 +1,5 @@
+ 0.6 s  alert-service subscribed to canh-bao/# with QoS 1, clean session false
+ 1.0 s  monitor published A1 to canh-bao/101 with QoS 1
+ 1.0 s  received A1 dup=false: processed, connection lost before PUBACK
+ 1.0 s  alert-service reconnects with the same client ID
+ 1.4 s  received A1 dup=true: already processed, skipped

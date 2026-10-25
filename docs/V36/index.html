@@ -1,0 +1,474 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V36 — Bài toán ứng dụng: giám sát cảm biến với MQTT và CoAP · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-5/07-mqtt">Mã</a>
+<h1>V36 · Bài toán ứng dụng: giám sát cảm biến với MQTT và CoAP</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 5</div><div class="ten">Bài toán ứng dụng: giám sát cảm biến với MQTT và CoAP</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Cảm biến: bộ nhớ nhỏ, pin hạn chế, mạng không ổn định</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Cảm biến mỗi phòng đo mỗi giây; dashboard và dịch vụ cảnh báo cùng cần số liệu</li><li data-s="2">Bộ nhớ nhỏ, pin hạn chế, mạng không ổn định: mỗi request HTTP là một gánh nặng</li><li data-s="3">Cảm biến có thể mất điện, mất sóng mà không kịp báo</li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> giao thức nào hợp với thiết bị nhỏ, và dashboard biết giá trị gần nhất, biết cảm biến mất kết nối bằng cách nào?</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Ba giao thức cho thiết bị nhỏ: HTTP, MQTT và CoAP</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="So sánh ba giao thức cho thiết bị nhỏ. HTTP: request–response trên TCP, header dạng văn bản thường vài trăm byte, phổ biến nhưng nặng cho thiết bị nhỏ. MQTT: publish/subscribe qua broker, chạy trên TCP với kết nối dài, header cố định từ 2 byte, có QoS 0, 1, 2, retained message và last will; port 1883. CoAP: request–response kiểu REST trên UDP, phương thức GET, PUT, POST, DELETE, header cố định 4 byte, message có xác nhận hoặc không xác nhận; port 5683.">
+  <!-- ① HTTP -->
+  <g data-s="1">
+    <rect x="40" y="40" width="540" height="420" rx="12" fill="#F4F5F8" stroke="#5B6478" stroke-width="2.5"/>
+    <text x="310" y="92" text-anchor="middle" font-size="26" font-weight="500" fill="#1A1F2E">HTTP</text>
+    <g font-size="20" fill="#373D4E">
+      <text x="70" y="150">request–response trên TCP</text>
+      <text x="70" y="200">header dạng văn bản,</text>
+      <text x="70" y="228">thường vài trăm byte</text>
+      <text x="70" y="278">server không tự gửi khi</text>
+      <text x="70" y="306">client chưa hỏi</text>
+      <text x="70" y="380" fill="#9B1C1C">nặng cho thiết bị nhỏ,</text>
+      <text x="70" y="408" fill="#9B1C1C">pin hạn chế</text>
+    </g>
+  </g>
+
+  <!-- ② MQTT -->
+  <g data-s="2">
+    <rect x="610" y="40" width="540" height="420" rx="12" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="880" y="92" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">MQTT</text>
+    <g font-size="20" fill="#051A53">
+      <text x="640" y="150">publish/subscribe qua broker</text>
+      <text x="640" y="200">TCP, kết nối dài; port 1883</text>
+      <text x="640" y="250">header cố định từ 2 byte</text>
+      <text x="640" y="300">QoS 0, 1, 2</text>
+      <text x="640" y="350">retained message, last will</text>
+      <text x="640" y="408" fill="#22603F">thiết bị gửi số liệu lên,</text>
+      <text x="640" y="436" fill="#22603F">nhiều bên cùng nhận</text>
+    </g>
+  </g>
+
+  <!-- ③ CoAP -->
+  <g data-s="3">
+    <rect x="1180" y="40" width="540" height="420" rx="12" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="1450" y="92" text-anchor="middle" font-size="26" font-weight="500" fill="#6B4E06">CoAP</text>
+    <g font-size="20" fill="#6B4E06">
+      <text x="1210" y="150">request–response kiểu REST</text>
+      <text x="1210" y="200">UDP; port 5683</text>
+      <text x="1210" y="250">GET, PUT, POST, DELETE</text>
+      <text x="1210" y="300">header cố định 4 byte</text>
+      <text x="1210" y="350">message có hoặc không xác nhận</text>
+      <text x="1210" y="408" fill="#22603F">đọc, ghi tài nguyên trên</text>
+      <text x="1210" y="436" fill="#22603F">chính thiết bị</text>
+    </g>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>MQTT</b>: publish/subscribe qua broker trên TCP; <b>CoAP</b>: request–response kiểu REST trên UDP; cả hai nhẹ hơn HTTP nhiều.</p></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>MQTT broker và topic: publish theo topic, subscribe theo mẫu</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="MQTT broker và topic. Bước 1: cảm biến phòng 101 và phòng 102 publish nhiệt độ tới broker, vào topic phong/101/nhiet-do và phong/102/nhiet-do; broker không giữ queue cho từng bên nhận mà chuyển message theo topic. Bước 2: dashboard subscribe phong/+/nhiet-do, dấu cộng thay đúng một cấp, nên nhận nhiệt độ của mọi phòng; dịch vụ cảnh báo subscribe canh-bao/#, dấu thăng thay mọi cấp phía sau. Bước 3: broker giữ message retained cuối cùng của mỗi topic và giao ngay cho subscriber mới; khi một cảm biến mất kết nối, broker publish last will offline thay cho cảm biến.">
+  <defs>
+    <marker id="mb-a" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="mb-g" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- ① cảm biến publish tới broker -->
+  <g data-s="1">
+    <g stroke-width="2.5">
+      <rect x="40" y="80" width="250" height="80" rx="8" fill="#EEF2FB" stroke="#051A53"/>
+      <rect x="40" y="260" width="250" height="80" rx="8" fill="#EEF2FB" stroke="#051A53"/>
+    </g>
+    <g font-size="20" fill="#051A53" text-anchor="middle">
+      <text x="165" y="114">cảm biến</text><text x="165" y="142">phòng 101</text>
+      <text x="165" y="294">cảm biến</text><text x="165" y="322">phòng 102</text>
+    </g>
+    <line x1="292" y1="120" x2="684" y2="200" stroke="#051A53" stroke-width="2.5" marker-end="url(#mb-a)"/>
+    <line x1="292" y1="300" x2="684" y2="240" stroke="#051A53" stroke-width="2.5" marker-end="url(#mb-a)"/>
+    <g font-size="20" fill="#051A53" font-family="Consolas, monospace">
+      <text x="330" y="118">phong/101/nhiet-do</text>
+      <text x="330" y="318">phong/102/nhiet-do</text>
+    </g>
+    <rect x="690" y="150" width="300" height="140" rx="10" fill="#F4F5F8" stroke="#373D4E" stroke-width="3"/>
+    <text x="840" y="208" text-anchor="middle" font-size="24" font-weight="500" fill="#1A1F2E">MQTT broker</text>
+    <text x="840" y="244" text-anchor="middle" font-size="20" fill="#5B6478">chuyển theo topic</text>
+  </g>
+
+  <!-- ② subscribe với ký tự đại diện -->
+  <g data-s="2">
+    <line x1="992" y1="200" x2="1294" y2="120" stroke="#2F855A" stroke-width="2.5" marker-end="url(#mb-g)"/>
+    <line x1="992" y1="240" x2="1294" y2="300" stroke="#2F855A" stroke-width="2.5" marker-end="url(#mb-g)"/>
+    <g stroke-width="2.5">
+      <rect x="1300" y="70" width="420" height="100" rx="8" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="1300" y="250" width="420" height="100" rx="8" fill="#EEF9F0" stroke="#2F855A"/>
+    </g>
+    <g font-size="20" fill="#22603F">
+      <text x="1320" y="106">dashboard</text>
+      <text x="1320" y="146" font-family="Consolas, monospace">phong/+/nhiet-do</text>
+      <text x="1320" y="286">dịch vụ cảnh báo</text>
+      <text x="1320" y="326" font-family="Consolas, monospace">canh-bao/#</text>
+    </g>
+    <text x="1300" y="206" font-size="20" fill="#22603F">+ : đúng một cấp;  # : mọi cấp phía sau</text>
+  </g>
+
+  <!-- ③ retained và last will -->
+  <g data-s="3">
+    <rect x="40" y="400" width="1680" height="80" rx="8" fill="#FFF6DD" stroke="#8A6508" stroke-width="2"/>
+    <text x="64" y="434" font-size="20" fill="#6B4E06"><tspan font-weight="500">retained</tspan>: broker giữ message cuối của mỗi topic, giao ngay cho subscriber mới.</text>
+    <text x="64" y="464" font-size="20" fill="#6B4E06"><tspan font-weight="500">last will</tspan>: client đăng ký lúc kết nối; client mất kết nối thì broker publish thay (offline).</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Topic</b> phân cấp bằng dấu /; bên nhận chọn bằng mẫu (+ một cấp, # mọi cấp); <b>retained message</b> và <b>last will</b> do broker giữ và gửi.</p></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Ba mức QoS: tối đa, ít nhất, đúng một lần</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Ba mức QoS của MQTT giữa bên gửi và bên nhận. QoS 0, tối đa một lần: chỉ một PUBLISH, không xác nhận; mất là mất. QoS 1, ít nhất một lần: PUBLISH rồi chờ PUBACK; không nhận PUBACK thì gửi lại PUBLISH với cờ DUP, nên bên nhận có thể nhận hai lần. QoS 2, đúng một lần: PUBLISH, PUBREC, PUBREL, PUBCOMP, bốn lượt trao đổi.">
+  <defs>
+    <marker id="qs-a" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="qs-g" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- ① QoS 0 -->
+  <g data-s="1">
+    <text x="300" y="40" text-anchor="middle" font-size="24" font-weight="500" fill="#1A1F2E">QoS 0: tối đa một lần</text>
+    <g font-size="20" fill="#5B6478" text-anchor="middle"><text x="120" y="84">gửi</text><text x="480" y="84">nhận</text></g>
+    <g stroke="#B9BFCC" stroke-width="2.5"><line x1="120" y1="96" x2="120" y2="440"/><line x1="480" y1="96" x2="480" y2="440"/></g>
+    <line x1="120" y1="140" x2="474" y2="180" stroke="#051A53" stroke-width="2.5" marker-end="url(#qs-a)"/>
+    <text x="300" y="146" text-anchor="middle" font-size="20" fill="#051A53" font-family="Consolas, monospace">PUBLISH</text>
+    <text x="300" y="300" text-anchor="middle" font-size="20" fill="#373D4E">không xác nhận:</text>
+    <text x="300" y="328" text-anchor="middle" font-size="20" fill="#373D4E">mất là mất</text>
+  </g>
+
+  <!-- ② QoS 1 -->
+  <g data-s="2">
+    <text x="880" y="40" text-anchor="middle" font-size="24" font-weight="500" fill="#1A1F2E">QoS 1: ít nhất một lần</text>
+    <g font-size="20" fill="#5B6478" text-anchor="middle"><text x="700" y="84">gửi</text><text x="1060" y="84">nhận</text></g>
+    <g stroke="#B9BFCC" stroke-width="2.5"><line x1="700" y1="96" x2="700" y2="440"/><line x1="1060" y1="96" x2="1060" y2="440"/></g>
+    <line x1="700" y1="130" x2="1054" y2="160" stroke="#051A53" stroke-width="2.5" marker-end="url(#qs-a)"/>
+    <text x="880" y="134" text-anchor="middle" font-size="20" fill="#051A53" font-family="Consolas, monospace">PUBLISH</text>
+    <line x1="1060" y1="180" x2="920" y2="198" stroke="#2F855A" stroke-width="2.5"/>
+    <g stroke="#BC2626" stroke-width="4"><line x1="906" y1="188" x2="926" y2="208"/><line x1="926" y1="188" x2="906" y2="208"/></g>
+    <text x="960" y="234" text-anchor="middle" font-size="20" fill="#9B1C1C" font-family="Consolas, monospace">PUBACK mất</text>
+    <line x1="700" y1="280" x2="1054" y2="310" stroke="#051A53" stroke-width="2.5" marker-end="url(#qs-a)"/>
+    <text x="880" y="284" text-anchor="middle" font-size="20" fill="#051A53" font-family="Consolas, monospace">PUBLISH (DUP)</text>
+    <line x1="1060" y1="330" x2="706" y2="360" stroke="#2F855A" stroke-width="2.5" marker-end="url(#qs-g)"/>
+    <text x="880" y="376" text-anchor="middle" font-size="20" fill="#22603F" font-family="Consolas, monospace">PUBACK</text>
+    <text x="880" y="428" text-anchor="middle" font-size="20" fill="#9B1C1C">bên nhận có thể nhận hai lần</text>
+  </g>
+
+  <!-- ③ QoS 2 -->
+  <g data-s="3">
+    <text x="1460" y="40" text-anchor="middle" font-size="24" font-weight="500" fill="#1A1F2E">QoS 2: đúng một lần</text>
+    <g font-size="20" fill="#5B6478" text-anchor="middle"><text x="1280" y="84">gửi</text><text x="1640" y="84">nhận</text></g>
+    <g stroke="#B9BFCC" stroke-width="2.5"><line x1="1280" y1="96" x2="1280" y2="440"/><line x1="1640" y1="96" x2="1640" y2="440"/></g>
+    <line x1="1280" y1="130" x2="1634" y2="160" stroke="#051A53" stroke-width="2.5" marker-end="url(#qs-a)"/>
+    <text x="1460" y="134" text-anchor="middle" font-size="20" fill="#051A53" font-family="Consolas, monospace">PUBLISH</text>
+    <line x1="1640" y1="190" x2="1286" y2="220" stroke="#2F855A" stroke-width="2.5" marker-end="url(#qs-g)"/>
+    <text x="1460" y="236" text-anchor="middle" font-size="20" fill="#22603F" font-family="Consolas, monospace">PUBREC</text>
+    <line x1="1280" y1="280" x2="1634" y2="310" stroke="#051A53" stroke-width="2.5" marker-end="url(#qs-a)"/>
+    <text x="1460" y="284" text-anchor="middle" font-size="20" fill="#051A53" font-family="Consolas, monospace">PUBREL</text>
+    <line x1="1640" y1="340" x2="1286" y2="370" stroke="#2F855A" stroke-width="2.5" marker-end="url(#qs-g)"/>
+    <text x="1460" y="386" text-anchor="middle" font-size="20" fill="#22603F" font-family="Consolas, monospace">PUBCOMP</text>
+    <text x="1460" y="428" text-anchor="middle" font-size="20" fill="#373D4E">bốn lượt: không trùng, tốn hơn</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>QoS</b> 0 không xác nhận; QoS 1 chờ PUBACK, có thể giao trùng; QoS 2 bốn lượt trao đổi, không trùng nhưng tốn hơn.</p></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Dashboard vào sau: nhận ngay giá trị retained, rồi last will khi cảm biến mất điện</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span>options.<span class="hl-m">setWill</span>(status, <span class="hl-s">"</span><span class="hl-s">offline</span><span class="hl-s">"</span>.<span class="hl-m">getBytes</span>(<span class="hl-t">UTF_8</span>), <span class="hl-n">1</span>, <span class="hl-k">true</span>);  <span class="hl-c">// last will: broker gửi thay nếu cảm biến mất kết nối</span>
+client.<span class="hl-m">connect</span>(options);
+client.<span class="hl-m">publish</span>(status, <span class="hl-s">"</span><span class="hl-s">online</span><span class="hl-s">"</span>.<span class="hl-m">getBytes</span>(<span class="hl-t">UTF_8</span>), <span class="hl-n">1</span>, <span class="hl-k">true</span>);
+    client.<span class="hl-m">publish</span>(<span class="hl-s">"</span><span class="hl-s">phong/</span><span class="hl-s">"</span> + room + <span class="hl-s">"</span><span class="hl-s">/nhiet-do</span><span class="hl-s">"</span>, value.<span class="hl-m">getBytes</span>(<span class="hl-t">UTF_8</span>), <span class="hl-n">0</span>, <span class="hl-k">true</span>);  <span class="hl-c">// QoS 0, retained: giữ giá trị gần nhất</span>
+    <span class="hl-t">Runtime</span>.<span class="hl-m">getRuntime</span>().<span class="hl-m">halt</span>(<span class="hl-n">1</span>);  <span class="hl-c">// như mất điện: socket đóng, không có DISCONNECT</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span><span class="noi-bat"> 0.0 s  phong/101/nhiet-do   26.2 (retained)</span>
+<span class="noi-bat"> 0.0 s  phong/102/nhiet-do   24.7 (retained)</span>
+<span class="noi-bat"> 0.1 s  phong/101/trang-thai online (retained)</span>
+<span class="noi-bat"> 0.1 s  phong/102/trang-thai online (retained)</span>
+ 0.7 s  phong/102/nhiet-do   24.8
+ 0.7 s  phong/101/nhiet-do   26.3
+ 1.7 s  phong/101/nhiet-do   26.4
+ 1.7 s  phong/102/nhiet-do   24.9
+ 2.7 s  phong/102/nhiet-do   25.0
+<span class="noi-bat"> 3.1 s  phong/101/trang-thai offline</span>
+ 3.7 s  phong/102/trang-thai offline</pre></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>QoS 1 có thể giao trùng: bên nhận phải xử lý idempotent</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span>service.<span class="hl-m">setManualAcks</span>(<span class="hl-k">true</span>);  <span class="hl-c">// ứng dụng tự quyết lúc gửi PUBACK</span>
+        <span class="hl-k">if</span> (!processed.<span class="hl-m">add</span>(id)) {  <span class="hl-c">// đã xử lý: chỉ gửi PUBACK</span>
+            service.<span class="hl-m">messageArrivedComplete</span>(message.<span class="hl-m">getId</span>(), message.<span class="hl-m">getQos</span>());
+options.<span class="hl-m">setCleanSession</span>(<span class="hl-k">false</span>);  <span class="hl-c">// broker giữ subscription và message chưa được ack khi client mất kết nối</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span> 0.6 s  alert-service subscribed to canh-bao/# with QoS 1, clean session false
+ 1.0 s  monitor published A1 to canh-bao/101 with QoS 1
+<span class="noi-bat"> 1.0 s  received A1 dup=false: processed, connection lost before PUBACK</span>
+ 1.0 s  alert-service reconnects with the same client ID
+<span class="noi-bat"> 1.4 s  received A1 dup=true: already processed, skipped</span></pre></div><ul class="y-nho"><li data-s="2">QoS 1: mất PUBACK thì broker giao lại với cờ DUP, bên nhận nhận <b>hai lần</b></li><li data-s="3">Bên nhận lưu ID đã xử lý (<b>idempotency</b>); QoS 2 tránh trùng nhưng tốn thêm hai lượt</li></ul></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Dashboard vừa kết nối cần thấy ngay nhiệt độ gần nhất của mỗi phòng, không chờ lần đo tiếp theo. Cảm biến cần dùng tính năng nào khi publish?</div></div><div class="lua-chon"><div class=""><span>A</span><div>QoS 2.</div></div><div class=""><span>B</span><div>Last will.</div></div><div class="dung"><span>C</span><div>Retained message.</div></div><div class=""><span>D</span><div>Tắt clean session.</div></div></div><div class="giai-thich">Broker giữ message retained cuối cùng của mỗi topic và giao ngay cho subscriber mới. Last will chỉ dùng khi client mất kết nối; QoS và clean session không giúp subscriber mới thấy giá trị cũ.</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Dashboard vừa kết nối cần thấy ngay nhiệt độ gần nhất của mỗi phòng, không chờ lần đo tiếp theo. Cảm biến cần dùng tính năng nào khi publish?</div></div><div class="lua-chon"><div class=""><span>A</span><div>QoS 2.</div></div><div class=""><span>B</span><div>Last will.</div></div><div class="dung"><span>C</span><div>Retained message.</div></div><div class=""><span>D</span><div>Tắt clean session.</div></div></div><div class="giai-thich">Broker giữ message retained cuối cùng của mỗi topic và giao ngay cho subscriber mới. Last will chỉ dùng khi client mất kết nối; QoS và clean session không giúp subscriber mới thấy giá trị cũ.</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Cảm biến gửi nhiệt độ mỗi giây; mất vài giá trị không ảnh hưởng tới việc giám sát. Nên chọn QoS nào?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>QoS 0.</div></div><div class=""><span>B</span><div>QoS 1.</div></div><div class=""><span>C</span><div>QoS 2.</div></div><div class=""><span>D</span><div>Không dùng MQTT, chuyển sang HTTP.</div></div></div><div class="giai-thich">Giá trị mới đến mỗi giây, mất một giá trị thì giá trị sau thay thế; QoS 0 không tốn lượt xác nhận nào, hợp với thiết bị dùng pin. QoS 1 và 2 dành cho message không được mất, như cảnh báo.</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Cảm biến gửi nhiệt độ mỗi giây; mất vài giá trị không ảnh hưởng tới việc giám sát. Nên chọn QoS nào?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>QoS 0.</div></div><div class=""><span>B</span><div>QoS 1.</div></div><div class=""><span>C</span><div>QoS 2.</div></div><div class=""><span>D</span><div>Không dùng MQTT, chuyển sang HTTP.</div></div></div><div class="giai-thich">Giá trị mới đến mỗi giây, mất một giá trị thì giá trị sau thay thế; QoS 0 không tốn lượt xác nhận nào, hợp với thiết bị dùng pin. QoS 1 và 2 dành cho message không được mất, như cảnh báo.</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>MQTT</b>: publish/subscribe qua <b>MQTT broker</b>, chọn theo <b>topic</b> (+, #); <b>CoAP</b>: REST trên UDP</div></div><div class="the" data-s="2"><span class="so">2</span><div><b>QoS</b> 0, 1, 2: tối đa, ít nhất, đúng một lần; QoS 1 cần bên nhận idempotent</div></div><div class="the" data-s="3"><span class="so">3</span><div><b>Retained message</b> cho giá trị gần nhất; <b>last will</b> báo thiết bị mất kết nối</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>MQTT</span><span>MQTT broker</span><span>topic</span><span>QoS</span><span>retained message</span><span>last will</span><span>CoAP</span></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>MQTT 5: shared subscription</li><li>CoAP observe</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Thêm cảnh báo khi nhiệt độ vượt ngưỡng: dịch vụ giám sát publish tới topic <span style="white-space:nowrap">canh-bao</span>/&lt;phòng&gt; với QoS 1.</p></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TKC"><header><h1>Tổng kết chương 5</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>Bảo mật</b>: TLS mã hóa đường truyền, xác thực server; OAuth 2.0 và JWT cho xác thực, phân quyền</div></div><div class="the" data-s="2"><span class="so">2</span><div><b>Hiệu năng</b>: lời gọi không chặn với CompletableFuture; NIO và Selector phục vụ nhiều kết nối</div></div><div class="the" data-s="3"><span class="so">3</span><div><b>Độ tin cậy</b>: retry, request ID, checksum trên UDP; backoff, jitter, circuit breaker, health check</div></div><div class="the" data-s="4"><span class="so">4</span><div><b>IoT</b>: MQTT với topic, QoS, retained message, last will; CoAP trên UDP</div></div></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Tổng kết học phần</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Phần cuối của chương, thuộc nhóm IoT, là một bài toán ứng dụng: giám sát nhiệt độ các phòng bằng cảm biến. Với thiết bị nhỏ, pin hạn chế và mạng không ổn định, nên dùng giao thức nào, và làm sao biết một cảm biến đã mất kết nối?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:17</span>
+      <h3>Slide 1. Cảm biến: bộ nhớ nhỏ, pin hạn chế, mạng không ổn định</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Cảm biến mỗi phòng đo mỗi giây; dashboard và dịch vụ cảnh báo cùng cần số liệu</li><li>Bộ nhớ nhỏ, pin hạn chế, mạng không ổn định: mỗi request HTTP là một gánh nặng</li><li>Cảm biến có thể mất điện, mất sóng mà không kịp báo</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** giao thức nào hợp với thiết bị nhỏ, và dashboard biết giá trị gần nhất, biết cảm biến mất kết nối bằng cách nào?</div></div>
+    <div class="kb-thoai"><p>Bài toán đặt ra là giám sát nhiệt độ các phòng: cảm biến ở mỗi phòng đo mỗi giây, còn dashboard và dịch vụ cảnh báo cùng cần các số liệu đó. Khác với server, cảm biến có bộ nhớ nhỏ, chạy bằng pin và thường kết nối qua mạng không dây không ổn định, nên mỗi request HTTP với header dạng văn bản là một gánh nặng. Thêm vào đó, cảm biến có thể mất điện hay mất sóng bất cứ lúc nào mà không kịp báo cho ai. Câu hỏi của phần vì thế gồm hai ý: giao thức nào hợp với thiết bị nhỏ, và dashboard biết giá trị gần nhất cũng như biết cảm biến đã mất kết nối bằng cách nào?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Bài toán đặt ra”; bước 2 khi đọc “Khác với server”; bước 3 khi đọc “Thêm vào đó”; bước 4 khi đọc “Câu hỏi của phần”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:50</span>
+      <h3>Slide 2. Ba giao thức cho thiết bị nhỏ: HTTP, MQTT và CoAP</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**MQTT**: publish/subscribe qua broker trên TCP; **CoAP**: request–response kiểu REST trên UDP; cả hai nhẹ hơn HTTP nhiều.</li></ul></div></div>
+    <div class="kb-thoai"><p>HTTP là lựa chọn dễ nghĩ tới đầu tiên, nhưng header dạng văn bản thường dài vài trăm byte, và server chỉ trả lời khi client hỏi. MQTT đi theo mô hình publish/subscribe đã gặp ở phần message broker: thiết bị gửi số liệu tới một broker qua kết nối TCP giữ lâu dài, với header cố định chỉ từ 2 byte. CoAP đi theo hướng khác: request–response kiểu REST với GET, PUT, POST, DELETE, nhưng chạy trên UDP với header cố định 4 byte, và message có thể yêu cầu xác nhận hoặc không. Như vậy, MQTT hợp khi thiết bị gửi số liệu lên và nhiều bên cùng nhận, còn CoAP hợp khi cần đọc, ghi tài nguyên trên chính thiết bị. Bài toán này dùng MQTT.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình mqtt-coap-http: ba cột hiện lần lượt, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “HTTP là lựa chọn”; bước 2 khi đọc “MQTT đi theo”; bước 3 khi đọc “CoAP đi theo”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:35</span>
+      <h3>Slide 3. MQTT broker và topic: publish theo topic, subscribe theo mẫu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Topic** phân cấp bằng dấu /; bên nhận chọn bằng mẫu (+ một cấp, # mọi cấp); **retained message** và **last will** do broker giữ và gửi.</li></ul></div></div>
+    <div class="kb-thoai"><p>Mỗi cảm biến publish nhiệt độ tới MQTT broker, vào một topic phân cấp bằng dấu gạch chéo: phòng, số phòng, rồi nhiệt độ. Bên nhận subscribe theo mẫu: dashboard dùng dấu cộng thay cho đúng một cấp, nên nhận nhiệt độ của mọi phòng, còn dịch vụ cảnh báo dùng dấu thăng thay cho mọi cấp phía sau. Broker còn làm thêm hai việc, đúng với hai câu hỏi của bài toán. Với retained message, broker giữ message cuối của mỗi topic và giao ngay cho subscriber mới. Với last will, client đăng ký sẵn một message lúc kết nối, và nếu client mất kết nối đột ngột, không kịp báo ngắt kết nối, broker publish message đó thay cho client. Như vậy, topic quyết định ai nhận, còn retained message và last will trả lời hai câu hỏi về giá trị gần nhất và về cảm biến mất kết nối.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình mqtt-broker: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Mỗi cảm biến publish”; bước 2 khi đọc “Bên nhận subscribe”; bước 3 khi đọc “Broker còn làm”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:25</span>
+      <h3>Slide 4. Ba mức QoS: tối đa, ít nhất, đúng một lần</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**QoS** 0 không xác nhận; QoS 1 chờ PUBACK, có thể giao trùng; QoS 2 bốn lượt trao đổi, không trùng nhưng tốn hơn.</li></ul></div></div>
+    <div class="kb-thoai"><p>Mạng không dây của cảm biến có thể làm mất message trên đường đi, nên MQTT cho chọn mức bảo đảm giao, gọi là QoS, hay quality of service. Với QoS 0, bên gửi chỉ gửi PUBLISH và không chờ gì: message có thể mất, nên gọi là tối đa một lần. QoS 1 thêm xác nhận PUBACK: chưa nhận PUBACK thì bên gửi phát lại PUBLISH với cờ DUP. Nếu chính PUBACK bị mất, message đến bên nhận hai lần, nên QoS 1 là ít nhất một lần. QoS 2 dùng bốn lượt trao đổi để hai bên thống nhất rằng message được giao đúng một lần. Như vậy, mức QoS càng cao thì càng chắc chắn, nhưng tốn thêm lượt trao đổi và trạng thái phải giữ.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình qos: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Với QoS 0”; bước 2 khi đọc “QoS 1 thêm”; bước 3 khi đọc “QoS 2 dùng”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:10</span>
+      <h3>Slide 5. Dashboard vào sau: nhận ngay giá trị retained, rồi last will khi cảm biến mất điện</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/main/java/netlab/iot/Sensor.java</span><pre><code>options.setWill(status, &quot;offline&quot;.getBytes(UTF_8), 1, true);  // last will: broker gửi thay nếu cảm biến mất kết nối
+client.connect(options);
+client.publish(status, &quot;online&quot;.getBytes(UTF_8), 1, true);
+    client.publish(&quot;phong/&quot; + room + &quot;/nhiet-do&quot;, value.getBytes(UTF_8), 0, true);  // QoS 0, retained: giữ giá trị gần nhất
+    Runtime.getRuntime().halt(1);  // như mất điện: socket đóng, không có DISCONNECT</code></pre></div></div>
+    <div class="kb-thoai"><p>Quay lại hai câu hỏi của bài toán, chương trình mẫu kiểm chứng retained message và last will. Mã dùng thư viện Eclipse Paho, chạy với broker như Mosquitto. Mỗi cảm biến đăng ký last will là offline ngay khi kết nối, publish trạng thái online, rồi mỗi giây publish nhiệt độ với QoS 0 và cờ retained. Cảm biến phòng 101 dừng tiến trình ngay sau lần đo thứ năm, như mất điện. Cảm biến phòng 102 thì dừng có chủ đích và tự publish offline trước khi ngắt kết nối. Dashboard chỉ kết nối khi các cảm biến đã chạy khoảng 2,5 giây. Các bạn thử đoán: ngay lúc subscribe, dashboard có thấy nhiệt độ nào không? Kết quả: ngay ở giây 0, dashboard nhận nhiệt độ và trạng thái của hai phòng, có đánh dấu retained, rồi mỗi giây nhận thêm giá trị mới. Ở giây 3,1, trạng thái phòng 101 chuyển sang offline: đó là last will do broker publish thay cho cảm biến vừa mất kết nối.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên (dòng dài), kết quả phía dưới. Sau câu &quot;nhiệt độ nào không&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện.
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:16</span>
+      <h3>Slide 6. QoS 1 có thể giao trùng: bên nhận phải xử lý idempotent</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>QoS 1: mất PUBACK thì broker giao lại với cờ DUP, bên nhận nhận **hai lần**</li><li>Bên nhận lưu ID đã xử lý (**idempotency**); QoS 2 tránh trùng nhưng tốn thêm hai lượt</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/main/java/netlab/iot/AlertDemo.java</span><pre><code>service.setManualAcks(true);  // ứng dụng tự quyết lúc gửi PUBACK
+        if (!processed.add(id)) {  // đã xử lý: chỉ gửi PUBACK
+            service.messageArrivedComplete(message.getId(), message.getQos());
+options.setCleanSession(false);  // broker giữ subscription và message chưa được ack khi client mất kết nối</code></pre></div></div>
+    <div class="kb-thoai"><p>Với cảnh báo, mất message là không chấp nhận được, nên dịch vụ cảnh báo dùng QoS 1, và lúc này message có thể đến nhiều lần. Trong chương trình AlertDemo, dịch vụ cảnh báo subscribe với QoS 1 và tắt clean session, để broker giữ phiên và các message chưa được xác nhận khi dịch vụ mất kết nối. Dịch vụ tự gửi PUBACK sau khi xử lý xong, nhưng lần này mất kết nối ngay sau khi xử lý cảnh báo A1, trước khi kịp gửi PUBACK. Kết quả: khi dịch vụ kết nối lại với cùng client ID, broker giao lại A1 và bật cờ DUP. Nhờ tập ID đã xử lý, dịch vụ nhận ra A1 và chỉ gửi PUBACK. Vì vậy, với QoS 1, bên nhận phải xử lý idempotent, chẳng hạn lưu ID của message đã xử lý cùng với kết quả xử lý. Một cách khác là QoS 2: không giao trùng, nhưng tốn thêm hai lượt trao đổi cho mỗi message.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới, hai ý hiện sau kết quả.
+Hiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Vì vậy”; bước 3 khi đọc “Một cách khác”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:18</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Giả sử các bạn viết dashboard và cần hiển thị số liệu ngay khi mở.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Dashboard vừa kết nối cần thấy ngay nhiệt độ gần nhất của mỗi phòng, không chờ lần đo tiếp theo. Cảm biến cần dùng tính năng nào khi publish?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> QoS 2.</li>
+      <li><b>B.</b> Last will.</li>
+      <li><b>C.</b> Retained message.</li>
+      <li><b>D.</b> Tắt clean session.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: C</b> — <span>Broker giữ message retained cuối cùng của mỗi topic và giao ngay cho subscriber mới. Last will chỉ dùng khi client mất kết nối; QoS và clean session không giúp subscriber mới thấy giá trị cũ.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là C. Broker giữ message retained cuối cùng của mỗi topic và giao ngay khi dashboard subscribe, như các dòng retained ở giây 0. Phương án B dễ nhầm vì cũng do broker giữ sẵn, nhưng last will chỉ được publish khi cảm biến mất kết nối.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án C được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:44</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Chọn mức QoS cho số liệu nhiệt độ là quyết định đầu tiên khi viết cảm biến.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Cảm biến gửi nhiệt độ mỗi giây; mất vài giá trị không ảnh hưởng tới việc giám sát. Nên chọn QoS nào?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> QoS 0.</li>
+      <li><b>B.</b> QoS 1.</li>
+      <li><b>C.</b> QoS 2.</li>
+      <li><b>D.</b> Không dùng MQTT, chuyển sang HTTP.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: A</b> — <span>Giá trị mới đến mỗi giây, mất một giá trị thì giá trị sau thay thế; QoS 0 không tốn lượt xác nhận nào, hợp với thiết bị dùng pin. QoS 1 và 2 dành cho message không được mất, như cảnh báo.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là A. Giá trị sau thay thế giá trị bị mất chỉ một giây sau, nên QoS 0 đủ dùng và không tốn lượt xác nhận nào. QoS 1 dành cho message không được mất, như cảnh báo, với điều kiện bên nhận xử lý được message trùng.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án A.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:10</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**MQTT**: publish/subscribe qua **MQTT broker**, chọn theo **topic** (+, #); **CoAP**: REST trên UDP</li><li>**QoS** 0, 1, 2: tối đa, ít nhất, đúng một lần; QoS 1 cần bên nhận idempotent</li><li>**Retained message** cho giá trị gần nhất; **last will** báo thiết bị mất kết nối</li></ul></div>
+    <div class="kb-thoai"><p>Với thiết bị nhỏ, MQTT cho cảm biến publish số liệu tới MQTT broker theo topic, và bên nhận subscribe theo mẫu với dấu cộng hay dấu thăng. CoAP là lựa chọn request–response kiểu REST trên UDP. Mức QoS quy định bảo đảm giao message: tối đa một lần, ít nhất một lần, hoặc đúng một lần, và QoS 1 đòi hỏi bên nhận xử lý idempotent. Retained message cho subscriber mới giá trị gần nhất, còn last will báo thiết bị đã mất kết nối. Bảy từ khóa của bài toán: MQTT, MQTT broker, topic, QoS, retained message, last will và CoAP.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “Với thiết bị nhỏ”; bước 2 khi đọc “Mức QoS”; bước 3 khi đọc “Retained message cho”; bước 4 khi đọc “Bảy từ khóa”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:49</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>MQTT 5 thêm shared subscription, cho nhiều bản của cùng một dịch vụ chia nhau message của một topic, giống work queue ở Chương 4. CoAP có tùy chọn observe để client nhận thông báo khi tài nguyên thay đổi. Bài tập mở rộng là thêm cảnh báo khi nhiệt độ vượt ngưỡng: dịch vụ giám sát publish tới topic cảnh báo của phòng đó với QoS 1.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “MQTT 5 thêm”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:11</span>
+      <h3>Tổng kết chương</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**Bảo mật**: TLS mã hóa đường truyền, xác thực server; OAuth 2.0 và JWT cho xác thực, phân quyền</li><li>**Hiệu năng**: lời gọi không chặn với CompletableFuture; NIO và Selector phục vụ nhiều kết nối</li><li>**Độ tin cậy**: retry, request ID, checksum trên UDP; backoff, jitter, circuit breaker, health check</li><li>**IoT**: MQTT với topic, QoS, retained message, last will; CoAP trên UDP</li></ul></div>
+    <div class="kb-thoai"><p>Bài toán giám sát cảm biến khép lại Chương 5. Nhóm Bảo mật mã hóa đường truyền và xác thực server bằng TLS, rồi dùng OAuth 2.0 và JWT để biết ai đang gọi và người đó được làm gì. Nhóm Hiệu năng giải phóng thread ở phía gọi bằng CompletableFuture và async stub, và ở phía server bằng NIO với Selector. Nhóm Độ tin cậy thêm retry, request ID và checksum cho tra cứu qua UDP, rồi backoff, jitter, circuit breaker và health check khi server lỗi. Nhóm IoT dùng MQTT với topic, QoS, retained message và last will cho thiết bị nhỏ, và giới thiệu CoAP, request–response kiểu REST trên UDP.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Infographic tổng kết chương: bốn thẻ hiện lần lượt theo lời đọc.
+Hiện dần: bước 1 khi đọc “Nhóm Bảo mật”; bước 2 khi đọc “Nhóm Hiệu năng”; bước 3 khi đọc “Nhóm Độ tin cậy”; bước 4 khi đọc “Nhóm IoT”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-12" data-index="12">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:52</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(12)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(12, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chương 5 cũng là chương cuối của học phần. Phần tiếp theo tổng kết học phần: các phiên bản của dịch vụ tra cứu qua năm chương, và hướng học tiếp.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V36", "tieu_de": "Bài toán ứng dụng: giám sát cảm biến với MQTT và CoAP", "giong": "vi-VN-NamMinhNeural", "tong": 482.75, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/74c5aa83e0375f5f.mp3", "dur": 16.44, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Phần", 1], [2.15, "cuối", 1], [2.337, "của", 1], [2.5, "chương,", 1], [3.038, "thuộc", 1], [3.25, "nhóm", 1], [3.6, "IoT,", 1], [4.45, "là", 1], [4.625, "một", 1], [4.825, "bài", 1], [5.0, "toán", 1], [5.325, "ứng", 1], [5.475, "dụng:", 1], [6.013, "giám", 1], [6.275, "sát", 1], [6.537, "nhiệt", 1], [6.7, "độ", 1], [6.9, "các", 1], [7.05, "phòng", 1], [7.287, "bằng", 1], [7.5, "cảm", 1], [7.725, "biến.", 1], [8.875, "Với", 2], [9.137, "thiết", 2], [9.35, "bị", 2], [9.525, "nhỏ,", 2], [10.037, "pin", 2], [10.275, "hạn", 2], [10.488, "chế", 2], [10.762, "và", 2], [10.887, "mạng", 2], [11.137, "không", 2], [11.375, "ổn", 2], [11.562, "định,", 2], [12.062, "nên", 2], [12.375, "dùng", 2], [12.588, "giao", 2], [12.762, "thức", 2], [12.912, "nào,", 2], [13.363, "và", 2], [13.537, "làm", 2], [13.713, "sao", 2], [13.912, "biết", 2], [14.137, "một", 2], [14.3, "cảm", 2], [14.512, "biến", 2], [14.75, "đã", 2], [14.85, "mất", 2], [15.025, "kết", 2], [15.238, "nối?", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Cảm biến: bộ nhớ nhỏ, pin hạn chế, mạng không ổn định", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Bài toán đặt ra”; bước 2 khi đọc “Khác với server”; bước 3 khi đọc “Thêm vào đó”; bước 4 khi đọc “Câu hỏi của phần”.", "start": 17.04, "audio": "audio/c23b0babcbd5183b.mp3", "dur": 32.95, "words": [[0.1, "Bài", 0], [0.338, "toán", 0], [0.6, "đặt", 0], [0.762, "ra", 0], [1.012, "là", 0], [1.15, "giám", 0], [1.387, "sát", 0], [1.625, "nhiệt", 0], [1.788, "độ", 0], [1.962, "các", 0], [2.125, "phòng:", 0], [2.65, "cảm", 0], [2.888, "biến", 0], [3.15, "ở", 0], [3.237, "mỗi", 0], [3.462, "phòng", 0], [3.7, "đo", 0], [3.85, "mỗi", 0], [4.075, "giây,", 0], [4.588, "còn", 0], [4.838, "dashboard", 0], [5.312, "và", 0], [5.45, "dịch", 0], [5.638, "vụ", 0], [5.825, "cảnh", 0], [6.062, "báo", 0], [6.287, "cùng", 0], [6.525, "cần", 0], [6.75, "các", 0], [6.888, "số", 0], [7.075, "liệu", 0], [7.263, "đó.", 0], [8.438, "Khác", 1], [8.7, "với", 1], [8.812, "server,", 1], [9.512, "cảm", 1], [9.713, "biến", 1], [9.912, "có", 1], [10.012, "bộ", 1], [10.2, "nhớ", 1], [10.438, "nhỏ,", 1], [11.05, "chạy", 1], [11.25, "bằng", 1], [11.438, "pin", 1], [11.75, "và", 1], [11.875, "thường", 1], [12.088, "kết", 1], [12.287, "nối", 1], [12.45, "qua", 1], [12.637, "mạng", 1], [12.887, "không", 1], [13.1, "dây", 1], [13.25, "không", 1], [13.463, "ổn", 1], [13.65, "định,", 1], [14.15, "nên", 1], [14.412, "mỗi", 1], [14.6, "request", 1], [15.081, "HTTP", 1], [15.562, "với", 1], [15.688, "header", 1], [16.062, "dạng", 1], [16.363, "văn", 1], [16.538, "bản", 1], [16.812, "là", 1], [16.913, "một", 1], [17.113, "gánh", 1], [17.3, "nặng.", 1], [18.45, "Thêm", 2], [18.738, "vào", 2], [18.875, "đó,", 2], [19.387, "cảm", 2], [19.613, "biến", 2], [19.825, "có", 2], [19.938, "thể", 2], [20.087, "mất", 2], [20.275, "điện", 2], [20.562, "hay", 2], [20.712, "mất", 2], [20.85, "sóng", 2], [21.125, "bất", 2], [21.262, "cứ", 2], [21.475, "lúc", 2], [21.675, "nào", 2], [21.938, "mà", 2], [22.1, "không", 2], [22.337, "kịp", 2], [22.512, "báo", 2], [22.738, "cho", 2], [22.95, "ai.", 2], [24.025, "Câu", 3], [24.212, "hỏi", 3], [24.425, "của", 3], [24.575, "phần", 3], [24.837, "vì", 3], [24.962, "thế", 3], [25.137, "gồm", 3], [25.363, "hai", 3], [25.562, "ý:", 3], [26.062, "giao", 3], [26.3, "thức", 3], [26.475, "nào", 3], [26.675, "hợp", 3], [26.863, "với", 3], [26.975, "thiết", 3], [27.163, "bị", 3], [27.325, "nhỏ,", 3], [27.938, "và", 3], [28.175, "dashboard", 3], [28.575, "biết", 3], [28.8, "giá", 3], [28.975, "trị", 3], [29.2, "gần", 3], [29.413, "nhất", 3], [29.637, "cũng", 3], [29.85, "như", 3], [30.0, "biết", 3], [30.212, "cảm", 3], [30.438, "biến", 3], [30.688, "đã", 3], [30.8, "mất", 3], [30.975, "kết", 3], [31.175, "nối", 3], [31.4, "bằng", 3], [31.613, "cách", 3], [31.8, "nào?", 3]], "cues": [0.1, 8.438, 18.45, 24.025], "lang": 0.6}, {"ten": "Slide 2. Ba giao thức cho thiết bị nhỏ: HTTP, MQTT và CoAP", "loai": "slide", "slide": "S02", "dung": "Hình mqtt-coap-http: ba cột hiện lần lượt, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “HTTP là lựa chọn”; bước 2 khi đọc “MQTT đi theo”; bước 3 khi đọc “CoAP đi theo”; bước 4 khi đọc “Như vậy”.", "start": 50.59, "audio": "audio/df1ecead1742a4b4.mp3", "dur": 42.02, "words": [[0.912, "HTTP", 0], [0.912, "là", 0], [1.062, "lựa", 0], [1.25, "chọn", 0], [1.525, "dễ", 0], [1.65, "nghĩ", 0], [1.875, "tới", 0], [2.062, "đầu", 0], [2.225, "tiên,", 0], [2.788, "nhưng", 0], [3.087, "header", 0], [3.462, "dạng", 0], [3.737, "văn", 0], [3.9, "bản", 0], [4.138, "thường", 0], [4.375, "dài", 0], [4.575, "vài", 0], [4.713, "trăm", 0], [4.925, "byte,", 0], [5.412, "và", 0], [5.65, "server", 0], [6.05, "chỉ", 0], [6.237, "trả", 0], [6.425, "lời", 0], [6.638, "khi", 0], [6.838, "client", 0], [7.175, "hỏi.", 0], [8.225, "MQTT", 1], [9.275, "đi", 1], [9.4, "theo", 1], [9.575, "mô", 1], [9.762, "hình", 1], [9.963, "publish/subscribe", 1], [10.975, "đã", 1], [11.15, "gặp", 1], [11.412, "ở", 1], [11.537, "phần", 1], [11.8, "message", 1], [12.2, "broker:", 1], [12.963, "thiết", 1], [13.162, "bị", 1], [13.312, "gửi", 1], [13.512, "số", 1], [13.7, "liệu", 1], [13.9, "tới", 1], [14.062, "một", 1], [14.262, "broker", 1], [14.725, "qua", 1], [14.95, "kết", 1], [15.188, "nối", 1], [15.582, "TCP", 1], [15.975, "giữ", 1], [16.163, "lâu", 1], [16.363, "dài,", 1], [16.875, "với", 1], [17.062, "header", 1], [17.45, "cố", 1], [17.7, "định", 1], [17.95, "chỉ", 1], [18.15, "từ", 1], [18.337, "2", 1], [18.5, "byte.", 1], [19.275, "CoAP", 2], [20.05, "đi", 2], [20.175, "theo", 2], [20.325, "hướng", 2], [20.525, "khác:", 2], [21.038, "request–response", 2], [22.025, "kiểu", 2], [22.243, "REST", 2], [22.462, "với", 2], [22.93, "GET,", 2], [23.397, "PUT,", 2], [23.865, "POST,", 2], [24.332, "DELETE,", 2], [24.8, "nhưng", 2], [25.087, "chạy", 2], [25.3, "trên", 2], [25.675, "UDP", 2], [26.05, "với", 2], [26.175, "header", 2], [26.562, "cố", 2], [26.812, "định", 2], [27.025, "4", 2], [27.238, "byte,", 2], [27.712, "và", 2], [27.925, "message", 2], [28.375, "có", 2], [28.5, "thể", 2], [28.725, "yêu", 2], [28.9, "cầu", 2], [29.113, "xác", 2], [29.363, "nhận", 2], [29.6, "hoặc", 2], [29.762, "không.", 2], [30.913, "Như", 3], [31.15, "vậy,", 3], [31.781, "MQTT", 3], [32.413, "hợp", 3], [32.625, "khi", 3], [32.812, "thiết", 3], [32.987, "bị", 3], [33.125, "gửi", 3], [33.325, "số", 3], [33.55, "liệu", 3], [33.763, "lên", 3], [34.05, "và", 3], [34.188, "nhiều", 3], [34.413, "bên", 3], [34.612, "cùng", 3], [34.8, "nhận,", 3], [35.325, "còn", 3], [35.632, "CoAP", 3], [35.938, "hợp", 3], [36.163, "khi", 3], [36.337, "cần", 3], [36.55, "đọc,", 3], [36.975, "ghi", 3], [37.212, "tài", 3], [37.375, "nguyên", 3], [37.663, "trên", 3], [37.85, "chính", 3], [38.05, "thiết", 3], [38.2, "bị.", 3], [39.312, "Bài", 4], [39.562, "toán", 4], [39.825, "này", 4], [40.013, "dùng", 4], [40.013, "MQTT.", 4]], "cues": [0.912, 8.225, 19.275, 30.913], "lang": 2.6}, {"ten": "Slide 3. MQTT broker và topic: publish theo topic, subscribe theo mẫu", "loai": "slide", "slide": "S03", "dung": "Hình mqtt-broker: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Mỗi cảm biến publish”; bước 2 khi đọc “Bên nhận subscribe”; bước 3 khi đọc “Broker còn làm”; bước 4 khi đọc “Như vậy”.", "start": 95.21, "audio": "audio/5d84d8d3559eea16.mp3", "dur": 47.42, "words": [[0.1, "Mỗi", 0], [0.475, "cảm", 0], [0.713, "biến", 0], [0.938, "publish", 0], [1.387, "nhiệt", 0], [1.562, "độ", 0], [1.775, "tới", 0], [2.281, "MQTT", 0], [2.788, "broker,", 0], [3.587, "vào", 0], [3.763, "một", 0], [3.975, "topic", 0], [4.325, "phân", 0], [4.588, "cấp", 0], [4.775, "bằng", 0], [5.025, "dấu", 0], [5.237, "gạch", 0], [5.438, "chéo:", 0], [6.0, "phòng,", 0], [6.5, "số", 0], [6.763, "phòng,", 0], [7.263, "rồi", 0], [7.513, "nhiệt", 0], [7.725, "độ.", 0], [8.875, "Bên", 1], [9.1, "nhận", 1], [9.363, "subscribe", 1], [9.775, "theo", 1], [9.95, "mẫu:", 1], [10.55, "dashboard", 1], [11.025, "dùng", 1], [11.262, "dấu", 1], [11.463, "cộng", 1], [11.713, "thay", 1], [11.9, "cho", 1], [12.037, "đúng", 1], [12.238, "một", 1], [12.4, "cấp,", 1], [12.875, "nên", 1], [13.137, "nhận", 1], [13.375, "nhiệt", 1], [13.562, "độ", 1], [13.775, "của", 1], [13.887, "mọi", 1], [14.075, "phòng,", 1], [14.575, "còn", 1], [14.8, "dịch", 1], [14.963, "vụ", 1], [15.137, "cảnh", 1], [15.375, "báo", 1], [15.6, "dùng", 1], [15.825, "dấu", 1], [16.012, "thăng", 1], [16.25, "thay", 1], [16.425, "cho", 1], [16.55, "mọi", 1], [16.738, "cấp", 1], [16.938, "phía", 1], [17.113, "sau.", 1], [18.288, "Broker", 2], [18.887, "còn", 2], [19.312, "làm", 2], [19.5, "thêm", 2], [19.725, "hai", 2], [19.887, "việc,", 2], [20.387, "đúng", 2], [20.65, "với", 2], [20.788, "hai", 2], [20.975, "câu", 2], [21.175, "hỏi", 2], [21.413, "của", 2], [21.562, "bài", 2], [21.738, "toán.", 2], [22.95, "Với", 3], [23.25, "retained", 3], [23.613, "message,", 3], [24.325, "broker", 3], [24.9, "giữ", 3], [25.113, "message", 3], [25.488, "cuối", 3], [25.738, "của", 3], [25.9, "mỗi", 3], [26.113, "topic", 3], [26.575, "và", 3], [26.775, "giao", 3], [26.975, "ngay", 3], [27.175, "cho", 3], [27.337, "subscriber", 3], [27.863, "mới.", 3], [29.1, "Với", 4], [29.375, "last", 4], [29.575, "will,", 4], [30.062, "client", 4], [30.462, "đăng", 4], [30.637, "ký", 4], [30.887, "sẵn", 4], [31.137, "một", 4], [31.312, "message", 4], [31.725, "lúc", 4], [31.925, "kết", 4], [32.112, "nối,", 4], [32.638, "và", 4], [32.837, "nếu", 4], [33.025, "client", 4], [33.3, "mất", 4], [33.475, "kết", 4], [33.7, "nối", 4], [33.888, "đột", 4], [34.062, "ngột,", 4], [34.5, "không", 4], [34.75, "kịp", 4], [34.938, "báo", 4], [35.15, "ngắt", 4], [35.35, "kết", 4], [35.55, "nối,", 4], [36.075, "broker", 4], [36.538, "publish", 4], [36.975, "message", 4], [37.312, "đó", 4], [37.55, "thay", 4], [37.725, "cho", 4], [37.875, "client.", 4], [39.138, "Như", 5], [39.375, "vậy,", 5], [39.85, "topic", 5], [40.237, "quyết", 5], [40.413, "định", 5], [40.688, "ai", 5], [40.825, "nhận,", 5], [41.375, "còn", 5], [41.612, "retained", 5], [42.013, "message", 5], [42.5, "và", 5], [42.638, "last", 5], [42.85, "will", 5], [43.05, "trả", 5], [43.237, "lời", 5], [43.462, "hai", 5], [43.638, "câu", 5], [43.812, "hỏi", 5], [44.087, "về", 5], [44.237, "giá", 5], [44.413, "trị", 5], [44.625, "gần", 5], [44.825, "nhất", 5], [45.062, "và", 5], [45.237, "về", 5], [45.4, "cảm", 5], [45.663, "biến", 5], [45.875, "mất", 5], [46.05, "kết", 5], [46.237, "nối.", 5]], "cues": [0.1, 8.875, 18.288, 39.138], "lang": 2.6}, {"ten": "Slide 4. Ba mức QoS: tối đa, ít nhất, đúng một lần", "loai": "slide", "slide": "S04", "dung": "Hình qos: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Với QoS 0”; bước 2 khi đọc “QoS 1 thêm”; bước 3 khi đọc “QoS 2 dùng”; bước 4 khi đọc “Như vậy”.", "start": 145.23, "audio": "audio/9a77bcca2890514b.mp3", "dur": 42.31, "words": [[0.1, "Mạng", 0], [0.537, "không", 0], [0.762, "dây", 0], [0.925, "của", 0], [1.062, "cảm", 0], [1.275, "biến", 0], [1.512, "có", 0], [1.625, "thể", 0], [1.762, "làm", 0], [1.962, "mất", 0], [2.175, "message", 0], [2.6, "trên", 0], [2.812, "đường", 0], [3.0, "đi,", 0], [3.513, "nên", 0], [4.019, "MQTT", 0], [4.525, "cho", 0], [4.662, "chọn", 0], [4.912, "mức", 0], [5.1, "bảo", 0], [5.312, "đảm", 0], [5.525, "giao,", 0], [6.025, "gọi", 0], [6.287, "là", 0], [6.825, "QoS,", 0], [7.362, "hay", 0], [7.588, "quality", 0], [8.125, "of", 0], [8.3, "service.", 0], [9.7, "Với", 1], [10.15, "QoS", 1], [10.6, "0,", 1], [11.088, "bên", 1], [11.338, "gửi", 1], [11.575, "chỉ", 1], [11.8, "gửi", 1], [12.012, "PUBLISH", 1], [12.475, "và", 1], [12.662, "không", 1], [12.887, "chờ", 1], [13.088, "gì:", 1], [13.6, "message", 1], [14.088, "có", 1], [14.225, "thể", 1], [14.387, "mất,", 1], [14.838, "nên", 1], [15.15, "gọi", 1], [15.425, "là", 1], [15.537, "tối", 1], [15.762, "đa", 1], [15.925, "một", 1], [16.113, "lần.", 1], [17.032, "QoS", 2], [17.95, "1", 2], [18.113, "thêm", 2], [18.312, "xác", 2], [18.55, "nhận", 2], [18.75, "PUBACK:", 2], [19.4, "chưa", 2], [19.637, "nhận", 2], [19.887, "PUBACK", 2], [20.325, "thì", 2], [20.475, "bên", 2], [20.7, "gửi", 2], [20.9, "phát", 2], [21.125, "lại", 2], [21.312, "PUBLISH", 2], [21.775, "với", 2], [21.95, "cờ", 2], [22.15, "DUP.", 2], [23.238, "Nếu", 3], [23.7, "chính", 3], [23.975, "PUBACK", 3], [24.387, "bị", 3], [24.562, "mất,", 3], [25.012, "message", 3], [25.525, "đến", 3], [25.738, "bên", 3], [25.875, "nhận", 3], [26.1, "hai", 3], [26.288, "lần,", 3], [26.8, "nên", 3], [27.337, "QoS", 3], [27.875, "1", 3], [28.075, "là", 3], [28.363, "ít", 3], [28.55, "nhất", 3], [28.762, "một", 3], [28.938, "lần.", 3], [29.831, "QoS", 4], [30.725, "2", 4], [30.925, "dùng", 4], [31.15, "bốn", 4], [31.387, "lượt", 4], [31.538, "trao", 4], [31.712, "đổi", 4], [32.0, "để", 4], [32.138, "hai", 4], [32.375, "bên", 4], [32.562, "thống", 4], [32.775, "nhất", 4], [32.962, "rằng", 4], [33.225, "message", 4], [33.8, "được", 4], [34.025, "giao", 4], [34.25, "đúng", 4], [34.462, "một", 4], [34.612, "lần.", 4], [35.725, "Như", 5], [35.962, "vậy,", 5], [36.45, "mức", 5], [36.881, "QoS", 5], [37.312, "càng", 5], [37.525, "cao", 5], [37.763, "thì", 5], [37.913, "càng", 5], [38.138, "chắc", 5], [38.312, "chắn,", 5], [38.888, "nhưng", 5], [39.175, "tốn", 5], [39.425, "thêm", 5], [39.625, "lượt", 5], [39.8, "trao", 5], [39.987, "đổi", 5], [40.263, "và", 5], [40.4, "trạng", 5], [40.663, "thái", 5], [40.888, "phải", 5], [41.075, "giữ.", 5]], "cues": [9.7, 17.032, 29.831, 35.725], "lang": 2.6}, {"ten": "Slide 5. Dashboard vào sau: nhận ngay giá trị retained, rồi last will khi cảm biến mất điện", "loai": "slide", "slide": "S05", "dung": "Mã phía trên (dòng dài), kết quả phía dưới. Sau câu \"nhiệt độ nào không\", dừng khoảng 2 giây trước khi khung kết quả hiện.\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 190.14, "audio": "audio/54a5d482cd101755.mp3", "dur": 56.74, "words": [[0.1, "Quay", 0], [0.338, "lại", 0], [0.55, "hai", 0], [0.7, "câu", 0], [0.875, "hỏi", 0], [1.087, "của", 0], [1.225, "bài", 0], [1.375, "toán,", 0], [1.913, "chương", 0], [2.188, "trình", 0], [2.388, "mẫu", 0], [2.587, "kiểm", 0], [2.837, "chứng", 0], [3.075, "retained", 0], [3.475, "message", 0], [3.975, "và", 0], [4.175, "last", 0], [4.388, "will.", 0], [5.513, "Mã", 1], [5.875, "dùng", 1], [6.088, "thư", 1], [6.275, "viện", 1], [6.537, "Eclipse", 1], [6.888, "Paho,", 1], [7.612, "chạy", 1], [7.875, "với", 1], [8.037, "broker", 1], [8.55, "như", 1], [8.775, "Mosquitto.", 1], [10.338, "Mỗi", 2], [10.7, "cảm", 2], [10.938, "biến", 2], [11.162, "đăng", 2], [11.338, "ký", 2], [11.537, "last", 2], [11.75, "will", 2], [11.975, "là", 2], [12.162, "offline", 2], [12.662, "ngay", 2], [12.863, "khi", 2], [13.012, "kết", 2], [13.213, "nối,", 2], [13.738, "publish", 2], [14.125, "trạng", 2], [14.4, "thái", 2], [14.613, "online,", 2], [15.35, "rồi", 2], [15.575, "mỗi", 2], [15.787, "giây", 2], [15.95, "publish", 2], [16.4, "nhiệt", 2], [16.587, "độ", 2], [16.812, "với", 2], [17.2, "QoS", 2], [17.587, "0", 2], [17.875, "và", 2], [18.0, "cờ", 2], [18.225, "retained.", 2], [19.562, "Cảm", 3], [19.825, "biến", 3], [20.05, "phòng", 3], [20.275, "101", 3], [21.038, "dừng", 3], [21.262, "tiến", 3], [21.512, "trình", 3], [21.75, "ngay", 3], [21.95, "sau", 3], [22.175, "lần", 3], [22.387, "đo", 3], [22.538, "thứ", 3], [22.712, "năm,", 3], [23.25, "như", 3], [23.512, "mất", 3], [23.712, "điện.", 3], [24.9, "Cảm", 4], [25.163, "biến", 4], [25.387, "phòng", 4], [25.587, "102", 4], [26.363, "thì", 4], [26.738, "dừng", 4], [26.95, "có", 4], [27.075, "chủ", 4], [27.25, "đích", 4], [27.462, "và", 4], [27.65, "tự", 4], [27.863, "publish", 4], [28.337, "offline", 4], [28.788, "trước", 4], [28.962, "khi", 4], [29.113, "ngắt", 4], [29.325, "kết", 4], [29.525, "nối.", 4], [30.712, "Dashboard", 5], [31.238, "chỉ", 5], [31.425, "kết", 5], [31.613, "nối", 5], [31.837, "khi", 5], [32.038, "các", 5], [32.212, "cảm", 5], [32.425, "biến", 5], [32.663, "đã", 5], [32.775, "chạy", 5], [32.987, "khoảng", 5], [33.275, "2,5", 5], [33.837, "giây.", 5], [34.95, "Các", 6], [35.15, "bạn", 6], [35.362, "thử", 6], [35.538, "đoán:", 6], [36.062, "ngay", 6], [36.362, "lúc", 6], [36.525, "subscribe,", 6], [37.25, "dashboard", 6], [37.763, "có", 6], [37.9, "thấy", 6], [38.062, "nhiệt", 6], [38.25, "độ", 6], [38.45, "nào", 6], [38.638, "không?", 6], [39.8, "Kết", 7], [40.0, "quả:", 7], [40.612, "ngay", 7], [40.913, "ở", 7], [41.075, "giây", 7], [41.25, "0,", 7], [41.737, "dashboard", 7], [42.2, "nhận", 7], [42.45, "nhiệt", 7], [42.663, "độ", 7], [42.9, "và", 7], [43.025, "trạng", 7], [43.275, "thái", 7], [43.487, "của", 7], [43.625, "hai", 7], [43.788, "phòng,", 7], [44.3, "có", 7], [44.425, "đánh", 7], [44.612, "dấu", 7], [44.85, "retained,", 7], [45.525, "rồi", 7], [45.763, "mỗi", 7], [46.0, "giây", 7], [46.175, "nhận", 7], [46.45, "thêm", 7], [46.7, "giá", 7], [46.888, "trị", 7], [47.087, "mới.", 7], [48.312, "Ở", 8], [48.513, "giây", 8], [48.688, "3,1,", 8], [49.562, "trạng", 8], [49.8, "thái", 8], [50.013, "phòng", 8], [50.212, "101", 8], [50.913, "chuyển", 8], [51.15, "sang", 8], [51.438, "offline:", 8], [52.112, "đó", 8], [52.3, "là", 8], [52.425, "last", 8], [52.663, "will", 8], [52.85, "do", 8], [53.038, "broker", 8], [53.462, "publish", 8], [54.188, "thay", 8], [54.375, "cho", 8], [54.5, "cảm", 8], [54.75, "biến", 8], [55.013, "vừa", 8], [55.15, "mất", 8], [55.375, "kết", 8], [55.562, "nối.", 8]], "cues": [39.8], "lang": 9.6}, {"ten": "Slide 6. QoS 1 có thể giao trùng: bên nhận phải xử lý idempotent", "loai": "slide", "slide": "S06", "dung": "Mã phía trên, kết quả phía dưới, hai ý hiện sau kết quả.\nHiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Vì vậy”; bước 3 khi đọc “Một cách khác”.", "start": 256.48, "audio": "audio/de64e8e4c2cfe477.mp3", "dur": 52.56, "words": [[0.1, "Với", 0], [0.375, "cảnh", 0], [0.613, "báo,", 0], [1.137, "mất", 0], [1.375, "message", 0], [1.938, "là", 0], [2.075, "không", 0], [2.288, "chấp", 0], [2.475, "nhận", 0], [2.688, "được,", 0], [3.125, "nên", 0], [3.425, "dịch", 0], [3.587, "vụ", 0], [3.775, "cảnh", 0], [4.013, "báo", 0], [4.225, "dùng", 0], [4.688, "QoS", 0], [5.15, "1,", 0], [5.6, "và", 0], [5.8, "lúc", 0], [5.975, "này", 0], [6.15, "message", 0], [6.612, "có", 0], [6.737, "thể", 0], [6.9, "đến", 0], [7.1, "nhiều", 0], [7.325, "lần.", 0], [8.438, "Trong", 1], [8.75, "chương", 1], [8.95, "trình", 1], [9.213, "AlertDemo,", 1], [10.15, "dịch", 1], [10.363, "vụ", 1], [10.55, "cảnh", 1], [10.775, "báo", 1], [10.963, "subscribe", 1], [11.488, "với", 1], [11.95, "QoS", 1], [12.412, "1", 1], [12.625, "và", 1], [12.787, "tắt", 1], [13.0, "clean", 1], [13.262, "session,", 1], [14.025, "để", 1], [14.225, "broker", 1], [14.738, "giữ", 1], [14.95, "phiên", 1], [15.238, "và", 1], [15.35, "các", 1], [15.55, "message", 1], [15.963, "chưa", 1], [16.137, "được", 1], [16.262, "xác", 1], [16.488, "nhận", 1], [16.712, "khi", 1], [16.875, "dịch", 1], [17.05, "vụ", 1], [17.25, "mất", 1], [17.45, "kết", 1], [17.663, "nối.", 1], [18.837, "Dịch", 2], [19.087, "vụ", 2], [19.275, "tự", 2], [19.512, "gửi", 2], [19.712, "PUBACK", 2], [20.137, "sau", 2], [20.337, "khi", 2], [20.5, "xử", 2], [20.688, "lý", 2], [20.875, "xong,", 2], [21.4, "nhưng", 2], [21.663, "lần", 2], [21.812, "này", 2], [21.938, "mất", 2], [22.125, "kết", 2], [22.312, "nối", 2], [22.5, "ngay", 2], [22.75, "sau", 2], [22.938, "khi", 2], [23.113, "xử", 2], [23.3, "lý", 2], [23.488, "cảnh", 2], [23.725, "báo", 2], [24.132, "A1,", 2], [24.538, "trước", 2], [24.712, "khi", 2], [24.875, "kịp", 2], [25.1, "gửi", 2], [25.3, "PUBACK.", 2], [26.625, "Kết", 3], [26.825, "quả:", 3], [27.4, "khi", 3], [27.613, "dịch", 3], [27.788, "vụ", 3], [27.975, "kết", 3], [28.188, "nối", 3], [28.375, "lại", 3], [28.575, "với", 3], [28.688, "cùng", 3], [28.925, "client", 3], [29.413, "ID,", 3], [29.9, "broker", 3], [30.488, "giao", 3], [30.7, "lại", 3], [30.994, "A1", 3], [31.288, "và", 3], [31.45, "bật", 3], [31.65, "cờ", 3], [31.875, "DUP.", 3], [32.975, "Nhờ", 4], [33.3, "tập", 4], [33.569, "ID", 4], [33.837, "đã", 4], [33.975, "xử", 4], [34.163, "lý,", 4], [34.7, "dịch", 4], [34.925, "vụ", 4], [35.138, "nhận", 4], [35.413, "ra", 4], [35.706, "A1", 4], [36.0, "và", 4], [36.188, "chỉ", 4], [36.438, "gửi", 4], [36.663, "PUBACK.", 4], [37.975, "Vì", 5], [38.225, "vậy,", 5], [38.638, "với", 5], [39.094, "QoS", 5], [39.55, "1,", 5], [39.987, "bên", 5], [40.175, "nhận", 5], [40.438, "phải", 5], [40.562, "xử", 5], [40.725, "lý", 5], [40.987, "idempotent,", 5], [41.812, "chẳng", 5], [42.05, "hạn", 5], [42.275, "lưu", 5], [42.569, "ID", 5], [42.862, "của", 5], [42.987, "message", 5], [43.475, "đã", 5], [43.6, "xử", 5], [43.763, "lý", 5], [44.0, "cùng", 5], [44.237, "với", 5], [44.35, "kết", 5], [44.55, "quả", 5], [44.763, "xử", 5], [44.95, "lý.", 5], [46.138, "Một", 6], [46.487, "cách", 6], [46.612, "khác", 6], [46.9, "là", 6], [47.319, "QoS", 6], [47.737, "2:", 6], [48.288, "không", 6], [48.538, "giao", 6], [48.7, "trùng,", 6], [49.2, "nhưng", 6], [49.513, "tốn", 6], [49.775, "thêm", 6], [50.025, "hai", 6], [50.212, "lượt", 6], [50.4, "trao", 6], [50.587, "đổi", 6], [50.837, "cho", 6], [50.975, "mỗi", 6], [51.188, "message.", 6]], "cues": [26.625, 37.975, 46.138], "lang": 9.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án C được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 318.64, "audio": "audio/40036a7aacde7fd8.mp3", "dur": 4.63, "words": [[0.1, "Giả", 0], [0.375, "sử", 0], [0.613, "các", 0], [0.775, "bạn", 0], [1.0, "viết", 0], [1.188, "dashboard", 0], [1.837, "và", 0], [2.0, "cần", 0], [2.212, "hiển", 0], [2.413, "thị", 0], [2.575, "số", 0], [2.775, "liệu", 0], [3.0, "ngay", 0], [3.188, "khi", 0], [3.35, "mở.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/40647bcaad870059.mp3", "dur2": 14.88, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.662, "là", 0], [0.775, "C.", 0], [1.025, "Broker", 1], [1.562, "giữ", 1], [1.762, "message", 1], [2.138, "retained", 1], [2.538, "cuối", 1], [2.712, "cùng", 1], [2.962, "của", 1], [3.075, "mỗi", 1], [3.275, "topic", 1], [3.737, "và", 1], [3.925, "giao", 1], [4.125, "ngay", 1], [4.287, "khi", 1], [4.463, "dashboard", 1], [4.875, "subscribe,", 1], [5.612, "như", 1], [5.875, "các", 1], [6.05, "dòng", 1], [6.263, "retained", 1], [6.787, "ở", 1], [6.862, "giây", 1], [7.037, "0.", 1], [8.188, "Phương", 2], [8.562, "án", 2], [8.762, "B", 2], [8.912, "dễ", 2], [9.113, "nhầm", 2], [9.4, "vì", 2], [9.562, "cũng", 2], [9.775, "do", 2], [9.938, "broker", 2], [10.425, "giữ", 2], [10.65, "sẵn,", 2], [11.25, "nhưng", 2], [11.537, "last", 2], [11.713, "will", 2], [11.925, "chỉ", 2], [12.075, "được", 2], [12.262, "publish", 2], [12.637, "khi", 2], [12.85, "cảm", 2], [13.1, "biến", 2], [13.3, "mất", 2], [13.475, "kết", 2], [13.675, "nối.", 2]], "dap_an": "C", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án A.", "start": 344.75, "audio": "audio/be998913e3830b08.mp3", "dur": 4.94, "words": [[0.1, "Chọn", 0], [0.438, "mức", 0], [0.863, "QoS", 0], [1.288, "cho", 0], [1.4, "số", 0], [1.562, "liệu", 0], [1.75, "nhiệt", 0], [1.962, "độ", 0], [2.225, "là", 0], [2.35, "quyết", 0], [2.525, "định", 0], [2.75, "đầu", 0], [2.925, "tiên", 0], [3.212, "khi", 0], [3.362, "viết", 0], [3.55, "cảm", 0], [3.788, "biến.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/bb4e68b99a771926.mp3", "dur2": 14.59, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.675, "là", 0], [0.863, "A.", 0], [1.225, "Giá", 1], [1.462, "trị", 1], [1.688, "sau", 1], [1.9, "thay", 1], [2.038, "thế", 1], [2.2, "giá", 1], [2.388, "trị", 1], [2.625, "bị", 1], [2.763, "mất", 1], [2.975, "chỉ", 1], [3.125, "một", 1], [3.337, "giây", 1], [3.5, "sau,", 1], [4.062, "nên", 1], [4.518, "QoS", 1], [4.975, "0", 1], [5.225, "đủ", 1], [5.4, "dùng", 1], [5.675, "và", 1], [5.787, "không", 1], [6.037, "tốn", 1], [6.287, "lượt", 1], [6.4, "xác", 1], [6.638, "nhận", 1], [6.825, "nào.", 1], [7.75, "QoS", 2], [8.675, "1", 2], [8.85, "dành", 2], [9.088, "cho", 2], [9.2, "message", 2], [9.65, "không", 2], [9.875, "được", 2], [10.025, "mất,", 2], [10.475, "như", 2], [10.738, "cảnh", 2], [10.975, "báo,", 2], [11.488, "với", 2], [11.675, "điều", 2], [11.812, "kiện", 2], [12.075, "bên", 2], [12.225, "nhận", 2], [12.463, "xử", 2], [12.637, "lý", 2], [12.887, "được", 2], [13.062, "message", 2], [13.463, "trùng.", 2]], "dap_an": "A", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “Với thiết bị nhỏ”; bước 2 khi đọc “Mức QoS”; bước 3 khi đọc “Retained message cho”; bước 4 khi đọc “Bảy từ khóa”.", "start": 370.88, "audio": "audio/5e482e27ab96a9a7.mp3", "dur": 38.45, "words": [[0.1, "Với", 0], [0.35, "thiết", 0], [0.55, "bị", 0], [0.7, "nhỏ,", 0], [1.4, "MQTT", 0], [2.1, "cho", 0], [2.25, "cảm", 0], [2.5, "biến", 0], [2.712, "publish", 0], [3.087, "số", 0], [3.312, "liệu", 0], [3.538, "tới", 0], [4.013, "MQTT", 0], [4.487, "broker", 0], [4.925, "theo", 0], [5.088, "topic,", 0], [5.763, "và", 0], [5.975, "bên", 0], [6.15, "nhận", 0], [6.4, "subscribe", 0], [6.838, "theo", 0], [7.025, "mẫu", 0], [7.312, "với", 0], [7.425, "dấu", 0], [7.638, "cộng", 0], [7.912, "hay", 0], [8.062, "dấu", 0], [8.275, "thăng.", 0], [9.107, "CoAP", 1], [9.938, "là", 1], [10.125, "lựa", 1], [10.312, "chọn", 1], [10.575, "request–response", 1], [11.537, "kiểu", 1], [11.768, "REST", 1], [12.0, "trên", 1], [12.844, "UDP.", 1], [13.688, "Mức", 2], [14.188, "QoS", 2], [14.688, "quy", 2], [14.838, "định", 2], [15.062, "bảo", 2], [15.275, "đảm", 2], [15.512, "giao", 2], [15.713, "message:", 2], [16.45, "tối", 2], [16.675, "đa", 2], [16.825, "một", 2], [17.012, "lần,", 2], [17.475, "ít", 2], [17.688, "nhất", 2], [17.9, "một", 2], [18.075, "lần,", 2], [18.55, "hoặc", 2], [18.762, "đúng", 2], [18.975, "một", 2], [19.137, "lần,", 2], [19.613, "và", 2], [20.062, "QoS", 2], [20.512, "1", 2], [20.675, "đòi", 2], [20.863, "hỏi", 2], [21.125, "bên", 2], [21.288, "nhận", 2], [21.525, "xử", 2], [21.7, "lý", 2], [21.975, "idempotent.", 2], [23.425, "Retained", 3], [23.925, "message", 3], [24.35, "cho", 3], [24.538, "subscriber", 3], [25.125, "mới", 3], [25.363, "giá", 3], [25.538, "trị", 3], [25.75, "gần", 3], [25.95, "nhất,", 3], [26.375, "còn", 3], [26.625, "last", 3], [26.837, "will", 3], [26.962, "báo", 3], [27.188, "thiết", 3], [27.375, "bị", 3], [27.575, "đã", 3], [27.712, "mất", 3], [27.925, "kết", 3], [28.113, "nối.", 3], [29.3, "Bảy", 4], [29.55, "từ", 4], [29.738, "khóa", 4], [29.975, "của", 4], [30.087, "bài", 4], [30.25, "toán:", 4], [30.25, "MQTT,", 4], [30.25, "MQTT", 4], [30.25, "broker,", 4], [30.25, "topic,", 4], [30.25, "QoS,", 4], [30.25, "retained", 4], [30.25, "message,", 4], [30.25, "last", 4], [30.25, "will", 4], [30.25, "và", 4], [30.25, "CoAP.", 4]], "cues": [0.1, 13.688, 23.425, 29.3], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “MQTT 5 thêm”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 409.93, "audio": "audio/0359d554d355f7b2.mp3", "dur": 20.74, "words": [[0.95, "MQTT", 0], [0.95, "5", 0], [1.15, "thêm", 0], [1.387, "shared", 0], [1.613, "subscription,", 0], [2.425, "cho", 0], [2.663, "nhiều", 0], [2.85, "bản", 0], [3.112, "của", 0], [3.237, "cùng", 0], [3.413, "một", 0], [3.562, "dịch", 0], [3.75, "vụ", 0], [3.962, "chia", 0], [4.175, "nhau", 0], [4.4, "message", 0], [4.825, "của", 0], [4.95, "một", 0], [5.138, "topic,", 0], [5.812, "giống", 0], [6.075, "work", 0], [6.263, "queue", 0], [6.513, "ở", 0], [6.662, "Chương", 0], [6.925, "4.", 0], [7.731, "CoAP", 1], [8.537, "có", 1], [8.662, "tùy", 1], [8.85, "chọn", 1], [9.162, "observe", 1], [9.637, "để", 1], [9.8, "client", 1], [10.113, "nhận", 1], [10.4, "thông", 1], [10.6, "báo", 1], [10.825, "khi", 1], [11.012, "tài", 1], [11.213, "nguyên", 1], [11.438, "thay", 1], [11.575, "đổi.", 1], [12.787, "Bài", 2], [13.025, "tập", 2], [13.238, "mở", 2], [13.412, "rộng", 2], [13.688, "là", 2], [13.85, "thêm", 2], [14.1, "cảnh", 2], [14.325, "báo", 2], [14.537, "khi", 2], [14.725, "nhiệt", 2], [14.9, "độ", 2], [15.1, "vượt", 2], [15.287, "ngưỡng:", 2], [15.85, "dịch", 2], [16.062, "vụ", 2], [16.262, "giám", 2], [16.512, "sát", 2], [16.75, "publish", 2], [17.15, "tới", 2], [17.363, "topic", 2], [17.8, "cảnh", 2], [18.038, "báo", 2], [18.262, "của", 2], [18.4, "phòng", 2], [18.625, "đó", 2], [18.85, "với", 2], [19.269, "QoS", 2], [19.688, "1.", 2]], "cues": [0.95, 12.787], "lang": 0.6}, {"ten": "Tổng kết chương", "loai": "ket-chuong", "slide": "TKC", "dung": "Infographic tổng kết chương: bốn thẻ hiện lần lượt theo lời đọc.\nHiện dần: bước 1 khi đọc “Nhóm Bảo mật”; bước 2 khi đọc “Nhóm Hiệu năng”; bước 3 khi đọc “Nhóm Độ tin cậy”; bước 4 khi đọc “Nhóm IoT”.", "start": 431.27, "audio": "audio/0e87d4f1fdd32526.mp3", "dur": 41.09, "words": [[0.1, "Bài", 0], [0.362, "toán", 0], [0.637, "giám", 0], [0.85, "sát", 0], [1.125, "cảm", 0], [1.363, "biến", 0], [1.562, "khép", 0], [1.837, "lại", 0], [2.062, "Chương", 0], [2.35, "5.", 0], [3.45, "Nhóm", 1], [3.788, "Bảo", 1], [3.975, "mật", 1], [4.188, "mã", 1], [4.362, "hóa", 1], [4.6, "đường", 1], [4.8, "truyền", 1], [5.075, "và", 1], [5.188, "xác", 1], [5.4, "thực", 1], [5.55, "server", 1], [5.975, "bằng", 1], [6.575, "TLS,", 1], [7.175, "rồi", 1], [7.362, "dùng", 1], [7.8, "OAuth", 1], [8.237, "2.0", 1], [8.675, "và", 1], [9.244, "JWT", 1], [9.812, "để", 1], [9.938, "biết", 1], [10.213, "ai", 1], [10.363, "đang", 1], [10.575, "gọi", 1], [10.812, "và", 1], [10.95, "người", 1], [11.15, "đó", 1], [11.363, "được", 1], [11.512, "làm", 1], [11.713, "gì.", 1], [12.825, "Nhóm", 2], [13.175, "Hiệu", 2], [13.35, "năng", 2], [13.562, "giải", 2], [13.762, "phóng", 2], [14.0, "thread", 2], [14.35, "ở", 2], [14.425, "phía", 2], [14.625, "gọi", 2], [14.863, "bằng", 2], [15.1, "CompletableFuture", 2], [16.087, "và", 2], [16.3, "async", 2], [16.637, "stub,", 2], [17.188, "và", 2], [17.438, "ở", 2], [17.587, "phía", 2], [17.788, "server", 2], [18.188, "bằng", 2], [18.657, "NIO", 2], [19.125, "với", 2], [19.262, "Selector.", 2], [20.7, "Nhóm", 3], [21.025, "Độ", 3], [21.175, "tin", 3], [21.413, "cậy", 3], [21.6, "thêm", 3], [21.85, "retry,", 3], [22.55, "request", 3], [22.857, "ID", 3], [23.163, "và", 3], [23.288, "checksum", 3], [23.762, "cho", 3], [23.913, "tra", 3], [24.113, "cứu", 3], [24.363, "qua", 3], [24.894, "UDP,", 3], [25.425, "rồi", 3], [25.7, "backoff,", 3], [26.4, "jitter,", 3], [27.125, "circuit", 3], [27.6, "breaker", 3], [28.05, "và", 3], [28.225, "health", 3], [28.413, "check", 3], [28.65, "khi", 3], [28.875, "server", 3], [29.25, "lỗi.", 3], [30.5, "Nhóm", 4], [30.925, "IoT", 4], [31.425, "dùng", 4], [31.944, "MQTT", 4], [32.462, "với", 4], [32.6, "topic,", 4], [33.425, "QoS,", 4], [34.25, "retained", 4], [34.675, "message", 4], [35.112, "và", 4], [35.237, "last", 4], [35.45, "will", 4], [35.663, "cho", 4], [35.812, "thiết", 4], [36.0, "bị", 4], [36.175, "nhỏ,", 4], [36.775, "và", 4], [36.975, "giới", 4], [37.15, "thiệu", 4], [37.75, "CoAP,", 4], [38.35, "request–response", 4], [38.95, "kiểu", 4], [39.181, "REST", 4], [39.413, "trên", 4], [39.413, "UDP.", 4]], "cues": [3.45, 12.825, 20.7, 30.5], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 472.96, "audio": "audio/c9358a988d75692a.mp3", "dur": 9.19, "words": [[0.1, "Chương", 0], [0.5, "5", 0], [0.75, "cũng", 0], [0.963, "là", 0], [1.1, "chương", 0], [1.375, "cuối", 0], [1.587, "của", 0], [1.738, "học", 0], [1.9, "phần.", 0], [3.05, "Phần", 1], [3.325, "tiếp", 1], [3.562, "theo", 1], [3.737, "tổng", 1], [3.987, "kết", 1], [4.15, "học", 1], [4.338, "phần:", 1], [4.838, "các", 1], [5.0, "phiên", 1], [5.237, "bản", 1], [5.475, "của", 1], [5.588, "dịch", 1], [5.763, "vụ", 1], [5.975, "tra", 1], [6.188, "cứu", 1], [6.45, "qua", 1], [6.688, "năm", 1], [6.875, "chương,", 1], [7.4, "và", 1], [7.638, "hướng", 1], [7.875, "học", 1], [8.075, "tiếp.", 1]], "cues": [], "lang": 0.6}], "video_sau": "Tổng kết học phần"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

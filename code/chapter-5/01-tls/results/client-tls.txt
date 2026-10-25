@@ -1,0 +1,2 @@
+TLSv1.3 TLS_AES_256_GCM_SHA384, server cert CN=localhost
+hanoi -> OK Thủ đô của Việt Nam

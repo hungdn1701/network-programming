@@ -1,0 +1,4 @@
+                requests   peak / 100 ms after recovery   all OK after
+fixed 100 ms        1261                             85        1531 ms
+backoff              500                            100        1608 ms
+backoff+jitter       647                             14        2896 ms

@@ -1,0 +1,484 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V33 — Hiệu năng: NIO, Selector và mẫu Reactor · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-5/04-nio">Mã</a>
+<h1>V33 · Hiệu năng: NIO, Selector và mẫu Reactor</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 5</div><div class="ten">Hiệu năng: NIO, Selector và mẫu Reactor</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1><span style="white-space:nowrap">Thread-per-connection</span>: mỗi kết nối giữ một thread, kể cả lúc chỉ chờ</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1"><span style="white-space:nowrap">Thread-per-connection</span>: 5 000 kết nối là 5 000 thread, phần lớn chỉ chờ dữ liệu</li><li data-s="2">Mỗi platform thread cần <b>stack</b> riêng; hệ điều hành chuyển ngữ cảnh giữa các thread</li><li data-s="3"><b>NIO</b>: một thread theo dõi nhiều kết nối, chỉ xử lý kết nối đã có dữ liệu</li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> một thread phục vụ nhiều kết nối bằng cách nào, và đổi lại chương trình phải tự làm thêm gì?</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Selector: một thread chờ sự kiện trên nhiều channel</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Vòng lặp Selector theo mẫu Reactor. Bước 1: ServerSocketChannel đăng ký với Selector sự kiện chấp nhận kết nối, mỗi kết nối đăng ký sự kiện đọc. Bước 2: select chặn đến khi có channel sẵn sàng, rồi trả về tập selectedKeys, ví dụ kết nối 2 đọc được và ServerSocketChannel có kết nối mới. Bước 3: với mỗi key, xóa key khỏi tập bằng iterator.remove, rồi chuyển cho handler: accept đăng ký kết nối mới, read đọc và xử lý các dòng đủ, write ghi phản hồi; xong thì quay lại select. Cả vòng lặp chạy trên một thread.">
+  <defs>
+    <marker id="vs-a" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#5B6478"/></marker>
+    <marker id="vs-g" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- ① channel đăng ký với Selector -->
+  <g data-s="1">
+    <g stroke-width="2.5">
+      <rect x="40" y="40" width="290" height="70" rx="6" fill="#EEF2FB" stroke="#051A53"/>
+      <rect x="40" y="150" width="290" height="70" rx="6" fill="#EEF2FB" stroke="#051A53"/>
+      <rect x="40" y="260" width="290" height="70" rx="6" fill="#EEF2FB" stroke="#051A53"/>
+      <rect x="40" y="370" width="290" height="70" rx="6" fill="#EEF2FB" stroke="#051A53"/>
+    </g>
+    <g font-size="20" fill="#051A53">
+      <text x="60" y="70">ServerSocketChannel</text>
+      <text x="60" y="180">kết nối 1</text>
+      <text x="60" y="290">kết nối 2</text>
+      <text x="60" y="400">kết nối 3</text>
+    </g>
+    <g font-size="20" fill="#5B6478" font-family="Consolas, monospace">
+      <text x="60" y="98">OP_ACCEPT</text>
+      <text x="60" y="208">OP_READ</text>
+      <text x="60" y="318">OP_READ</text>
+      <text x="60" y="428">OP_READ</text>
+    </g>
+    <g stroke="#5B6478" stroke-width="2" fill="none">
+      <path d="M332,75 L400,75 L400,220 L446,220" marker-end="url(#vs-a)"/>
+      <path d="M332,185 L380,185 L380,240 L446,240" marker-end="url(#vs-a)"/>
+      <path d="M332,295 L380,295 L380,260 L446,260" marker-end="url(#vs-a)"/>
+      <path d="M332,405 L400,405 L400,280 L446,280" marker-end="url(#vs-a)"/>
+    </g>
+    <rect x="452" y="190" width="220" height="120" rx="8" fill="#F4F5F8" stroke="#373D4E" stroke-width="3"/>
+    <text x="562" y="240" text-anchor="middle" font-size="24" font-weight="500" fill="#1A1F2E">Selector</text>
+    <text x="562" y="274" text-anchor="middle" font-size="20" fill="#5B6478">đăng ký sự kiện</text>
+  </g>
+
+  <!-- ② select() trả về các key sẵn sàng -->
+  <g data-s="2">
+    <rect x="40" y="40" width="290" height="70" rx="6" fill="none" stroke="#B7791F" stroke-width="4"/>
+    <rect x="40" y="260" width="290" height="70" rx="6" fill="none" stroke="#B7791F" stroke-width="4"/>
+    <line x1="674" y1="250" x2="776" y2="250" stroke="#5B6478" stroke-width="2.5" marker-end="url(#vs-a)"/>
+    <text x="725" y="236" text-anchor="middle" font-size="20" fill="#1A1F2E" font-family="Consolas, monospace">select()</text>
+    <rect x="782" y="160" width="360" height="180" rx="8" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="802" y="196" font-size="20" fill="#6B4E06" font-family="Consolas, monospace">selectedKeys</text>
+    <text x="802" y="246" font-size="20" fill="#6B4E06">kết nối 2: đọc được</text>
+    <text x="802" y="290" font-size="20" fill="#6B4E06">ServerSocketChannel: kết nối mới</text>
+    <text x="782" y="380" font-size="20" fill="#5B6478">chặn đến khi có channel sẵn sàng</text>
+  </g>
+
+  <!-- ③ xóa key, chuyển cho handler, quay lại select() -->
+  <g data-s="3">
+    <line x1="1144" y1="250" x2="1216" y2="250" stroke="#2F855A" stroke-width="2.5" marker-end="url(#vs-g)"/>
+    <text x="1180" y="284" text-anchor="middle" font-size="20" fill="#22603F">mỗi key</text>
+    <g stroke-width="2.5">
+      <rect x="1222" y="60" width="500" height="64" rx="6" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="1222" y="150" width="500" height="64" rx="6" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="1222" y="240" width="500" height="64" rx="6" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="1222" y="330" width="500" height="64" rx="6" fill="#EEF9F0" stroke="#2F855A"/>
+    </g>
+    <g font-size="20" fill="#22603F">
+      <text x="1242" y="99"><tspan font-family="Consolas, monospace">it.remove()</tspan>: xóa key khỏi tập</text>
+      <text x="1242" y="189"><tspan font-family="Consolas, monospace">accept()</tspan>: đăng ký kết nối mới</text>
+      <text x="1242" y="279"><tspan font-family="Consolas, monospace">read()</tspan>: đọc, xử lý các dòng đủ</text>
+      <text x="1242" y="369"><tspan font-family="Consolas, monospace">write()</tspan>: ghi phản hồi</text>
+    </g>
+    <path d="M1472,396 L1472,470 L562,470 L562,316" fill="none" stroke="#2F855A" stroke-width="2.5" stroke-dasharray="8 6" marker-end="url(#vs-g)"/>
+    <text x="1017" y="502" text-anchor="middle" font-size="20" fill="#22603F">quay lại select(): một thread chạy cả vòng lặp (mẫu Reactor)</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Mẫu Reactor</b>: một vòng lặp chờ sự kiện bằng <code>select()</code>, rồi chuyển từng <b>SelectionKey</b> sẵn sàng cho handler; không thao tác nào chặn.</p></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>ByteBuffer: flip() để đọc, compact() để giữ phần dòng chưa đủ</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="ByteBuffer của một kết nối, vẽ với dung lượng 12 byte. Bước 1: sau hai lần read, buffer chứa h a n o i, ký tự xuống dòng, h u; position bằng 8, limit bằng dung lượng. Bước 2: flip đặt limit bằng 8 và position bằng 0; chương trình lấy ra dòng hanoi đến ký tự xuống dòng, position tiến tới 6; hai byte h u chưa đủ dòng. Bước 3: compact dời h u về đầu buffer, position bằng 2, limit bằng dung lượng; lần read sau ghi tiếp sau h u.">
+  <defs>
+    <marker id="bb-a" viewBox="0 0 12 12" refX="6" refY="11" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse"><path d="M0,0 L12,0 L6,12 z" fill="#373D4E"/></marker>
+  </defs>
+
+  <!-- ô: x = 300 + 70*i, rộng 70; hàng 1 y=40, hàng 2 y=200, hàng 3 y=360 -->
+  <!-- ① sau hai lần read -->
+  <g data-s="1">
+    <text x="40" y="72" font-size="21" font-weight="500" fill="#051A53">sau hai lần</text>
+    <text x="40" y="100" font-size="21" font-weight="500" fill="#051A53" font-family="Consolas, monospace">read()</text>
+    <g stroke="#5B6478" stroke-width="2" fill="#EEF2FB">
+      <rect x="300" y="40" width="70" height="64"/><rect x="370" y="40" width="70" height="64"/><rect x="440" y="40" width="70" height="64"/>
+      <rect x="510" y="40" width="70" height="64"/><rect x="580" y="40" width="70" height="64"/><rect x="650" y="40" width="70" height="64"/>
+      <rect x="720" y="40" width="70" height="64"/><rect x="790" y="40" width="70" height="64"/>
+    </g>
+    <g stroke="#B9BFCC" stroke-width="2" fill="#FFFFFF">
+      <rect x="860" y="40" width="70" height="64"/><rect x="930" y="40" width="70" height="64"/><rect x="1000" y="40" width="70" height="64"/><rect x="1070" y="40" width="70" height="64"/>
+    </g>
+    <g font-size="22" text-anchor="middle" fill="#051A53" font-family="Consolas, monospace">
+      <text x="335" y="80">h</text><text x="405" y="80">a</text><text x="475" y="80">n</text><text x="545" y="80">o</text>
+      <text x="615" y="80">i</text><text x="685" y="80">\n</text><text x="755" y="80">h</text><text x="825" y="80">u</text>
+    </g>
+    <g stroke="#373D4E" stroke-width="2.5">
+      <line x1="860" y1="148" x2="860" y2="112" marker-end="url(#bb-a)"/>
+      <line x1="1140" y1="148" x2="1140" y2="112" marker-end="url(#bb-a)"/>
+    </g>
+    <g font-size="20" fill="#373D4E" text-anchor="middle">
+      <text x="860" y="172">position 8</text>
+      <text x="1140" y="172">limit 12</text>
+    </g>
+    <text x="1220" y="64" font-size="20" fill="#373D4E">read() ghi vào buffer,</text>
+    <text x="1220" y="92" font-size="20" fill="#373D4E">position tiến theo số byte</text>
+  </g>
+
+  <!-- ② flip(), lấy một dòng -->
+  <g data-s="2">
+    <text x="40" y="232" font-size="21" font-weight="500" fill="#22603F" font-family="Consolas, monospace">flip()</text>
+    <text x="40" y="260" font-size="21" font-weight="500" fill="#22603F">rồi lấy dòng</text>
+    <g stroke="#2F855A" stroke-width="2" fill="#EEF9F0">
+      <rect x="300" y="200" width="70" height="64"/><rect x="370" y="200" width="70" height="64"/><rect x="440" y="200" width="70" height="64"/>
+      <rect x="510" y="200" width="70" height="64"/><rect x="580" y="200" width="70" height="64"/><rect x="650" y="200" width="70" height="64"/>
+    </g>
+    <g stroke="#5B6478" stroke-width="2" fill="#FFF6DD">
+      <rect x="720" y="200" width="70" height="64"/><rect x="790" y="200" width="70" height="64"/>
+    </g>
+    <g stroke="#B9BFCC" stroke-width="2" fill="#FFFFFF">
+      <rect x="860" y="200" width="70" height="64"/><rect x="930" y="200" width="70" height="64"/><rect x="1000" y="200" width="70" height="64"/><rect x="1070" y="200" width="70" height="64"/>
+    </g>
+    <g font-size="22" text-anchor="middle" font-family="Consolas, monospace">
+      <g fill="#22603F"><text x="335" y="240">h</text><text x="405" y="240">a</text><text x="475" y="240">n</text><text x="545" y="240">o</text><text x="615" y="240">i</text><text x="685" y="240">\n</text></g>
+      <g fill="#6B4E06"><text x="755" y="240">h</text><text x="825" y="240">u</text></g>
+    </g>
+    <g stroke="#373D4E" stroke-width="2.5">
+      <line x1="720" y1="308" x2="720" y2="272" marker-end="url(#bb-a)"/>
+      <line x1="860" y1="308" x2="860" y2="272" marker-end="url(#bb-a)"/>
+    </g>
+    <g font-size="20" fill="#373D4E" text-anchor="middle">
+      <text x="720" y="332">position 6</text>
+      <text x="866" y="332" text-anchor="start">limit 8</text>
+    </g>
+    <text x="1220" y="224" font-size="20" fill="#22603F">limit = 8, position = 0;</text>
+    <text x="1220" y="252" font-size="20" fill="#22603F">lấy dòng "hanoi" → position 6;</text>
+    <text x="1220" y="280" font-size="20" fill="#6B4E06">"hu" chưa đủ dòng</text>
+  </g>
+
+  <!-- ③ compact() -->
+  <g data-s="3">
+    <text x="40" y="402" font-size="21" font-weight="500" fill="#6B4E06" font-family="Consolas, monospace">compact()</text>
+    <g stroke="#5B6478" stroke-width="2" fill="#FFF6DD">
+      <rect x="300" y="360" width="70" height="64"/><rect x="370" y="360" width="70" height="64"/>
+    </g>
+    <g stroke="#B9BFCC" stroke-width="2" fill="#FFFFFF">
+      <rect x="440" y="360" width="70" height="64"/><rect x="510" y="360" width="70" height="64"/><rect x="580" y="360" width="70" height="64"/>
+      <rect x="650" y="360" width="70" height="64"/><rect x="720" y="360" width="70" height="64"/><rect x="790" y="360" width="70" height="64"/>
+      <rect x="860" y="360" width="70" height="64"/><rect x="930" y="360" width="70" height="64"/><rect x="1000" y="360" width="70" height="64"/><rect x="1070" y="360" width="70" height="64"/>
+    </g>
+    <g font-size="22" text-anchor="middle" fill="#6B4E06" font-family="Consolas, monospace">
+      <text x="335" y="400">h</text><text x="405" y="400">u</text>
+    </g>
+    <g stroke="#373D4E" stroke-width="2.5">
+      <line x1="440" y1="468" x2="440" y2="432" marker-end="url(#bb-a)"/>
+      <line x1="1140" y1="468" x2="1140" y2="432" marker-end="url(#bb-a)"/>
+    </g>
+    <g font-size="20" fill="#373D4E" text-anchor="middle">
+      <text x="440" y="492">position 2</text>
+      <text x="1140" y="492">limit 12</text>
+    </g>
+    <text x="1220" y="384" font-size="20" fill="#6B4E06">dời phần dư về đầu buffer;</text>
+    <text x="1220" y="412" font-size="20" fill="#6B4E06">read() sau ghi tiếp sau "hu"</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>ByteBuffer</b> của mỗi kết nối: <code>read()</code> ghi vào, <code>flip()</code> chuyển sang đọc, <code>compact()</code> giữ phần dòng chưa đủ cho lần đọc sau.</p></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Vòng lặp Selector của server tra cứu</h1></header><main class="bo-cuc-ma"><div class="ma-hang ma-y"><pre class="ma"><span class="nhan">Java</span>listener.<span class="hl-m">configureBlocking</span>(<span class="hl-k">false</span>);  <span class="hl-c">// accept() không chặn</span>
+listener.<span class="hl-m">register</span>(selector, <span class="hl-t">SelectionKey</span>.<span class="hl-t">OP_ACCEPT</span>);
+<span class="hl-k">while</span> (<span class="hl-k">true</span>) {
+    selector.<span class="hl-m">select</span>();  <span class="hl-c">// chặn đến khi có ít nhất một channel sẵn sàng</span>
+    <span class="hl-t">Iterator</span>&lt;<span class="hl-t">SelectionKey</span>&gt; it = selector.<span class="hl-m">selectedKeys</span>().<span class="hl-m">iterator</span>();
+    <span class="hl-k">while</span> (it.<span class="hl-m">hasNext</span>()) {
+        <span class="hl-t">SelectionKey</span> key = it.<span class="hl-m">next</span>();
+        it.<span class="hl-m">remove</span>();  <span class="hl-c">// không xóa thì vòng sau key này bị xử lý lại</span>
+        <span class="hl-k">if</span> (key.<span class="hl-m">isAcceptable</span>()) {
+            <span class="hl-m">accept</span>(listener, selector);
+        } <span class="hl-k">else</span> <span class="hl-k">if</span> (key.<span class="hl-m">isReadable</span>()) {
+            <span class="hl-m">read</span>(key);
+</pre><ul class="y-nho"><li data-s="1"><code>configureBlocking(false)</code> rồi <code>register</code>: đăng ký sự kiện với Selector</li><li data-s="2"><code>it.remove()</code>: Selector không tự xóa key đã xử lý khỏi tập</li><li data-s="3">Một thread chạy cả vòng lặp: mọi handler phải trả về nhanh, không chặn</li></ul></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>5 000 kết nối: số thread và thông lượng của ba cách</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">ExecutorService</span> workers = mode.<span class="hl-m">equals</span>(<span class="hl-s">"</span><span class="hl-s">virtual</span><span class="hl-s">"</span>)
+        ? <span class="hl-t">Executors</span>.<span class="hl-m">newVirtualThreadPerTaskExecutor</span>()                    <span class="hl-c">// mỗi kết nối một virtual thread</span>
+        : <span class="hl-t">Executors</span>.<span class="hl-m">newThreadPerTaskExecutor</span>(<span class="hl-t">Thread</span>.<span class="hl-m">ofPlatform</span>().<span class="hl-m">factory</span>());  <span class="hl-c">// mỗi kết nối một platform thread</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span><span class="noi-bat">nio       5000 open connections,     7 live platform threads</span>
+platform  5000 open connections,  5007 live platform threads
+virtual   5000 open connections,    19 live platform threads
+<span class="noi-bat">nio       18,177 requests/s   p50 250.9 ms   p99 461.0 ms   0 errors</span>
+platform  30,793 requests/s   p50 109.8 ms   p99 472.1 ms   0 errors
+virtual   25,291 requests/s   p50 162.7 ms   p99 367.4 ms   0 errors</pre></div><ul class="y-nho"><li data-s="2">NIO tiết kiệm <b>thread</b>, nhưng một vòng lặp chỉ dùng một lõi CPU</li><li data-s="3">Server thật chạy nhiều vòng lặp Selector; virtual thread dựa trên cùng cơ chế chờ sự kiện</li></ul></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>Một lần read có thể chỉ nhận một phần dòng: ghép dòng trong buffer riêng</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">int</span> n = channel.<span class="hl-m">read</span>(c.in);  <span class="hl-c">// không chặn: trả về số byte đang có, có thể chỉ là một phần dòng</span>
+c.in.<span class="hl-m">flip</span>();  <span class="hl-c">// chuyển buffer từ ghi sang đọc: limit = position, position = 0</span>
+    <span class="hl-k">if</span> (c.in.<span class="hl-m">get</span>(i) == <span class="hl-s">'\n'</span>) {  <span class="hl-c">// đủ một dòng</span>
+c.in.<span class="hl-m">compact</span>();  <span class="hl-c">// giữ phần dòng chưa đủ ở đầu buffer, chờ lần read sau</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>nio          0 open connections,     7 live platform threads
+<span class="noi-bat">read 3 bytes, 0 complete line(s), 3 byte(s) kept</span>
+<span class="noi-bat">read 5 bytes, 1 complete line(s), 2 byte(s) kept</span>
+<span class="noi-bat">read 4 bytes, 1 complete line(s), 0 byte(s) kept</span></pre></div><ul class="y-nho"><li data-s="2"><code>read()</code> không chặn trả về số byte đang có: có thể chỉ là <b>một phần dòng</b></li><li data-s="3">Mỗi kết nối một buffer riêng; đủ dòng rồi mới giải mã <span style="white-space:nowrap">UTF-8</span> (framing)</li></ul></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Phương thức <code>select()</code> của Selector trả về 3. Điều đó có nghĩa gì?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Có 3 key vừa sẵn sàng cho sự kiện đã đăng ký; chúng nằm trong tập selectedKeys.</div></div><div class=""><span>B</span><div>Server đang có đúng 3 kết nối mở.</div></div><div class=""><span>C</span><div>Server vừa đọc được 3 byte.</div></div><div class=""><span>D</span><div>Có 3 thread đang chờ trong <code>select()</code>.</div></div></div><div class="giai-thich"><code>select()</code> trả về số key vừa sẵn sàng, không phải số kết nối, số byte hay số thread. Chương trình duyệt selectedKeys để xử lý từng key.</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Phương thức <code>select()</code> của Selector trả về 3. Điều đó có nghĩa gì?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Có 3 key vừa sẵn sàng cho sự kiện đã đăng ký; chúng nằm trong tập selectedKeys.</div></div><div class=""><span>B</span><div>Server đang có đúng 3 kết nối mở.</div></div><div class=""><span>C</span><div>Server vừa đọc được 3 byte.</div></div><div class=""><span>D</span><div>Có 3 thread đang chờ trong <code>select()</code>.</div></div></div><div class="giai-thich"><code>select()</code> trả về số key vừa sẵn sàng, không phải số kết nối, số byte hay số thread. Chương trình duyệt selectedKeys để xử lý từng key.</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Một server NIO dùng chung một ByteBuffer cho mọi kết nối. Hai client cùng gửi yêu cầu, mỗi lần read chỉ nhận một phần dòng. Điều gì xảy ra?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Không sao, vì Selector xử lý từng kết nối một.</div></div><div class="dung"><span>B</span><div>Phần dòng chưa đủ của hai kết nối trộn vào cùng buffer, server ghép sai dòng.</div></div><div class=""><span>C</span><div>Selector tự tạo buffer riêng cho từng kết nối.</div></div><div class=""><span>D</span><div><code>read()</code> chặn cho đến khi đủ dòng, nên không có phần dòng nào.</div></div></div><div class="giai-thich">Phần dòng chưa đủ phải chờ lần đọc sau của đúng kết nối đó; dùng chung buffer thì byte của các kết nối trộn lẫn. Selector không quản lý buffer, và <code>read()</code> không chặn.</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Một server NIO dùng chung một ByteBuffer cho mọi kết nối. Hai client cùng gửi yêu cầu, mỗi lần read chỉ nhận một phần dòng. Điều gì xảy ra?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Không sao, vì Selector xử lý từng kết nối một.</div></div><div class="dung"><span>B</span><div>Phần dòng chưa đủ của hai kết nối trộn vào cùng buffer, server ghép sai dòng.</div></div><div class=""><span>C</span><div>Selector tự tạo buffer riêng cho từng kết nối.</div></div><div class=""><span>D</span><div><code>read()</code> chặn cho đến khi đủ dòng, nên không có phần dòng nào.</div></div></div><div class="giai-thich">Phần dòng chưa đủ phải chờ lần đọc sau của đúng kết nối đó; dùng chung buffer thì byte của các kết nối trộn lẫn. Selector không quản lý buffer, và <code>read()</code> không chặn.</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b><span style="white-space:nowrap">Non-blocking</span> I/O</b> và <b>Selector</b>: một thread chờ sự kiện trên nhiều <b>SocketChannel</b> (<b>mẫu Reactor</b>)</div></div><div class="the" data-s="2"><span class="so">2</span><div><b>ByteBuffer</b> riêng cho mỗi kết nối: <code>flip()</code>, <code>compact()</code>, tự ghép đủ dòng</div></div><div class="the" data-s="3"><span class="so">3</span><div>NIO tiết kiệm thread; <b>thông lượng</b> cần nhiều vòng lặp, <b>độ trễ</b> tăng khi yêu cầu xếp hàng</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>non-blocking I/O</span><span>SocketChannel</span><span>Selector</span><span>SelectionKey</span><span>ByteBuffer</span><span>mẫu Reactor</span><span>thông lượng</span><span>độ trễ</span></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>Netty: framework xây trên mẫu Reactor</li><li>Mẫu Proactor và AsynchronousSocketChannel</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Chia kết nối cho nhiều Selector, mỗi lõi CPU một vòng lặp, rồi đo lại thông lượng bằng LoadClient.</p></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Độ tin cậy: retry, request ID và checksum trên UDP</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Ở phần về lời gọi không chặn, thread phía gọi đã được giải phóng. Còn phía server: khi hàng nghìn kết nối mở cùng lúc, có cần đủ hàng nghìn thread để phục vụ không?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:12</span>
+      <h3>Slide 1. Thread-per-connection: mỗi kết nối giữ một thread, kể cả lúc chỉ chờ</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Thread-per-connection: 5 000 kết nối là 5 000 thread, phần lớn chỉ chờ dữ liệu</li><li>Mỗi platform thread cần **stack** riêng; hệ điều hành chuyển ngữ cảnh giữa các thread</li><li>**NIO**: một thread theo dõi nhiều kết nối, chỉ xử lý kết nối đã có dữ liệu</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** một thread phục vụ nhiều kết nối bằng cách nào, và đổi lại chương trình phải tự làm thêm gì?</div></div>
+    <div class="kb-thoai"><p>Để trả lời, hãy nhìn lại server tra cứu ở Chương 2, chạy theo mô hình thread-per-connection: mỗi kết nối giữ một thread từ đầu đến cuối, kể cả khi client chưa gửi gì. Với 5 000 kết nối mở cùng lúc, server cần 5 000 thread, và phần lớn thời gian các thread này chỉ chờ dữ liệu. Mỗi platform thread cần stack riêng, mặc định dự trữ tới 1 megabyte, và hệ điều hành phải chuyển ngữ cảnh qua lại giữa các thread. Gói java.nio của Java đưa ra một cách khác: một thread theo dõi cùng lúc nhiều kết nối, và chỉ xử lý kết nối nào đã có dữ liệu. Câu hỏi đặt ra là: một thread phục vụ nhiều kết nối bằng cách nào, và đổi lại chương trình phải tự làm thêm gì?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Để trả lời”; bước 2 khi đọc “Mỗi platform thread”; bước 3 khi đọc “Gói java.nio”; bước 4 khi đọc “Câu hỏi đặt ra”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:53</span>
+      <h3>Slide 2. Selector: một thread chờ sự kiện trên nhiều channel</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Mẫu Reactor**: một vòng lặp chờ sự kiện bằng `select()`, rồi chuyển từng **SelectionKey** sẵn sàng cho handler; không thao tác nào chặn.</li></ul></div></div>
+    <div class="kb-thoai"><p>Trong NIO, mỗi kết nối là một SocketChannel đặt ở chế độ không chặn, gọi là non-blocking I/O: thao tác đọc hay ghi trả về ngay, kể cả khi chưa có byte nào. Mỗi channel đăng ký các sự kiện cần theo dõi với một Selector: ServerSocketChannel theo dõi sự kiện có kết nối mới, còn mỗi kết nối theo dõi sự kiện đọc được, và mỗi lần đăng ký tạo ra một SelectionKey. Phương thức select chặn đến khi có ít nhất một channel sẵn sàng, rồi trả về tập selectedKeys, ở đây là kết nối 2 đã có dữ liệu và ServerSocketChannel có kết nối mới. Với mỗi key, vòng lặp xóa key khỏi tập, rồi chuyển cho phương thức xử lý tương ứng: phương thức accept đăng ký kết nối mới, phương thức read đọc và xử lý các dòng đủ, phương thức write ghi phản hồi. Xong lượt, vòng lặp quay lại lời gọi select. Như vậy, một thread chạy cả vòng lặp và chỉ chờ ở một chỗ là lời gọi select; cách tổ chức này gọi là mẫu Reactor.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình vong-lap-selector: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Mỗi channel đăng ký”; bước 2 khi đọc “Phương thức select”; bước 3 khi đọc “Với mỗi key”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:50</span>
+      <h3>Slide 3. ByteBuffer: flip() để đọc, compact() để giữ phần dòng chưa đủ</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**ByteBuffer** của mỗi kết nối: `read()` ghi vào, `flip()` chuyển sang đọc, `compact()` giữ phần dòng chưa đủ cho lần đọc sau.</li></ul></div></div>
+    <div class="kb-thoai"><p>Dữ liệu trong NIO đi qua ByteBuffer, một mảng byte có dung lượng cố định cùng hai chỉ số: position là vị trí đọc hay ghi tiếp theo, limit là giới hạn không được vượt qua. Xét buffer 12 byte của một kết nối có client gửi hai yêu cầu hanoi và huế thành từng mảnh. Sau hai lần đọc, buffer chứa hanoi, ký tự xuống dòng và hai byte đầu của chữ huế, nên position đã tiến tới 8. Phương thức flip chuyển buffer từ ghi sang đọc: limit thành 8, position về 0. Chương trình lấy ra dòng hanoi đến ký tự xuống dòng, position tiến tới 6, còn hai byte cuối chưa đủ một dòng. Cuối cùng, phương thức compact dời phần dư về đầu buffer và đặt position bằng 2, để lần đọc sau ghi tiếp ngay sau hai byte đó. Như vậy, phần dòng chưa đủ phải nằm lại trong buffer cho tới lần đọc sau của chính kết nối đó, nên mỗi kết nối cần một buffer riêng.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình bytebuffer: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Sau hai lần đọc”; bước 2 khi đọc “Phương thức flip”; bước 3 khi đọc “Cuối cùng, phương thức compact”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:46</span>
+      <h3>Slide 4. Vòng lặp Selector của server tra cứu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>`configureBlocking(false)` rồi `register`: đăng ký sự kiện với Selector</li><li>`it.remove()`: Selector không tự xóa key đã xử lý khỏi tập</li><li>Một thread chạy cả vòng lặp: mọi handler phải trả về nhanh, không chặn</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/nio/NioLookupServer.java</span><pre><code>listener.configureBlocking(false);  // accept() không chặn
+listener.register(selector, SelectionKey.OP_ACCEPT);
+while (true) {
+    selector.select();  // chặn đến khi có ít nhất một channel sẵn sàng
+    Iterator&lt;SelectionKey&gt; it = selector.selectedKeys().iterator();
+    while (it.hasNext()) {
+        SelectionKey key = it.next();
+        it.remove();  // không xóa thì vòng sau key này bị xử lý lại
+        if (key.isAcceptable()) {
+            accept(listener, selector);
+        } else if (key.isReadable()) {
+            read(key);</code></pre></div></div>
+    <div class="kb-thoai"><p>Mã của NioLookupServer cài đặt đúng vòng lặp Selector vừa mô tả. ServerSocketChannel được đặt ở chế độ không chặn bằng phương thức configureBlocking, rồi đăng ký sự kiện OP_ACCEPT với Selector. Trong vòng lặp, sau lời gọi select, chương trình duyệt tập selectedKeys bằng iterator. Lưu ý dòng gọi phương thức remove của iterator: Selector chỉ thêm key vào tập mà không tự xóa, nên thiếu dòng này thì vòng sau key cũ bị xử lý lại. Mỗi key được chuyển cho phương thức accept hay read; trong phương thức accept, kết nối mới đăng ký sự kiện OP_READ kèm một đối tượng Connection giữ buffer riêng. Vì cả vòng lặp chạy trên một thread, mọi phương thức xử lý phải trả về nhanh, không được chặn.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, ba ý hiện lần lượt theo lời đọc.
+Hiện dần: bước 1 khi đọc “ServerSocketChannel được đặt”; bước 2 khi đọc “Lưu ý dòng gọi”; bước 3 khi đọc “Vì cả vòng lặp”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:34</span>
+      <h3>Slide 5. 5 000 kết nối: số thread và thông lượng của ba cách</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>NIO tiết kiệm **thread**, nhưng một vòng lặp chỉ dùng một lõi CPU</li><li>Server thật chạy nhiều vòng lặp Selector; virtual thread dựa trên cùng cơ chế chờ sự kiện</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/nio/ThreadLookupServer.java</span><pre><code>ExecutorService workers = mode.equals(&quot;virtual&quot;)
+        ? Executors.newVirtualThreadPerTaskExecutor()                    // mỗi kết nối một virtual thread
+        : Executors.newThreadPerTaskExecutor(Thread.ofPlatform().factory());  // mỗi kết nối một platform thread</code></pre></div></div>
+    <div class="kb-thoai"><p>Để so sánh, mình viết thêm ThreadLookupServer theo mô hình thread-per-connection, mỗi kết nối một platform thread hoặc một virtual thread. Chương trình LoadClient mở 5 000 kết nối, rồi trên mỗi kết nối gửi lần lượt 20 yêu cầu và đo độ trễ; client và server chạy trên cùng một máy 8 lõi. Các bạn thử đoán: server NIO một thread có thông lượng cao nhất không? Kết quả: ở 5 000 kết nối, server NIO chỉ có 7 platform thread, bản platform thread có 5 007, bản virtual thread có 19. Nhưng server NIO chỉ đạt khoảng 18 nghìn yêu cầu mỗi giây, thấp nhất trong ba bản, vì một thread chỉ dùng được một lõi CPU. Vậy lợi thế của NIO là số thread: server thật như Netty chạy nhiều vòng lặp Selector, thường mỗi lõi một vòng. Còn độ trễ của cả ba bản đều cao vì 5 000 client gửi liên tục, nên yêu cầu phải xếp hàng. Virtual thread cũng dựa trên cơ chế chờ sự kiện như Selector, nên giữ được cách viết mã chặn mà vẫn cần ít platform thread.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới, hai ý hiện sau kết quả. Sau câu &quot;cao nhất không&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện.
+Hiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Vậy lợi thế”; bước 3 khi đọc “Virtual thread cũng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:45</span>
+      <h3>Slide 6. Một lần read có thể chỉ nhận một phần dòng: ghép dòng trong buffer riêng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>`read()` không chặn trả về số byte đang có: có thể chỉ là **một phần dòng**</li><li>Mỗi kết nối một buffer riêng; đủ dòng rồi mới giải mã UTF-8 (framing)</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/nio/NioLookupServer.java</span><pre><code>int n = channel.read(c.in);  // không chặn: trả về số byte đang có, có thể chỉ là một phần dòng
+c.in.flip();  // chuyển buffer từ ghi sang đọc: limit = position, position = 0
+    if (c.in.get(i) == &#x27;\n&#x27;) {  // đủ một dòng
+c.in.compact();  // giữ phần dòng chưa đủ ở đầu buffer, chờ lần read sau</code></pre></div></div>
+    <div class="kb-thoai"><p>Đổi lại cho số thread ít, chương trình phải tự làm một việc mà I/O chặn vẫn làm thay: ghép dòng. Với I/O chặn, phương thức readLine chờ đến khi đủ một dòng. Chương trình SplitClient gửi hai yêu cầu hanoi và huế thành ba mảnh, cách nhau nửa giây, và mảnh thứ hai dừng ở giữa từ huế. Kết quả trên server chạy chế độ trace: lần đọc đầu nhận 3 byte, chưa đủ dòng nào; lần thứ hai nhận 5 byte, đủ một dòng và giữ lại 2 byte; lần thứ ba nhận 4 byte, đủ dòng thứ hai. Nghĩa là phương thức read không chặn chỉ trả về số byte đang có, không biết gì về ranh giới dòng. Vì vậy, mỗi kết nối cần buffer riêng, và chương trình phải tự ghép đủ dòng rồi mới giải mã UTF-8, đúng việc framing message ở Chương 1.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới, hai ý hiện sau kết quả.
+Hiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Nghĩa là phương thức read”; bước 3 khi đọc “Vì vậy, mỗi kết nối”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:39</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Giá trị trả về của phương thức select dễ bị hiểu nhầm.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Phương thức select() của Selector trả về 3. Điều đó có nghĩa gì?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Có 3 key vừa sẵn sàng cho sự kiện đã đăng ký; chúng nằm trong tập selectedKeys.</li>
+      <li><b>B.</b> Server đang có đúng 3 kết nối mở.</li>
+      <li><b>C.</b> Server vừa đọc được 3 byte.</li>
+      <li><b>D.</b> Có 3 thread đang chờ trong select().</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: A</b> — <span>select() trả về số key vừa sẵn sàng, không phải số kết nối, số byte hay số thread. Chương trình duyệt selectedKeys để xử lý từng key.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là A. Giá trị trả về là số key vừa sẵn sàng; số kết nối đang mở có thể lớn hơn nhiều, vì phần lớn kết nối chưa có dữ liệu. Chương trình duyệt tập selectedKeys để biết đó là những kết nối nào.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án A được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:03</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Còn nếu bỏ buffer riêng của từng kết nối thì sao?</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Một server NIO dùng chung một ByteBuffer cho mọi kết nối. Hai client cùng gửi yêu cầu, mỗi lần read chỉ nhận một phần dòng. Điều gì xảy ra?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Không sao, vì Selector xử lý từng kết nối một.</li>
+      <li><b>B.</b> Phần dòng chưa đủ của hai kết nối trộn vào cùng buffer, server ghép sai dòng.</li>
+      <li><b>C.</b> Selector tự tạo buffer riêng cho từng kết nối.</li>
+      <li><b>D.</b> read() chặn cho đến khi đủ dòng, nên không có phần dòng nào.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: B</b> — <span>Phần dòng chưa đủ phải chờ lần đọc sau của đúng kết nối đó; dùng chung buffer thì byte của các kết nối trộn lẫn. Selector không quản lý buffer, và read() không chặn.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là B. Phần dòng chưa đủ phải chờ lần đọc sau của đúng kết nối đó, nên dùng chung buffer thì byte của hai kết nối trộn lẫn. Phương án A là hiểu nhầm hay gặp: xử lý từng key một không giúp gì, vì một dòng có thể trải qua nhiều lượt của vòng lặp.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án B.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:28</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**Non-blocking I/O** và **Selector**: một thread chờ sự kiện trên nhiều **SocketChannel** (**mẫu Reactor**)</li><li>**ByteBuffer** riêng cho mỗi kết nối: `flip()`, `compact()`, tự ghép đủ dòng</li><li>NIO tiết kiệm thread; **thông lượng** cần nhiều vòng lặp, **độ trễ** tăng khi yêu cầu xếp hàng</li></ul></div>
+    <div class="kb-thoai"><p>Với non-blocking I/O, mỗi SocketChannel đăng ký sự kiện với Selector, và một thread chạy vòng lặp select để phục vụ mọi kết nối, theo mẫu Reactor. Đổi lại, chương trình phải giữ ByteBuffer riêng cho từng kết nối và tự ghép đủ dòng, vì một lần đọc có thể chỉ nhận một phần dòng. Một vòng lặp tiết kiệm thread nhưng chỉ dùng một lõi CPU: muốn tăng thông lượng thì chạy nhiều vòng lặp, và khi yêu cầu phải xếp hàng thì độ trễ tăng. Tám từ khóa khép lại phần này: non-blocking I/O, SocketChannel, Selector, SelectionKey, ByteBuffer, mẫu Reactor, thông lượng và độ trễ.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “Với non-blocking I/O”; bước 2 khi đọc “Đổi lại”; bước 3 khi đọc “Một vòng lặp”; bước 4 khi đọc “Tám từ khóa”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:05</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Netty là framework xây trên mẫu Reactor, với nhiều vòng lặp sự kiện và sẵn các bộ ghép dòng. Mẫu Proactor, với lớp AsynchronousSocketChannel của Java, nhận thông báo từ hệ điều hành khi thao tác đọc, ghi đã xong, thay vì khi channel sẵn sàng. Bài tập mở rộng là chia kết nối cho nhiều Selector, mỗi lõi CPU một vòng lặp, rồi đo lại thông lượng bằng LoadClient.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Netty là framework”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:29</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Với lời gọi không chặn và NIO, nhóm Hiệu năng đã giải phóng thread ở cả phía gọi lẫn phía server. Phần tiếp theo mở nhóm Độ tin cậy với retry, request ID và checksum trên UDP, khi datagram có thể mất, lặp hay hỏng trên đường truyền.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V33", "tieu_de": "Hiệu năng: NIO, Selector và mẫu Reactor", "giong": "vi-VN-NamMinhNeural", "tong": 465.34, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/efd7f6ce87f93787.mp3", "dur": 12.02, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Ở", 1], [2.038, "phần", 1], [2.312, "về", 1], [2.438, "lời", 1], [2.638, "gọi", 1], [2.862, "không", 1], [3.112, "chặn,", 1], [3.675, "thread", 1], [3.913, "phía", 1], [4.138, "gọi", 1], [4.425, "đã", 1], [4.55, "được", 1], [4.737, "giải", 1], [4.938, "phóng.", 1], [6.138, "Còn", 2], [6.388, "phía", 2], [6.562, "server:", 2], [7.237, "khi", 2], [7.463, "hàng", 2], [7.65, "nghìn", 2], [7.85, "kết", 2], [8.062, "nối", 2], [8.25, "mở", 2], [8.45, "cùng", 2], [8.688, "lúc,", 2], [9.075, "có", 2], [9.238, "cần", 2], [9.463, "đủ", 2], [9.65, "hàng", 2], [9.85, "nghìn", 2], [10.062, "thread", 2], [10.325, "để", 2], [10.463, "phục", 2], [10.637, "vụ", 2], [10.863, "không?", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Thread-per-connection: mỗi kết nối giữ một thread, kể cả lúc chỉ chờ", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Để trả lời”; bước 2 khi đọc “Mỗi platform thread”; bước 3 khi đọc “Gói java.nio”; bước 4 khi đọc “Câu hỏi đặt ra”.", "start": 12.62, "audio": "audio/d9842db7b88e21d9.mp3", "dur": 39.79, "words": [[0.1, "Để", 0], [0.312, "trả", 0], [0.487, "lời,", 0], [0.925, "hãy", 0], [1.062, "nhìn", 0], [1.262, "lại", 0], [1.425, "server", 0], [1.762, "tra", 0], [1.95, "cứu", 0], [2.25, "ở", 0], [2.362, "Chương", 0], [2.6, "2,", 0], [3.1, "chạy", 0], [3.312, "theo", 0], [3.45, "mô", 0], [3.625, "hình", 0], [3.837, "thread-per-connection:", 0], [5.112, "mỗi", 0], [5.325, "kết", 0], [5.537, "nối", 0], [5.737, "giữ", 0], [5.925, "một", 0], [6.125, "thread", 0], [6.388, "từ", 0], [6.562, "đầu", 0], [6.75, "đến", 0], [6.95, "cuối,", 0], [7.45, "kể", 0], [7.625, "cả", 0], [7.8, "khi", 0], [7.987, "client", 0], [8.35, "chưa", 0], [8.575, "gửi", 0], [8.787, "gì.", 0], [9.925, "Với", 1], [10.162, "5", 1], [10.4, "000", 1], [10.637, "kết", 1], [10.85, "nối", 1], [11.037, "mở", 1], [11.25, "cùng", 1], [11.488, "lúc,", 1], [11.875, "server", 1], [12.312, "cần", 1], [12.554, "5", 1], [12.795, "000", 1], [13.037, "thread,", 1], [13.562, "và", 1], [13.762, "phần", 1], [13.975, "lớn", 1], [14.238, "thời", 1], [14.387, "gian", 1], [14.662, "các", 1], [14.812, "thread", 1], [15.05, "này", 1], [15.25, "chỉ", 1], [15.463, "chờ", 1], [15.713, "dữ", 1], [15.9, "liệu.", 1], [17.075, "Mỗi", 2], [17.462, "platform", 2], [18.012, "thread", 2], [18.275, "cần", 2], [18.512, "stack", 2], [18.788, "riêng,", 2], [19.275, "mặc", 2], [19.475, "định", 2], [19.675, "dự", 2], [19.837, "trữ", 2], [20.087, "tới", 2], [20.238, "1", 2], [20.438, "megabyte,", 2], [21.2, "và", 2], [21.387, "hệ", 2], [21.55, "điều", 2], [21.7, "hành", 2], [21.913, "phải", 2], [22.038, "chuyển", 2], [22.238, "ngữ", 2], [22.475, "cảnh", 2], [22.725, "qua", 2], [22.925, "lại", 2], [23.125, "giữa", 2], [23.312, "các", 2], [23.5, "thread.", 2], [24.625, "Gói", 3], [24.975, "java.nio", 3], [26.325, "của", 3], [26.5, "Java", 3], [26.913, "đưa", 3], [27.075, "ra", 3], [27.2, "một", 3], [27.387, "cách", 3], [27.55, "khác:", 3], [28.087, "một", 3], [28.312, "thread", 3], [28.562, "theo", 3], [28.712, "dõi", 3], [28.988, "cùng", 3], [29.2, "lúc", 3], [29.387, "nhiều", 3], [29.575, "kết", 3], [29.788, "nối,", 3], [30.3, "và", 3], [30.5, "chỉ", 3], [30.688, "xử", 3], [30.863, "lý", 3], [31.038, "kết", 3], [31.262, "nối", 3], [31.45, "nào", 3], [31.688, "đã", 3], [31.8, "có", 3], [31.925, "dữ", 3], [32.112, "liệu.", 3], [33.275, "Câu", 4], [33.462, "hỏi", 4], [33.675, "đặt", 4], [33.85, "ra", 4], [34.025, "là:", 4], [34.525, "một", 4], [34.737, "thread", 4], [34.975, "phục", 4], [35.15, "vụ", 4], [35.388, "nhiều", 4], [35.612, "kết", 4], [35.825, "nối", 4], [36.025, "bằng", 4], [36.237, "cách", 4], [36.438, "nào,", 4], [36.913, "và", 4], [37.1, "đổi", 4], [37.275, "lại", 4], [37.475, "chương", 4], [37.688, "trình", 4], [37.9, "phải", 4], [38.038, "tự", 4], [38.225, "làm", 4], [38.438, "thêm", 4], [38.663, "gì?", 4]], "cues": [0.1, 17.075, 24.625, 33.275], "lang": 0.6}, {"ten": "Slide 2. Selector: một thread chờ sự kiện trên nhiều channel", "loai": "slide", "slide": "S02", "dung": "Hình vong-lap-selector: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Mỗi channel đăng ký”; bước 2 khi đọc “Phương thức select”; bước 3 khi đọc “Với mỗi key”; bước 4 khi đọc “Như vậy”.", "start": 53.01, "audio": "audio/7de2b3cfebc98c21.mp3", "dur": 54.46, "words": [[0.1, "Trong", 0], [0.706, "NIO,", 0], [1.312, "mỗi", 0], [1.5, "kết", 0], [1.7, "nối", 0], [1.9, "là", 0], [1.975, "một", 0], [2.15, "SocketChannel", 0], [2.913, "đặt", 0], [3.163, "ở", 0], [3.25, "chế", 0], [3.462, "độ", 0], [3.65, "không", 0], [3.875, "chặn,", 0], [4.4, "gọi", 0], [4.662, "là", 0], [4.8, "non-blocking", 0], [5.506, "I/O:", 0], [6.213, "thao", 0], [6.438, "tác", 0], [6.638, "đọc", 0], [6.825, "hay", 0], [6.975, "ghi", 0], [7.125, "trả", 0], [7.388, "về", 0], [7.537, "ngay,", 0], [8.025, "kể", 0], [8.2, "cả", 0], [8.375, "khi", 0], [8.562, "chưa", 0], [8.8, "có", 0], [8.925, "byte", 0], [9.125, "nào.", 0], [10.238, "Mỗi", 1], [10.613, "channel", 1], [10.963, "đăng", 1], [11.162, "ký", 1], [11.4, "các", 1], [11.562, "sự", 1], [11.725, "kiện", 1], [12.012, "cần", 1], [12.2, "theo", 1], [12.35, "dõi", 1], [12.613, "với", 1], [12.725, "một", 1], [12.887, "Selector:", 1], [13.713, "ServerSocketChannel", 1], [14.838, "theo", 1], [15.037, "dõi", 1], [15.25, "sự", 1], [15.425, "kiện", 1], [15.7, "có", 1], [15.812, "kết", 1], [16.025, "nối", 1], [16.188, "mới,", 1], [16.75, "còn", 1], [16.988, "mỗi", 1], [17.137, "kết", 1], [17.337, "nối", 1], [17.512, "theo", 1], [17.675, "dõi", 1], [17.9, "sự", 1], [18.087, "kiện", 1], [18.325, "đọc", 1], [18.475, "được,", 1], [18.887, "và", 1], [19.087, "mỗi", 1], [19.262, "lần", 1], [19.462, "đăng", 1], [19.637, "ký", 1], [19.837, "tạo", 1], [20.075, "ra", 1], [20.2, "một", 1], [20.387, "SelectionKey.", 1], [22.212, "Phương", 2], [22.5, "thức", 2], [22.65, "select", 2], [23.087, "chặn", 2], [23.363, "đến", 2], [23.538, "khi", 2], [23.738, "có", 2], [23.9, "ít", 2], [24.113, "nhất", 2], [24.325, "một", 2], [24.5, "channel", 2], [24.887, "sẵn", 2], [25.137, "sàng,", 2], [25.663, "rồi", 2], [25.887, "trả", 2], [26.125, "về", 2], [26.238, "tập", 2], [26.438, "selectedKeys,", 2], [27.337, "ở", 2], [27.525, "đây", 2], [27.7, "là", 2], [27.8, "kết", 2], [28.025, "nối", 2], [28.2, "2", 2], [28.462, "đã", 2], [28.562, "có", 2], [28.688, "dữ", 2], [28.863, "liệu", 2], [29.137, "và", 2], [29.3, "ServerSocketChannel", 2], [30.413, "có", 2], [30.562, "kết", 2], [30.775, "nối", 2], [30.925, "mới.", 2], [32.138, "Với", 3], [32.4, "mỗi", 3], [32.6, "key,", 3], [33.112, "vòng", 3], [33.375, "lặp", 3], [33.55, "xóa", 3], [33.763, "key", 3], [33.95, "khỏi", 3], [34.163, "tập,", 3], [34.663, "rồi", 3], [34.875, "chuyển", 3], [35.163, "cho", 3], [35.275, "phương", 3], [35.475, "thức", 3], [35.6, "xử", 3], [35.775, "lý", 3], [35.975, "tương", 3], [36.25, "ứng:", 3], [36.7, "phương", 3], [36.962, "thức", 3], [37.2, "accept", 3], [37.562, "đăng", 3], [37.8, "ký", 3], [38.013, "kết", 3], [38.225, "nối", 3], [38.375, "mới,", 3], [38.925, "phương", 3], [39.2, "thức", 3], [39.388, "read", 3], [39.55, "đọc", 3], [39.763, "và", 3], [39.938, "xử", 3], [40.112, "lý", 3], [40.325, "các", 3], [40.5, "dòng", 3], [40.712, "đủ,", 3], [41.25, "phương", 3], [41.525, "thức", 3], [41.725, "write", 3], [42.175, "ghi", 3], [42.4, "phản", 3], [42.675, "hồi.", 3], [43.812, "Xong", 4], [44.15, "lượt,", 4], [44.612, "vòng", 4], [44.913, "lặp", 4], [45.125, "quay", 4], [45.312, "lại", 4], [45.513, "lời", 4], [45.737, "gọi", 4], [45.975, "select.", 4], [47.263, "Như", 5], [47.5, "vậy,", 5], [47.975, "một", 5], [48.2, "thread", 5], [48.487, "chạy", 5], [48.663, "cả", 5], [48.85, "vòng", 5], [49.062, "lặp", 5], [49.288, "và", 5], [49.425, "chỉ", 5], [49.625, "chờ", 5], [49.913, "ở", 5], [50.038, "một", 5], [50.25, "chỗ", 5], [50.475, "là", 5], [50.6, "lời", 5], [50.812, "gọi", 5], [51.025, "select;", 5], [51.75, "cách", 5], [51.938, "tổ", 5], [52.112, "chức", 5], [52.325, "này", 5], [52.513, "gọi", 5], [52.737, "là", 5], [52.825, "mẫu", 5], [53.1, "Reactor.", 5]], "cues": [10.238, 22.212, 32.138, 47.263], "lang": 2.6}, {"ten": "Slide 3. ByteBuffer: flip() để đọc, compact() để giữ phần dòng chưa đủ", "loai": "slide", "slide": "S03", "dung": "Hình bytebuffer: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Sau hai lần đọc”; bước 2 khi đọc “Phương thức flip”; bước 3 khi đọc “Cuối cùng, phương thức compact”; bước 4 khi đọc “Như vậy”.", "start": 110.07, "audio": "audio/b88820f59a8a66e6.mp3", "dur": 53.33, "words": [[0.1, "Dữ", 0], [0.375, "liệu", 0], [0.625, "trong", 0], [1.012, "NIO", 0], [1.4, "đi", 0], [1.5, "qua", 0], [1.7, "ByteBuffer,", 0], [2.6, "một", 0], [2.825, "mảng", 0], [3.062, "byte", 0], [3.263, "có", 0], [3.388, "dung", 0], [3.562, "lượng", 0], [3.788, "cố", 0], [3.987, "định", 0], [4.237, "cùng", 0], [4.438, "hai", 0], [4.625, "chỉ", 0], [4.8, "số:", 0], [5.412, "position", 0], [6.287, "là", 0], [6.425, "vị", 0], [6.588, "trí", 0], [6.838, "đọc", 0], [7.025, "hay", 0], [7.162, "ghi", 0], [7.312, "tiếp", 0], [7.537, "theo,", 0], [8.075, "limit", 0], [8.575, "là", 0], [8.762, "giới", 0], [8.938, "hạn", 0], [9.188, "không", 0], [9.4, "được", 0], [9.512, "vượt", 0], [9.688, "qua.", 0], [10.838, "Xét", 1], [11.162, "buffer", 1], [11.613, "12", 1], [12.025, "byte", 1], [12.225, "của", 1], [12.338, "một", 1], [12.512, "kết", 1], [12.7, "nối", 1], [12.912, "có", 1], [13.05, "client", 1], [13.438, "gửi", 1], [13.637, "hai", 1], [13.887, "yêu", 1], [14.088, "cầu", 1], [14.312, "hanoi", 1], [14.738, "và", 1], [14.912, "huế", 1], [15.1, "thành", 1], [15.325, "từng", 1], [15.537, "mảnh.", 1], [16.738, "Sau", 2], [17.038, "hai", 2], [17.2, "lần", 2], [17.375, "đọc,", 2], [17.775, "buffer", 2], [18.225, "chứa", 2], [18.5, "hanoi,", 2], [19.175, "ký", 2], [19.4, "tự", 2], [19.587, "xuống", 2], [19.85, "dòng", 2], [20.1, "và", 2], [20.225, "hai", 2], [20.413, "byte", 2], [20.575, "đầu", 2], [20.775, "của", 2], [20.913, "chữ", 2], [21.113, "huế,", 2], [21.725, "nên", 2], [22.025, "position", 2], [22.863, "đã", 2], [23.012, "tiến", 2], [23.275, "tới", 2], [23.45, "8.", 2], [24.688, "Phương", 3], [24.975, "thức", 3], [25.175, "flip", 3], [25.512, "chuyển", 3], [25.825, "buffer", 3], [26.25, "từ", 3], [26.512, "ghi", 3], [26.688, "sang", 3], [26.95, "đọc:", 3], [27.387, "limit", 3], [27.812, "thành", 3], [28.038, "8,", 3], [28.575, "position", 3], [29.413, "về", 3], [29.538, "0.", 3], [30.7, "Chương", 4], [31.012, "trình", 4], [31.212, "lấy", 4], [31.4, "ra", 4], [31.538, "dòng", 4], [31.738, "hanoi", 4], [32.138, "đến", 4], [32.325, "ký", 4], [32.513, "tự", 4], [32.688, "xuống", 4], [32.938, "dòng,", 4], [33.425, "position", 4], [34.212, "tiến", 4], [34.475, "tới", 4], [34.638, "6,", 4], [35.237, "còn", 4], [35.513, "hai", 4], [35.7, "byte", 4], [35.862, "cuối", 4], [36.062, "chưa", 4], [36.288, "đủ", 4], [36.475, "một", 4], [36.675, "dòng.", 4], [37.825, "Cuối", 5], [38.062, "cùng,", 5], [38.513, "phương", 5], [38.75, "thức", 5], [38.925, "compact", 5], [39.362, "dời", 5], [39.587, "phần", 5], [39.825, "dư", 5], [40.013, "về", 5], [40.15, "đầu", 5], [40.337, "buffer", 5], [40.825, "và", 5], [40.95, "đặt", 5], [41.125, "position", 5], [41.888, "bằng", 5], [42.087, "2,", 5], [42.625, "để", 5], [42.788, "lần", 5], [42.987, "đọc", 5], [43.138, "sau", 5], [43.35, "ghi", 5], [43.487, "tiếp", 5], [43.763, "ngay", 5], [43.962, "sau", 5], [44.175, "hai", 5], [44.337, "byte", 5], [44.5, "đó.", 5], [45.688, "Như", 6], [45.925, "vậy,", 6], [46.325, "phần", 6], [46.538, "dòng", 6], [46.75, "chưa", 6], [46.925, "đủ", 6], [47.15, "phải", 6], [47.3, "nằm", 6], [47.5, "lại", 6], [47.712, "trong", 6], [47.913, "buffer", 6], [48.337, "cho", 6], [48.487, "tới", 6], [48.663, "lần", 6], [48.837, "đọc", 6], [48.975, "sau", 6], [49.225, "của", 6], [49.35, "chính", 6], [49.575, "kết", 6], [49.788, "nối", 6], [49.962, "đó,", 6], [50.513, "nên", 6], [50.775, "mỗi", 6], [50.938, "kết", 6], [51.138, "nối", 6], [51.325, "cần", 6], [51.562, "một", 6], [51.763, "buffer", 6], [52.15, "riêng.", 6]], "cues": [16.738, 24.688, 37.825, 45.688], "lang": 2.6}, {"ten": "Slide 4. Vòng lặp Selector của server tra cứu", "loai": "slide", "slide": "S04", "dung": "Mã phía trên, ba ý hiện lần lượt theo lời đọc.\nHiện dần: bước 1 khi đọc “ServerSocketChannel được đặt”; bước 2 khi đọc “Lưu ý dòng gọi”; bước 3 khi đọc “Vì cả vòng lặp”.", "start": 166.0, "audio": "audio/1add69671ebd1534.mp3", "dur": 42.86, "words": [[0.1, "Mã", 0], [0.525, "của", 0], [0.775, "NioLookupServer", 0], [1.938, "cài", 0], [2.15, "đặt", 0], [2.312, "đúng", 0], [2.538, "vòng", 0], [2.75, "lặp", 0], [2.938, "Selector", 0], [3.525, "vừa", 0], [3.712, "mô", 0], [3.913, "tả.", 0], [5.213, "ServerSocketChannel", 1], [6.4, "được", 1], [6.6, "đặt", 1], [6.85, "ở", 1], [6.938, "chế", 1], [7.162, "độ", 1], [7.375, "không", 1], [7.6, "chặn", 1], [7.838, "bằng", 1], [8.012, "phương", 1], [8.238, "thức", 1], [8.412, "configureBlocking,", 1], [9.562, "rồi", 1], [9.8, "đăng", 1], [10.0, "ký", 1], [10.213, "sự", 1], [10.412, "kiện", 1], [10.738, "OP_ACCEPT", 1], [11.387, "với", 1], [11.588, "Selector.", 1], [13.037, "Trong", 2], [13.363, "vòng", 2], [13.575, "lặp,", 2], [13.963, "sau", 2], [14.225, "lời", 2], [14.387, "gọi", 2], [14.6, "select,", 2], [15.262, "chương", 2], [15.537, "trình", 2], [15.738, "duyệt", 2], [15.95, "tập", 2], [16.163, "selectedKeys", 2], [16.925, "bằng", 2], [17.25, "iterator.", 2], [18.65, "Lưu", 3], [18.95, "ý", 3], [19.175, "dòng", 3], [19.413, "gọi", 3], [19.587, "phương", 3], [19.788, "thức", 3], [19.95, "remove", 3], [20.413, "của", 3], [20.725, "iterator:", 3], [21.575, "Selector", 3], [22.175, "chỉ", 3], [22.363, "thêm", 3], [22.587, "key", 3], [22.788, "vào", 3], [22.925, "tập", 3], [23.163, "mà", 3], [23.363, "không", 3], [23.587, "tự", 3], [23.738, "xóa,", 3], [24.387, "nên", 3], [24.637, "thiếu", 3], [24.837, "dòng", 3], [25.05, "này", 3], [25.238, "thì", 3], [25.4, "vòng", 3], [25.6, "sau", 3], [25.788, "key", 3], [25.962, "cũ", 3], [26.2, "bị", 3], [26.363, "xử", 3], [26.562, "lý", 3], [26.762, "lại.", 3], [27.925, "Mỗi", 4], [28.3, "key", 4], [28.525, "được", 4], [28.675, "chuyển", 4], [28.938, "cho", 4], [29.062, "phương", 4], [29.275, "thức", 4], [29.5, "accept", 4], [29.85, "hay", 4], [30.025, "read;", 4], [30.5, "trong", 4], [30.738, "phương", 4], [30.95, "thức", 4], [31.188, "accept,", 4], [31.8, "kết", 4], [32.038, "nối", 4], [32.212, "mới", 4], [32.438, "đăng", 4], [32.638, "ký", 4], [32.85, "sự", 4], [33.038, "kiện", 4], [33.35, "OP_READ", 4], [33.737, "kèm", 4], [33.975, "một", 4], [34.125, "đối", 4], [34.275, "tượng", 4], [34.55, "Connection", 4], [35.225, "giữ", 4], [35.487, "buffer", 4], [35.913, "riêng.", 4], [37.075, "Vì", 5], [37.35, "cả", 5], [37.55, "vòng", 5], [37.763, "lặp", 5], [37.975, "chạy", 5], [38.212, "trên", 5], [38.388, "một", 5], [38.562, "thread,", 5], [39.112, "mọi", 5], [39.362, "phương", 5], [39.575, "thức", 5], [39.688, "xử", 5], [39.875, "lý", 5], [40.125, "phải", 5], [40.325, "trả", 5], [40.587, "về", 5], [40.763, "nhanh,", 5], [41.25, "không", 5], [41.513, "được", 5], [41.663, "chặn.", 5]], "cues": [5.213, 18.65, 37.075], "lang": 5.6}, {"ten": "Slide 5. 5 000 kết nối: số thread và thông lượng của ba cách", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, kết quả phía dưới, hai ý hiện sau kết quả. Sau câu \"cao nhất không\", dừng khoảng 2 giây trước khi khung kết quả hiện.\nHiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Vậy lợi thế”; bước 3 khi đọc “Virtual thread cũng”.", "start": 214.46, "audio": "audio/391aeec66b80cb34.mp3", "dur": 60.98, "words": [[0.1, "Để", 0], [0.338, "so", 0], [0.487, "sánh,", 0], [1.012, "mình", 0], [1.225, "viết", 0], [1.4, "thêm", 0], [1.625, "ThreadLookupServer", 0], [2.688, "theo", 0], [2.862, "mô", 0], [3.05, "hình", 0], [3.263, "thread-per-connection,", 0], [4.463, "mỗi", 0], [4.688, "kết", 0], [4.9, "nối", 0], [5.1, "một", 0], [5.3, "platform", 0], [5.737, "thread", 0], [6.0, "hoặc", 0], [6.225, "một", 0], [6.425, "virtual", 0], [6.8, "thread.", 0], [7.9, "Chương", 1], [8.225, "trình", 1], [8.45, "LoadClient", 1], [9.0, "mở", 1], [9.221, "5", 1], [9.441, "000", 1], [9.662, "kết", 1], [9.875, "nối,", 1], [10.4, "rồi", 1], [10.65, "trên", 1], [10.838, "mỗi", 1], [11.0, "kết", 1], [11.2, "nối", 1], [11.387, "gửi", 1], [11.562, "lần", 1], [11.762, "lượt", 1], [11.988, "20", 1], [12.325, "yêu", 1], [12.512, "cầu", 1], [12.787, "và", 1], [12.912, "đo", 1], [13.075, "độ", 1], [13.262, "trễ;", 1], [13.912, "client", 1], [14.375, "và", 1], [14.512, "server", 1], [14.925, "chạy", 1], [15.188, "trên", 1], [15.375, "cùng", 1], [15.575, "một", 1], [15.738, "máy", 1], [15.887, "8", 1], [16.113, "lõi.", 1], [17.363, "Các", 2], [17.562, "bạn", 2], [17.775, "thử", 2], [17.938, "đoán:", 2], [18.438, "server", 2], [19.006, "NIO", 2], [19.575, "một", 2], [19.8, "thread", 2], [20.05, "có", 2], [20.163, "thông", 2], [20.363, "lượng", 2], [20.6, "cao", 2], [20.825, "nhất", 2], [20.988, "không?", 2], [22.125, "Kết", 3], [22.337, "quả:", 3], [22.95, "ở", 3], [23.162, "5", 3], [23.375, "000", 3], [23.587, "kết", 3], [23.788, "nối,", 3], [24.3, "server", 3], [24.863, "NIO", 3], [25.425, "chỉ", 3], [25.6, "có", 3], [25.712, "7", 3], [25.925, "platform", 3], [26.413, "thread,", 3], [26.962, "bản", 3], [27.225, "platform", 3], [27.675, "thread", 3], [27.95, "có", 3], [28.512, "5", 3], [29.075, "007,", 3], [29.637, "bản", 3], [29.9, "virtual", 3], [30.262, "thread", 3], [30.5, "có", 3], [30.625, "19.", 3], [32.013, "Nhưng", 4], [32.362, "server", 4], [32.925, "NIO", 4], [33.487, "chỉ", 4], [33.65, "đạt", 4], [33.825, "khoảng", 4], [34.038, "18", 4], [34.462, "nghìn", 4], [34.688, "yêu", 4], [34.812, "cầu", 4], [35.038, "mỗi", 4], [35.263, "giây,", 4], [35.788, "thấp", 4], [36.013, "nhất", 4], [36.237, "trong", 4], [36.475, "ba", 4], [36.638, "bản,", 4], [37.188, "vì", 4], [37.35, "một", 4], [37.538, "thread", 4], [37.788, "chỉ", 4], [37.962, "dùng", 4], [38.2, "được", 4], [38.35, "một", 4], [38.538, "lõi", 4], [39.406, "CPU.", 4], [40.275, "Vậy", 5], [40.538, "lợi", 5], [40.725, "thế", 5], [40.938, "của", 5], [41.356, "NIO", 5], [41.775, "là", 5], [41.913, "số", 5], [42.1, "thread:", 5], [42.612, "server", 5], [43.025, "thật", 5], [43.325, "như", 5], [43.5, "Netty", 5], [43.888, "chạy", 5], [44.1, "nhiều", 5], [44.325, "vòng", 5], [44.55, "lặp", 5], [44.725, "Selector,", 5], [45.575, "thường", 5], [45.825, "mỗi", 5], [46.013, "lõi", 5], [46.188, "một", 5], [46.375, "vòng.", 5], [47.487, "Còn", 6], [47.737, "độ", 6], [47.9, "trễ", 6], [48.15, "của", 6], [48.263, "cả", 6], [48.438, "ba", 6], [48.638, "bản", 6], [48.925, "đều", 6], [49.087, "cao", 6], [49.362, "vì", 6], [49.579, "5", 6], [49.796, "000", 6], [50.013, "client", 6], [50.337, "gửi", 6], [50.538, "liên", 6], [50.763, "tục,", 6], [51.263, "nên", 6], [51.612, "yêu", 6], [51.75, "cầu", 6], [52.013, "phải", 6], [52.163, "xếp", 6], [52.35, "hàng.", 6], [53.5, "Virtual", 7], [54.013, "thread", 7], [54.263, "cũng", 7], [54.475, "dựa", 7], [54.65, "trên", 7], [54.875, "cơ", 7], [55.038, "chế", 7], [55.275, "chờ", 7], [55.513, "sự", 7], [55.675, "kiện", 7], [55.925, "như", 7], [56.15, "Selector,", 7], [57.025, "nên", 7], [57.3, "giữ", 7], [57.538, "được", 7], [57.688, "cách", 7], [57.837, "viết", 7], [58.062, "mã", 7], [58.25, "chặn", 7], [58.538, "mà", 7], [58.688, "vẫn", 7], [58.913, "cần", 7], [59.2, "ít", 7], [59.362, "platform", 7], [59.85, "thread.", 7]], "cues": [22.125, 40.275, 53.5], "lang": 9.6}, {"ten": "Slide 6. Một lần read có thể chỉ nhận một phần dòng: ghép dòng trong buffer riêng", "loai": "slide", "slide": "S06", "dung": "Mã phía trên, kết quả phía dưới, hai ý hiện sau kết quả.\nHiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Nghĩa là phương thức read”; bước 3 khi đọc “Vì vậy, mỗi kết nối”.", "start": 285.04, "audio": "audio/ae1fde97fe79a801.mp3", "dur": 45.05, "words": [[0.1, "Đổi", 0], [0.35, "lại", 0], [0.588, "cho", 0], [0.738, "số", 0], [0.963, "thread", 0], [1.3, "ít,", 0], [1.688, "chương", 0], [1.938, "trình", 0], [2.15, "phải", 0], [2.288, "tự", 0], [2.475, "làm", 0], [2.65, "một", 0], [2.812, "việc", 0], [3.05, "mà", 0], [3.344, "I/O", 0], [3.638, "chặn", 0], [3.95, "vẫn", 0], [4.138, "làm", 0], [4.325, "thay:", 0], [4.875, "ghép", 0], [5.125, "dòng.", 0], [6.3, "Với", 1], [6.725, "I/O", 1], [7.15, "chặn,", 1], [7.688, "phương", 1], [7.987, "thức", 1], [8.2, "readLine", 1], [8.825, "chờ", 1], [9.088, "đến", 1], [9.287, "khi", 1], [9.463, "đủ", 1], [9.65, "một", 1], [9.863, "dòng.", 1], [11.012, "Chương", 2], [11.325, "trình", 2], [11.55, "SplitClient", 2], [12.238, "gửi", 2], [12.438, "hai", 2], [12.675, "yêu", 2], [12.863, "cầu", 2], [13.088, "hanoi", 2], [13.525, "và", 2], [13.662, "huế", 2], [13.85, "thành", 2], [14.062, "ba", 2], [14.238, "mảnh,", 2], [14.825, "cách", 2], [15.025, "nhau", 2], [15.25, "nửa", 2], [15.475, "giây,", 2], [15.95, "và", 2], [16.125, "mảnh", 2], [16.35, "thứ", 2], [16.525, "hai", 2], [16.738, "dừng", 2], [17.025, "ở", 2], [17.125, "giữa", 2], [17.363, "từ", 2], [17.562, "huế.", 2], [18.762, "Kết", 3], [18.988, "quả", 3], [19.225, "trên", 3], [19.425, "server", 3], [19.825, "chạy", 3], [20.062, "chế", 3], [20.288, "độ", 3], [20.45, "trace:", 3], [20.95, "lần", 3], [21.175, "đọc", 3], [21.312, "đầu", 3], [21.525, "nhận", 3], [21.788, "3", 3], [21.962, "byte,", 3], [22.438, "chưa", 3], [22.663, "đủ", 3], [22.863, "dòng", 3], [23.075, "nào;", 3], [23.55, "lần", 3], [23.775, "thứ", 3], [23.962, "hai", 3], [24.15, "nhận", 3], [24.4, "5", 3], [24.575, "byte,", 3], [25.075, "đủ", 3], [25.262, "một", 3], [25.475, "dòng", 3], [25.738, "và", 3], [25.863, "giữ", 3], [26.062, "lại", 3], [26.3, "2", 3], [26.462, "byte;", 3], [26.962, "lần", 3], [27.2, "thứ", 3], [27.4, "ba", 3], [27.6, "nhận", 3], [27.863, "4", 3], [28.087, "byte,", 3], [28.562, "đủ", 3], [28.8, "dòng", 3], [29.05, "thứ", 3], [29.225, "hai.", 3], [30.387, "Nghĩa", 4], [30.775, "là", 4], [30.95, "phương", 4], [31.2, "thức", 4], [31.375, "read", 4], [31.562, "không", 4], [31.837, "chặn", 4], [32.075, "chỉ", 4], [32.25, "trả", 4], [32.55, "về", 4], [32.688, "số", 4], [32.888, "byte", 4], [33.087, "đang", 4], [33.275, "có,", 4], [33.8, "không", 4], [34.062, "biết", 4], [34.263, "gì", 4], [34.475, "về", 4], [34.638, "ranh", 4], [34.85, "giới", 4], [35.038, "dòng.", 4], [36.188, "Vì", 5], [36.438, "vậy,", 5], [36.837, "mỗi", 5], [37.025, "kết", 5], [37.225, "nối", 5], [37.425, "cần", 5], [37.688, "buffer", 5], [38.087, "riêng,", 5], [38.587, "và", 5], [38.788, "chương", 5], [39.0, "trình", 5], [39.2, "phải", 5], [39.337, "tự", 5], [39.525, "ghép", 5], [39.725, "đủ", 5], [39.913, "dòng", 5], [40.175, "rồi", 5], [40.325, "mới", 5], [40.525, "giải", 5], [40.712, "mã", 5], [41.412, "UTF-8,", 5], [42.112, "đúng", 5], [42.362, "việc", 5], [42.55, "framing", 5], [43.0, "message", 5], [43.575, "ở", 5], [43.725, "Chương", 5], [43.975, "1.", 5]], "cues": [18.762, 30.387, 36.188], "lang": 9.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án A được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 339.69, "audio": "audio/ac474fc39d0a8095.mp3", "dur": 3.94, "words": [[0.1, "Giá", 0], [0.412, "trị", 0], [0.625, "trả", 0], [0.887, "về", 0], [1.1, "của", 0], [1.25, "phương", 0], [1.462, "thức", 0], [1.613, "select", 0], [2.087, "dễ", 0], [2.362, "bị", 0], [2.55, "hiểu", 0], [2.75, "nhầm.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/f4cf3f6b2dd4b74b.mp3", "dur2": 12.98, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.675, "là", 0], [0.9, "A.", 0], [1.25, "Giá", 1], [1.475, "trị", 1], [1.675, "trả", 1], [1.975, "về", 1], [2.125, "là", 1], [2.25, "số", 1], [2.462, "key", 1], [2.7, "vừa", 1], [2.862, "sẵn", 1], [3.1, "sàng;", 1], [3.612, "số", 1], [3.85, "kết", 1], [4.05, "nối", 1], [4.275, "đang", 1], [4.463, "mở", 1], [4.638, "có", 1], [4.75, "thể", 1], [4.9, "lớn", 1], [5.138, "hơn", 1], [5.325, "nhiều,", 1], [5.825, "vì", 1], [6.05, "phần", 1], [6.263, "lớn", 1], [6.487, "kết", 1], [6.7, "nối", 1], [6.9, "chưa", 1], [7.138, "có", 1], [7.275, "dữ", 1], [7.463, "liệu.", 1], [8.625, "Chương", 2], [8.938, "trình", 2], [9.137, "duyệt", 2], [9.35, "tập", 2], [9.562, "selectedKeys", 2], [10.475, "để", 2], [10.637, "biết", 2], [10.838, "đó", 2], [11.075, "là", 2], [11.175, "những", 2], [11.412, "kết", 2], [11.637, "nối", 2], [11.825, "nào.", 2]], "dap_an": "A", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án B.", "start": 363.21, "audio": "audio/e657939880b57b49.mp3", "dur": 3.72, "words": [[0.1, "Còn", 0], [0.362, "nếu", 0], [0.562, "bỏ", 0], [0.85, "buffer", 0], [1.288, "riêng", 0], [1.575, "của", 0], [1.725, "từng", 0], [1.95, "kết", 0], [2.15, "nối", 0], [2.375, "thì", 0], [2.513, "sao?", 0]], "slide2": "Q2-dap-an", "audio2": "audio/3a481f5467ca49a2.mp3", "dur2": 15.05, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.662, "là", 0], [0.775, "B.", 0], [1.15, "Phần", 1], [1.387, "dòng", 1], [1.6, "chưa", 1], [1.775, "đủ", 1], [2.0, "phải", 1], [2.175, "chờ", 1], [2.4, "lần", 1], [2.575, "đọc", 1], [2.725, "sau", 1], [2.975, "của", 1], [3.087, "đúng", 1], [3.275, "kết", 1], [3.475, "nối", 1], [3.65, "đó,", 1], [4.175, "nên", 1], [4.487, "dùng", 1], [4.737, "chung", 1], [4.963, "buffer", 1], [5.375, "thì", 1], [5.588, "byte", 1], [5.838, "của", 1], [6.0, "hai", 1], [6.175, "kết", 1], [6.425, "nối", 1], [6.612, "trộn", 1], [6.85, "lẫn.", 1], [8.037, "Phương", 2], [8.387, "án", 2], [8.637, "A", 2], [8.912, "là", 2], [9.025, "hiểu", 2], [9.213, "nhầm", 2], [9.463, "hay", 2], [9.613, "gặp:", 2], [10.075, "xử", 2], [10.275, "lý", 2], [10.488, "từng", 2], [10.725, "key", 2], [10.925, "một", 2], [11.113, "không", 2], [11.325, "giúp", 2], [11.488, "gì,", 2], [11.963, "vì", 2], [12.125, "một", 2], [12.3, "dòng", 2], [12.512, "có", 2], [12.625, "thể", 2], [12.787, "trải", 2], [13.0, "qua", 2], [13.238, "nhiều", 2], [13.475, "lượt", 2], [13.688, "của", 2], [13.812, "vòng", 2], [14.012, "lặp.", 2]], "dap_an": "B", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “Với non-blocking I/O”; bước 2 khi đọc “Đổi lại”; bước 3 khi đọc “Một vòng lặp”; bước 4 khi đọc “Tám từ khóa”.", "start": 388.58, "audio": "audio/0c981aa571e86d72.mp3", "dur": 36.34, "words": [[0.1, "Với", 0], [0.375, "non-blocking", 0], [1.082, "I/O,", 0], [1.788, "mỗi", 0], [2.0, "SocketChannel", 0], [2.725, "đăng", 0], [2.938, "ký", 0], [3.163, "sự", 0], [3.337, "kiện", 0], [3.638, "với", 0], [3.775, "Selector,", 0], [4.575, "và", 0], [4.737, "một", 0], [4.938, "thread", 0], [5.175, "chạy", 0], [5.35, "vòng", 0], [5.562, "lặp", 0], [5.737, "select", 0], [6.188, "để", 0], [6.35, "phục", 0], [6.537, "vụ", 0], [6.75, "mọi", 0], [6.95, "kết", 0], [7.162, "nối,", 0], [7.675, "theo", 0], [7.875, "mẫu", 0], [8.137, "Reactor.", 0], [9.475, "Đổi", 1], [9.738, "lại,", 1], [10.25, "chương", 1], [10.488, "trình", 1], [10.7, "phải", 1], [10.825, "giữ", 1], [11.025, "ByteBuffer", 1], [11.662, "riêng", 1], [11.925, "cho", 1], [12.05, "từng", 1], [12.275, "kết", 1], [12.475, "nối", 1], [12.738, "và", 1], [12.875, "tự", 1], [13.1, "ghép", 1], [13.3, "đủ", 1], [13.488, "dòng,", 1], [14.012, "vì", 1], [14.188, "một", 1], [14.375, "lần", 1], [14.575, "đọc", 1], [14.725, "có", 1], [14.825, "thể", 1], [15.0, "chỉ", 1], [15.175, "nhận", 1], [15.438, "một", 1], [15.613, "phần", 1], [15.812, "dòng.", 1], [16.925, "Một", 2], [17.275, "vòng", 2], [17.5, "lặp", 2], [17.7, "tiết", 2], [17.887, "kiệm", 2], [18.1, "thread", 2], [18.475, "nhưng", 2], [18.712, "chỉ", 2], [18.875, "dùng", 2], [19.087, "một", 2], [19.25, "lõi", 2], [19.831, "CPU:", 2], [20.413, "muốn", 2], [20.663, "tăng", 2], [20.863, "thông", 2], [21.05, "lượng", 2], [21.3, "thì", 2], [21.438, "chạy", 2], [21.663, "nhiều", 2], [21.887, "vòng", 2], [22.1, "lặp,", 2], [22.562, "và", 2], [22.762, "khi", 2], [23.025, "yêu", 2], [23.212, "cầu", 2], [23.45, "phải", 2], [23.587, "xếp", 2], [23.788, "hàng", 2], [24.062, "thì", 2], [24.212, "độ", 2], [24.425, "trễ", 2], [24.613, "tăng.", 2], [25.775, "Tám", 3], [26.087, "từ", 3], [26.275, "khóa", 3], [26.5, "khép", 3], [26.725, "lại", 3], [26.875, "phần", 3], [27.087, "này:", 3], [27.55, "non-blocking", 3], [28.396, "I/O,", 3], [29.241, "SocketChannel,", 3], [30.087, "Selector,", 3], [30.962, "SelectionKey,", 3], [32.175, "ByteBuffer,", 3], [33.237, "mẫu", 3], [33.525, "Reactor,", 3], [34.225, "thông", 3], [34.45, "lượng", 3], [34.737, "và", 3], [34.862, "độ", 3], [35.075, "trễ.", 3]], "cues": [0.1, 9.475, 16.925, 25.775], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Netty là framework”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 425.52, "audio": "audio/6ca75784a859be15.mp3", "dur": 23.5, "words": [[0.1, "Netty", 0], [0.713, "là", 0], [0.9, "framework", 0], [1.538, "xây", 0], [1.775, "trên", 0], [1.962, "mẫu", 0], [2.188, "Reactor,", 0], [2.888, "với", 0], [3.075, "nhiều", 0], [3.312, "vòng", 0], [3.513, "lặp", 0], [3.663, "sự", 0], [3.85, "kiện", 0], [4.162, "và", 0], [4.287, "sẵn", 0], [4.575, "các", 0], [4.737, "bộ", 0], [4.9, "ghép", 0], [5.088, "dòng.", 0], [6.225, "Mẫu", 1], [6.662, "Proactor,", 1], [7.425, "với", 1], [7.638, "lớp", 1], [7.95, "AsynchronousSocketChannel", 1], [9.275, "của", 1], [9.488, "Java,", 1], [10.175, "nhận", 1], [10.438, "thông", 1], [10.625, "báo", 1], [10.838, "từ", 1], [11.012, "hệ", 1], [11.175, "điều", 1], [11.338, "hành", 1], [11.562, "khi", 1], [11.738, "thao", 1], [11.887, "tác", 1], [12.1, "đọc,", 1], [12.537, "ghi", 1], [12.775, "đã", 1], [12.925, "xong,", 1], [13.438, "thay", 1], [13.625, "vì", 1], [13.775, "khi", 1], [13.963, "channel", 1], [14.35, "sẵn", 1], [14.6, "sàng.", 1], [15.762, "Bài", 2], [16.012, "tập", 2], [16.225, "mở", 2], [16.413, "rộng", 2], [16.688, "là", 2], [16.85, "chia", 2], [17.062, "kết", 2], [17.275, "nối", 2], [17.488, "cho", 2], [17.65, "nhiều", 2], [17.887, "Selector,", 2], [18.7, "mỗi", 2], [18.913, "lõi", 2], [19.388, "CPU", 2], [19.863, "một", 2], [20.062, "vòng", 2], [20.275, "lặp,", 2], [20.712, "rồi", 2], [20.975, "đo", 2], [21.137, "lại", 2], [21.3, "thông", 2], [21.5, "lượng", 2], [21.762, "bằng", 2], [21.988, "LoadClient.", 2]], "cues": [0.1, 15.762], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 449.62, "audio": "audio/f4ec6cdf194446be.mp3", "dur": 15.12, "words": [[0.1, "Với", 0], [0.338, "lời", 0], [0.5, "gọi", 0], [0.738, "không", 0], [0.988, "chặn", 0], [1.275, "và", 0], [1.793, "NIO,", 0], [2.312, "nhóm", 0], [2.612, "Hiệu", 0], [2.8, "năng", 0], [3.062, "đã", 0], [3.188, "giải", 0], [3.375, "phóng", 0], [3.612, "thread", 0], [3.987, "ở", 0], [4.062, "cả", 0], [4.25, "phía", 0], [4.487, "gọi", 0], [4.725, "lẫn", 0], [4.938, "phía", 0], [5.15, "server.", 0], [6.475, "Phần", 1], [6.737, "tiếp", 1], [6.938, "theo", 1], [7.112, "mở", 1], [7.312, "nhóm", 1], [7.588, "Độ", 1], [7.725, "tin", 1], [7.95, "cậy", 1], [8.175, "với", 1], [8.312, "retry,", 1], [9.012, "request", 1], [9.319, "ID", 1], [9.625, "và", 1], [9.738, "checksum", 1], [10.213, "trên", 1], [10.738, "UDP,", 1], [11.262, "khi", 1], [11.55, "datagram", 1], [12.213, "có", 1], [12.338, "thể", 1], [12.488, "mất,", 1], [12.925, "lặp", 1], [13.162, "hay", 1], [13.338, "hỏng", 1], [13.588, "trên", 1], [13.762, "đường", 1], [13.95, "truyền.", 1]], "cues": [], "lang": 0.6}], "video_sau": "Độ tin cậy: retry, request ID và checksum trên UDP"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

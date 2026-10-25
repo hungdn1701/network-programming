@@ -1,0 +1,6 @@
+nio          0 open connections,     7 live platform threads
+nio       1000 open connections,     7 live platform threads
+nio       2000 open connections,     7 live platform threads
+nio       3000 open connections,     7 live platform threads
+nio       4000 open connections,     7 live platform threads
+nio       5000 open connections,     7 live platform threads

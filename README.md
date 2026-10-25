@@ -59,13 +59,13 @@ TS. Đặng Ngọc Hùng · 3 tín chỉ · Tiếng Việt · Java 21
 
 | | Phần | Phút | |
 |---|---|---|---|
-| 1 | Bảo mật: TLS và secure socket trong Java | 8′ |  |
-| 2 | Bảo mật: xác thực và phân quyền với OAuth 2.0 và JWT | 7′ |  |
-| 3 | Hiệu năng: lời gọi không chặn với CompletableFuture và gRPC async stub | 7′ |  |
-| 4 | Hiệu năng: NIO, Selector và mẫu Reactor | 8′ |  |
-| 5 | Độ tin cậy: retry, request ID và checksum trên UDP | 8′ |  |
-| 6 | Độ tin cậy: backoff, circuit breaker và health check | 7′ |  |
-| 7 | Bài toán ứng dụng: giám sát cảm biến với MQTT và CoAP | 8′ |  |
+| 1 | Bảo mật: TLS và secure socket trong Java | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V30/) · [slide](https://hungdn1701.github.io/network-programming/V30/slide.pdf) · [mã](code/chapter-5/01-tls/) |
+| 2 | Bảo mật: xác thực và phân quyền với OAuth 2.0 và JWT | 7′ | [xem trước](https://hungdn1701.github.io/network-programming/V31/) · [slide](https://hungdn1701.github.io/network-programming/V31/slide.pdf) · [mã](code/chapter-5/02-jwt/) |
+| 3 | Hiệu năng: lời gọi không chặn với CompletableFuture và gRPC async stub | 7′ | [xem trước](https://hungdn1701.github.io/network-programming/V32/) · [slide](https://hungdn1701.github.io/network-programming/V32/slide.pdf) · [mã](code/chapter-5/03-async/) |
+| 4 | Hiệu năng: NIO, Selector và mẫu Reactor | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V33/) · [slide](https://hungdn1701.github.io/network-programming/V33/slide.pdf) · [mã](code/chapter-5/04-nio/) |
+| 5 | Độ tin cậy: retry, request ID và checksum trên UDP | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V34/) · [slide](https://hungdn1701.github.io/network-programming/V34/slide.pdf) · [mã](code/chapter-5/05-udp-reliable/) |
+| 6 | Độ tin cậy: backoff, circuit breaker và health check | 7′ | [xem trước](https://hungdn1701.github.io/network-programming/V35/) · [slide](https://hungdn1701.github.io/network-programming/V35/slide.pdf) · [mã](code/chapter-5/06-resilience/) |
+| 7 | Bài toán ứng dụng: giám sát cảm biến với MQTT và CoAP | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V36/) · [slide](https://hungdn1701.github.io/network-programming/V36/slide.pdf) · [mã](code/chapter-5/07-mqtt/) |
 
 ---
 

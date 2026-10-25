@@ -1,0 +1,14 @@
+lossy UDP lookup on port 9199: loss 30%, late 15%, corrupt 10%
+id 1: processed (time 1), replied
+id 2: request lost
+id 2: processed (time 1), reply corrupted
+id 2: processed (time 2), reply corrupted
+id 3: processed (time 1), reply sent 450 ms late
+id 3: processed (time 2), replied
+id 4: request lost
+id 4: processed (time 1), replied
+id 5: request lost
+id 5: processed (time 1), replied
+id 6: processed (time 1), replied
+id 7: request lost
+id 7: processed (time 1), replied

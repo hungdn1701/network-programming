@@ -1,0 +1,6 @@
+virtual      0 open connections,     7 live platform threads
+virtual   1000 open connections,    19 live platform threads
+virtual   2000 open connections,    19 live platform threads
+virtual   3000 open connections,    19 live platform threads
+virtual   4000 open connections,    19 live platform threads
+virtual   5000 open connections,    19 live platform threads

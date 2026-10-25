@@ -1,0 +1,5 @@
+$ sh make-certs.sh
+Generating 384 bit EC (secp384r1) key pair and self-signed certificate (SHA384withECDSA) with a validity of 365 days
+    for: CN=localhost
+Certificate stored in file <server.crt>
+Certificate was added to keystore

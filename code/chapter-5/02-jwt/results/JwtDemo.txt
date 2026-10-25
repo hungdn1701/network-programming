@@ -1,0 +1,5 @@
+no token                        -> 401 {"error":"missing token"}
+valid token, entries:write      -> 200 {"key":"sapa","value":"Thị trấn vùng cao"}
+expired token                   -> 401 {"error":"token expired"}
+tampered payload                -> 401 {"error":"bad signature"}
+valid token, entries:read only  -> 403 {"error":"insufficient scope"}

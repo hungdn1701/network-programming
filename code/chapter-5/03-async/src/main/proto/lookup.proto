@@ -1,0 +1,20 @@
+// V32: hợp đồng của dịch vụ tra cứu, như phần gRPC trước.
+syntax = "proto3";
+
+package lookup;
+
+option java_package = "netlab.async.lookup";
+option java_multiple_files = true;
+
+service Lookup {
+  rpc Lookup (LookupRequest) returns (LookupReply);  // unary: một request, một response
+}
+
+message LookupRequest {
+  string key = 1;  // số trường 1: định danh trường khi mã hóa, không được đổi
+}
+
+message LookupReply {
+  bool found = 1;
+  string value = 2;
+}

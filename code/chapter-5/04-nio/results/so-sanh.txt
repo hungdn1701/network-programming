@@ -1,0 +1,6 @@
+nio       5000 open connections,     7 live platform threads
+platform  5000 open connections,  5007 live platform threads
+virtual   5000 open connections,    19 live platform threads
+nio       18,177 requests/s   p50 250.9 ms   p99 461.0 ms   0 errors
+platform  30,793 requests/s   p50 109.8 ms   p99 472.1 ms   0 errors
+virtual   25,291 requests/s   p50 162.7 ms   p99 367.4 ms   0 errors

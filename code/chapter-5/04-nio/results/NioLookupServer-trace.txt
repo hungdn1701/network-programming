@@ -1,0 +1,4 @@
+nio          0 open connections,     7 live platform threads
+read 3 bytes, 0 complete line(s), 3 byte(s) kept
+read 5 bytes, 1 complete line(s), 2 byte(s) kept
+read 4 bytes, 1 complete line(s), 0 byte(s) kept

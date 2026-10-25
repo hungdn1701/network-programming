@@ -1,0 +1,4 @@
+token   474 chars: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJib2IiLCJzY29...
+header  {"alg":"RS256","typ":"JWT"}
+payload {"sub":"bob","scope":"entries:read","iat":1792910918,"exp":1792911218}
+signature 342 chars (RSA 2048 bit)

@@ -1,0 +1,6 @@
+platform     0 open connections,     7 live platform threads
+platform  1000 open connections,  1007 live platform threads
+platform  2000 open connections,  2007 live platform threads
+platform  3000 open connections,  3007 live platform threads
+platform  4000 open connections,  4007 live platform threads
+platform  5000 open connections,  5007 live platform threads

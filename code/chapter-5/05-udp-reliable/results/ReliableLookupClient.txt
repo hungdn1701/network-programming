@@ -1,0 +1,11 @@
+id 1   hanoi  OK Thủ đô của Việt Nam     sends 1
+       dropped datagram: CRC32 mismatch
+       dropped datagram: CRC32 mismatch
+id 2   huế    (no reply after 3 sends)   sends 3
+id 3   sapa   NOTFOUND                   sends 2
+       ignored late reply of id 3
+id 4   hanoi  OK Thủ đô của Việt Nam     sends 2
+id 5   huế    OK Cố đô triều Nguyễn      sends 2
+id 6   hanoi  OK Thủ đô của Việt Nam     sends 1
+id 7   sapa   NOTFOUND                   sends 2
+7 requests, 6 answered, 13 datagrams sent

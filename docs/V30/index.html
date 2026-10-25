@@ -1,0 +1,464 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V30 — Bảo mật: TLS và secure socket trong Java · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-5/01-tls">Mã</a>
+<h1>V30 · Bảo mật: TLS và secure socket trong Java</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 5</div><div class="ten">Bảo mật: TLS và secure socket trong Java</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="CH"><header><h1>Chương 5: Các chủ đề nâng cao</h1></header><main class="bo-cuc-lo-trinh"><div class="lo-trinh" style="--cot: 4"><div class="chang" data-s="1"><div class="ten-chang"><span class="so">1</span>Bảo mật</div><ol><li class="hien-tai"><span>TLS và secure socket trong Java</span></li><li class=""><span>Xác thực và phân quyền với OAuth 2.0 và JWT</span></li></ol></div><div class="chang" data-s="2"><div class="ten-chang"><span class="so">2</span>Hiệu năng</div><ol><li class=""><span>Lời gọi không chặn với CompletableFuture và gRPC async stub</span></li><li class=""><span>NIO, Selector và mẫu Reactor</span></li></ol></div><div class="chang" data-s="3"><div class="ten-chang"><span class="so">3</span>Độ tin cậy</div><ol><li class=""><span>Retry, request ID và checksum trên UDP</span></li><li class=""><span>Backoff, circuit breaker và health check</span></li></ol></div><div class="chang" data-s="4"><div class="ten-chang"><span class="so">4</span>IoT</div><ol><li class=""><span>Bài toán ứng dụng: giám sát cảm biến với MQTT và CoAP</span></li></ol></div></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Dữ liệu dạng rõ, server không được xác thực</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Dịch vụ tra cứu gửi dữ liệu <b>dạng rõ</b>: máy nào trên đường truyền cũng đọc và sửa được</li><li data-s="2">Client không biết mình có đang kết nối tới <b>đúng server</b> hay không</li><li data-s="3"><b>TLS</b>: mã hóa đường truyền và xác thực server bằng <b>chứng chỉ</b></li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> TLS bảo vệ kết nối thế nào, và bật TLS cho dịch vụ tra cứu bằng Java ra sao?</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Trên đường truyền, dữ liệu tra cứu hiện nguyên văn</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">Socket</span> server = <span class="hl-k">new</span> <span class="hl-m">Socket</span>(<span class="hl-s">"</span><span class="hl-s">127.0.0.1</span><span class="hl-s">"</span>, <span class="hl-n">9199</span>);
+<span class="hl-t">System</span>.out.<span class="hl-m">println</span>(direction + <span class="hl-s">"</span><span class="hl-s"> </span><span class="hl-s">"</span> + n + <span class="hl-s">"</span><span class="hl-s"> bytes: </span><span class="hl-s">"</span> + <span class="hl-m">show</span>(buf, n));
+out.<span class="hl-m">write</span>(buf, <span class="hl-n">0</span>, n);  <span class="hl-c">// chuyển tiếp nguyên vẹn</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>tap on port 9200 -&gt; 127.0.0.1:9199
+client -&gt; server 7 bytes: "hanoi\n"
+server -&gt; client 32 bytes: "OK Thủ đô của Việt Nam\n"</pre></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Handshake TLS: thỏa thuận khóa, xác thực server, rồi mã hóa</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Handshake TLS 1.3 rút gọn trên một kết nối TCP. Client gửi ClientHello gồm phiên bản, các bộ mã và phần khóa của client; server trả ServerHello với bộ mã đã chọn và phần khóa của server; từ đây hai bên tính được cùng một khóa phiên, hai message này còn ở dạng rõ, bản ghi bắt đầu bằng byte 16. Server gửi chứng chỉ, chữ ký chứng minh giữ khóa riêng và Finished, đã mã hóa. Client kiểm tra chuỗi tin cậy và hostname rồi gửi Finished. Sau đó dữ liệu ứng dụng như dòng hanoi đi trong các bản ghi đã mã hóa, bắt đầu bằng byte 17.">
+  <defs>
+    <marker id="ht-a" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="ht-g" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#8A6508"/></marker>
+    <marker id="ht-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- hai bên -->
+  <rect x="300" y="24" width="180" height="52" rx="6" fill="#F4F5F8" stroke="#5B6478" stroke-width="2.5"/>
+  <text x="390" y="58" text-anchor="middle" font-size="22" fill="#373D4E">client</text>
+  <rect x="1180" y="24" width="180" height="52" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+  <text x="1270" y="58" text-anchor="middle" font-size="22" fill="#051A53">server</text>
+  <line x1="390" y1="76" x2="390" y2="500" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="6 5"/>
+  <line x1="1270" y1="76" x2="1270" y2="500" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="6 5"/>
+
+  <!-- ① trao đổi phần khóa, dạng rõ -->
+  <g data-s="1">
+    <line x1="392" y1="122" x2="1264" y2="122" stroke="#051A53" stroke-width="2.5" marker-end="url(#ht-a)"/>
+    <text x="830" y="110" text-anchor="middle" font-size="20" fill="#051A53">ClientHello: phiên bản, bộ mã, phần khóa của client</text>
+    <line x1="1268" y1="176" x2="396" y2="176" stroke="#051A53" stroke-width="2.5" marker-end="url(#ht-a)"/>
+    <text x="830" y="164" text-anchor="middle" font-size="20" fill="#051A53">ServerHello: bộ mã đã chọn, phần khóa của server</text>
+    <text x="1300" y="140" font-size="20" fill="#5B6478">dạng rõ</text>
+    <text x="1300" y="166" font-size="20" fill="#5B6478" font-family="Consolas, monospace">16 03 03 …</text>
+    <text x="40" y="160" font-size="20" fill="#22603F">hai bên tính được</text>
+    <text x="40" y="186" font-size="20" fill="#22603F">cùng một khóa phiên</text>
+  </g>
+
+  <!-- ② server chứng minh danh tính, đã mã hóa -->
+  <g data-s="2">
+    <line x1="1268" y1="250" x2="396" y2="250" stroke="#8A6508" stroke-width="3" marker-end="url(#ht-g)"/>
+    <text x="830" y="238" text-anchor="middle" font-size="20" fill="#6B4E06">chứng chỉ, chữ ký bằng khóa riêng, Finished</text>
+    <text x="1300" y="256" font-size="20" fill="#6B4E06">đã mã hóa</text>
+    <text x="40" y="282" font-size="20" fill="#6B4E06">kiểm tra chuỗi tin cậy</text>
+    <text x="40" y="308" font-size="20" fill="#6B4E06">và hostname</text>
+    <line x1="392" y1="322" x2="1264" y2="322" stroke="#8A6508" stroke-width="3" marker-end="url(#ht-g)"/>
+    <text x="830" y="310" text-anchor="middle" font-size="20" fill="#6B4E06">Finished</text>
+  </g>
+
+  <!-- ③ dữ liệu ứng dụng, đã mã hóa -->
+  <g data-s="3">
+    <line x1="392" y1="400" x2="1264" y2="400" stroke="#2F855A" stroke-width="3" marker-end="url(#ht-ok)"/>
+    <text x="830" y="388" text-anchor="middle" font-size="20" fill="#22603F">"hanoi", đã mã hóa</text>
+    <line x1="1268" y1="456" x2="396" y2="456" stroke="#2F855A" stroke-width="3" marker-end="url(#ht-ok)"/>
+    <text x="830" y="444" text-anchor="middle" font-size="20" fill="#22603F">"OK Thủ đô của Việt Nam", đã mã hóa</text>
+    <text x="1300" y="432" font-size="20" fill="#22603F" font-family="Consolas, monospace">17 03 03 …</text>
+    <text x="40" y="430" font-size="20" fill="#22603F">dữ liệu ứng dụng</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Handshake TLS</b>: trao đổi phần khóa để có khóa phiên, server chứng minh danh tính bằng chứng chỉ; sau đó mọi dữ liệu được mã hóa.</p></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Chứng chỉ, keystore, truststore và kiểm tra hostname</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Server giữ keystore gồm khóa riêng và chứng chỉ X.509 của mình. Chứng chỉ của server ghi tên localhost và được CA trung gian ký; chứng chỉ CA trung gian được CA gốc ký; CA gốc tự ký và nằm trong truststore của client. Client đi ngược chuỗi chữ ký tới một CA trong truststore. Sau đó client so tên trong chứng chỉ với host đã kết nối: kết nối tới localhost thì khớp, tới 127.0.0.1 thì không khớp và handshake thất bại. Trong ví dụ của phần, chứng chỉ tự ký: chuỗi chỉ có một chứng chỉ, và chính chứng chỉ đó được đưa vào truststore.">
+  <defs>
+    <marker id="ct-a" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#8A6508"/></marker>
+  </defs>
+
+  <!-- ① keystore của server: khóa riêng và chứng chỉ -->
+  <g data-s="1">
+    <rect x="40" y="40" width="440" height="260" rx="8" fill="none" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="60" y="74" font-size="21" fill="#5B6478">server · keystore</text>
+    <rect x="70" y="96" width="380" height="64" rx="6" fill="#FBEAEA" stroke="#BC2626" stroke-width="2.5"/>
+    <text x="260" y="136" text-anchor="middle" font-size="20" fill="#9B1C1C">khóa riêng (không rời server)</text>
+    <rect x="70" y="180" width="380" height="96" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="260" y="214" text-anchor="middle" font-size="21" font-weight="500" fill="#051A53">chứng chỉ X.509</text>
+    <text x="260" y="246" text-anchor="middle" font-size="20" fill="#373D4E">tên: localhost · khóa công khai</text>
+  </g>
+
+  <!-- ② chuỗi chữ ký tới CA trong truststore -->
+  <g data-s="2">
+    <rect x="620" y="180" width="300" height="96" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="770" y="214" text-anchor="middle" font-size="21" font-weight="500" fill="#6B4E06">CA trung gian</text>
+    <text x="770" y="246" text-anchor="middle" font-size="20" fill="#6B4E06">ký chứng chỉ server</text>
+    <rect x="1060" y="180" width="300" height="96" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="1210" y="214" text-anchor="middle" font-size="21" font-weight="500" fill="#6B4E06">CA gốc</text>
+    <text x="1210" y="246" text-anchor="middle" font-size="20" fill="#6B4E06">ký CA trung gian</text>
+    <line x1="618" y1="228" x2="456" y2="228" stroke="#8A6508" stroke-width="2.5" marker-end="url(#ct-a)"/>
+    <line x1="1058" y1="228" x2="926" y2="228" stroke="#8A6508" stroke-width="2.5" marker-end="url(#ct-a)"/>
+    <text x="537" y="216" text-anchor="middle" font-size="20" fill="#6B4E06">ký</text>
+    <text x="992" y="216" text-anchor="middle" font-size="20" fill="#6B4E06">ký</text>
+    <rect x="1040" y="40" width="680" height="260" rx="8" fill="none" stroke="#2F855A" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="1060" y="74" font-size="21" fill="#22603F">client · truststore: các CA được tin</text>
+    <text x="1060" y="330" font-size="20" fill="#22603F">client đi ngược chuỗi chữ ký tới một CA trong truststore</text>
+  </g>
+
+  <!-- ③ kiểm tra hostname; ví dụ tự ký -->
+  <g data-s="3">
+    <rect x="40" y="370" width="820" height="100" rx="6" fill="#F4F5F8" stroke="#5B6478" stroke-width="2"/>
+    <text x="64" y="408" font-size="20" fill="#373D4E">so tên trong chứng chỉ với host đã kết nối:</text>
+    <text x="64" y="444" font-size="20" fill="#22603F" font-family="Consolas, monospace">localhost ✓</text>
+    <text x="300" y="444" font-size="20" fill="#9B1C1C" font-family="Consolas, monospace">127.0.0.1 ✗ handshake thất bại</text>
+    <rect x="900" y="370" width="820" height="100" rx="6" fill="#F4F5F8" stroke="#5B6478" stroke-width="2"/>
+    <text x="924" y="408" font-size="20" fill="#373D4E">ví dụ của phần: chứng chỉ tự ký, chuỗi chỉ một chứng chỉ;</text>
+    <text x="924" y="444" font-size="20" fill="#373D4E">chính chứng chỉ đó được đưa vào truststore của client</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Keystore</b> (server): khóa riêng và chứng chỉ. <b>Truststore</b> (client): các CA được tin. Client kiểm tra chuỗi tin cậy rồi <b>kiểm tra hostname</b>.</p></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Tạo keystore và truststore bằng keytool</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Bash</span>keytool -genkeypair -alias lookup -keyalg EC -validity <span class="hl-n">365</span> <span class="hl-s">\
+</span>    -dname <span class="hl-s">"CN=localhost"</span> -ext <span class="hl-s">"SAN=dns:localhost"</span> <span class="hl-s">\
+</span>    -keystore server.p12 -storepass changeit
+keytool -exportcert -alias lookup -rfc -file server.crt <span class="hl-s">\
+</span>    -keystore server.p12 -storepass changeit
+keytool -importcert -alias lookup -file server.crt -noprompt <span class="hl-s">\
+</span>    -keystore client-trust.p12 -storepass changeit
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>$ sh make-certs.sh
+Generating 384 bit EC (secp384r1) key pair and self-signed certificate (SHA384withECDSA) with a validity of 365 days
+    for: CN=localhost
+Certificate stored in file &lt;server.crt&gt;
+Certificate was added to keystore</pre></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>Server TLS chỉ đổi cách tạo listening socket; Tap chỉ thấy bản ghi mã hóa</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">System</span>.<span class="hl-m">setProperty</span>(<span class="hl-s">"</span><span class="hl-s">javax.net.ssl.keyStore</span><span class="hl-s">"</span>, <span class="hl-s">"</span><span class="hl-s">server.p12</span><span class="hl-s">"</span>);  <span class="hl-c">// khóa riêng và chứng chỉ của server</span>
+<span class="hl-t">System</span>.<span class="hl-m">setProperty</span>(<span class="hl-s">"</span><span class="hl-s">javax.net.ssl.keyStorePassword</span><span class="hl-s">"</span>, <span class="hl-s">"</span><span class="hl-s">changeit</span><span class="hl-s">"</span>);
+listener = <span class="hl-t">SSLServerSocketFactory</span>.<span class="hl-m">getDefault</span>().<span class="hl-m">createServerSocket</span>(<span class="hl-n">9199</span>);  <span class="hl-c">// listening socket TLS</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>tap on port 9200 -&gt; 127.0.0.1:9199
+client -&gt; server 410 bytes: 16 03 03 01 95 01 00 01 91 03 03 08 03 69 72 8f ...
+server -&gt; client 127 bytes: 16 03 03 00 7a 02 00 00 76 03 03 a7 73 f0 1c 49 ...
+client -&gt; server 6 bytes: 14 03 03 00 01 01
+server -&gt; client 6 bytes: 14 03 03 00 01 01
+server -&gt; client 70 bytes: 17 03 03 00 41 00 71 55 93 56 e4 a1 fb 21 8d e8 ...
+server -&gt; client 457 bytes: 17 03 03 01 c4 b1 6f b6 8a 57 11 7e dc 35 42 83 ...
+server -&gt; client 149 bytes: 17 03 03 00 90 ab 4e 83 df 44 de 99 31 78 b7 dd ...
+server -&gt; client 90 bytes: 17 03 03 00 55 0a 76 52 b2 aa ba b4 fc b1 ff e1 ...
+client -&gt; server 90 bytes: 17 03 03 00 55 ba 33 26 b6 65 fe d5 32 8b e7 90 ...
+server -&gt; client 711 bytes: 17 03 03 02 c2 85 a2 85 e3 6e 3e e1 10 ff 7b ce ...
+client -&gt; server 45 bytes: 17 03 03 00 28 60 65 fb 5d 5e fa 99 69 a7 dc 87 ...
+server -&gt; client 70 bytes: 17 03 03 00 41 9c 72 19 23 ff 0e 57 18 d5 41 ee ...
+server -&gt; client 40 bytes: 17 03 03 00 23 79 40 ce f0 97 6b 18 1d 05 47 4a ...
+server -&gt; client 40 bytes: 17 03 03 00 23 7d 4c 9a 28 98 30 15 8b d0 e6 c7 ...</pre></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S07"><header><h1>SSLSocket không tự kiểm tra hostname; đừng tắt kiểm tra</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">SSLSocket</span> socket = (<span class="hl-t">SSLSocket</span>) <span class="hl-t">SSLSocketFactory</span>.<span class="hl-m">getDefault</span>().<span class="hl-m">createSocket</span>(host, port);
+<span class="hl-t">SSLParameters</span> params = socket.<span class="hl-m">getSSLParameters</span>();
+params.<span class="hl-m">setEndpointIdentificationAlgorithm</span>(<span class="hl-s">"</span><span class="hl-s">HTTPS</span><span class="hl-s">"</span>);  <span class="hl-c">// bật kiểm tra hostname theo chứng chỉ</span>
+socket.<span class="hl-m">setSSLParameters</span>(params);
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>$ LookupClient tls 127.0.0.1 9199 hanoi
+SSLHandshakeException: (certificate_unknown) No subject alternative names matching IP address 127.0.0.1 found
+$ LookupClient tls-no-hostname-check 127.0.0.1 9199 hanoi
+TLSv1.3 TLS_AES_256_GCM_SHA384, server cert CN=localhost
+hanoi -&gt; OK Thủ đô của Việt Nam
+$ LookupClient tls localhost 9199 hanoi --default-trust
+SSLHandshakeException: (certificate_unknown) PKIX path building failed: sun.security.provider.certpath.SunCertPat ...</pre></div><ul class="y-nho"><li data-s="2">SSLSocket <b>không tự kiểm tra hostname</b>: phải đặt endpoint identification algorithm</li><li data-s="3">Tắt kiểm tra chứng chỉ hay hostname để chương trình chạy được là <b>lỗ hổng</b></li></ul></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Trong ví dụ của phần, file <span style="white-space:nowrap">client-trust</span>.p12 là truststore. Truststore chứa gì và bên nào dùng?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Khóa riêng của server; server dùng để ký trong handshake.</div></div><div class=""><span>B</span><div>Mật khẩu của client; server dùng để xác thực client.</div></div><div class="dung"><span>C</span><div>Các chứng chỉ được tin (thường là CA); client dùng để kiểm tra chứng chỉ server gửi tới.</div></div><div class=""><span>D</span><div>Khóa phiên đã thỏa thuận; cả hai bên dùng để mã hóa.</div></div></div><div class="giai-thich">Truststore chứa các chứng chỉ, tức khóa công khai, mà client tin. Khóa riêng của server nằm trong keystore ở server và không bao giờ được gửi đi; khóa phiên được tính ra trong handshake, không lưu trong file.</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Trong ví dụ của phần, file <span style="white-space:nowrap">client-trust</span>.p12 là truststore. Truststore chứa gì và bên nào dùng?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Khóa riêng của server; server dùng để ký trong handshake.</div></div><div class=""><span>B</span><div>Mật khẩu của client; server dùng để xác thực client.</div></div><div class="dung"><span>C</span><div>Các chứng chỉ được tin (thường là CA); client dùng để kiểm tra chứng chỉ server gửi tới.</div></div><div class=""><span>D</span><div>Khóa phiên đã thỏa thuận; cả hai bên dùng để mã hóa.</div></div></div><div class="giai-thich">Truststore chứa các chứng chỉ, tức khóa công khai, mà client tin. Khóa riêng của server nằm trong keystore ở server và không bao giờ được gửi đi; khóa phiên được tính ra trong handshake, không lưu trong file.</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Kẻ tấn công có một chứng chỉ hợp lệ, do CA mà client tin cấp, cho tên miền của chính họ. Nếu client kiểm tra chuỗi tin cậy nhưng không kiểm tra hostname, điều gì xảy ra khi kẻ đó chặn kết nối của client tới lookup.example?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Client chấp nhận server giả, vì chứng chỉ của kẻ tấn công cũng có chuỗi tin cậy hợp lệ.</div></div><div class=""><span>B</span><div>Handshake thất bại vì chứng chỉ không hợp lệ.</div></div><div class=""><span>C</span><div>Dữ liệu vẫn an toàn vì đã được mã hóa.</div></div><div class=""><span>D</span><div>Kẻ tấn công không thể chặn một kết nối TLS.</div></div></div><div class="giai-thich">Chuỗi tin cậy chỉ cho biết chứng chỉ do một CA được tin cấp; kiểm tra hostname mới cho biết chứng chỉ cấp cho đúng server client muốn kết nối. Dữ liệu vẫn được mã hóa, nhưng mã hóa tới chính kẻ tấn công.</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Kẻ tấn công có một chứng chỉ hợp lệ, do CA mà client tin cấp, cho tên miền của chính họ. Nếu client kiểm tra chuỗi tin cậy nhưng không kiểm tra hostname, điều gì xảy ra khi kẻ đó chặn kết nối của client tới lookup.example?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>Client chấp nhận server giả, vì chứng chỉ của kẻ tấn công cũng có chuỗi tin cậy hợp lệ.</div></div><div class=""><span>B</span><div>Handshake thất bại vì chứng chỉ không hợp lệ.</div></div><div class=""><span>C</span><div>Dữ liệu vẫn an toàn vì đã được mã hóa.</div></div><div class=""><span>D</span><div>Kẻ tấn công không thể chặn một kết nối TLS.</div></div></div><div class="giai-thich">Chuỗi tin cậy chỉ cho biết chứng chỉ do một CA được tin cấp; kiểm tra hostname mới cho biết chứng chỉ cấp cho đúng server client muốn kết nối. Dữ liệu vẫn được mã hóa, nhưng mã hóa tới chính kẻ tấn công.</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>TLS</b> mã hóa đường truyền; <b>handshake TLS</b> thỏa thuận khóa phiên và xác thực server</div></div><div class="the" data-s="2"><span class="so">2</span><div><b>Chứng chỉ X.509</b> gắn tên với khóa công khai; server giữ <b>keystore</b>, client giữ <b>truststore</b></div></div><div class="the" data-s="3"><span class="so">3</span><div><b>SSLSocket</b> cần bật <b>kiểm tra hostname</b>; không tắt kiểm tra để chương trình chạy được</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>TLS</span><span>handshake TLS</span><span>chứng chỉ X.509</span><span>keystore</span><span>truststore</span><span>kiểm tra hostname</span><span>SSLSocket</span></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>Mutual TLS: xác thực cả client</li><li>Certificate pinning</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Tạo CA riêng bằng keytool, ký chứng chỉ cho server, cấu hình client chỉ tin CA đó.</p></div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Bảo mật: xác thực và phân quyền với OAuth 2.0 và JWT</div></main><footer><span>Chương 5 · Các chủ đề nâng cao</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Chương 5 là chương cuối, đưa dịch vụ tra cứu qua các chủ đề nâng cao, mở đầu bằng bảo mật. Dữ liệu tra cứu đang đi trên mạng ở dạng rõ: làm sao để không ai đọc hay sửa được trên đường truyền, và client biết chắc mình đang kết nối tới đúng server?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:17</span>
+      <h3>Giới thiệu chương</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chương gồm bảy phần, chia làm bốn nhóm. Nhóm Bảo mật có hai phần: TLS và secure socket trong Java, rồi xác thực và phân quyền với OAuth 2.0 và JWT. Nhóm Hiệu năng đi từ lời gọi không chặn với CompletableFuture và gRPC async stub tới NIO, Selector và mẫu Reactor. Nhóm Độ tin cậy gồm retry, request ID và checksum trên UDP, rồi backoff, circuit breaker và health check. Sáu phần này cùng nâng cấp dịch vụ tra cứu; cuối chương, nhóm IoT có bài toán ứng dụng giám sát cảm biến với MQTT và CoAP.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide lộ trình sinh từ kế hoạch; bốn nhóm hiện lần lượt, phần hiện tại được tô nổi.
+Hiện dần: bước 1 khi đọc “Nhóm Bảo mật”; bước 2 khi đọc “Nhóm Hiệu năng”; bước 3 khi đọc “Nhóm Độ tin cậy”; bước 4 khi đọc “nhóm IoT”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:54</span>
+      <h3>Slide 1. Dữ liệu dạng rõ, server không được xác thực</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Dịch vụ tra cứu gửi dữ liệu **dạng rõ**: máy nào trên đường truyền cũng đọc và sửa được</li><li>Client không biết mình có đang kết nối tới **đúng server** hay không</li><li>**TLS**: mã hóa đường truyền và xác thực server bằng **chứng chỉ**</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** TLS bảo vệ kết nối thế nào, và bật TLS cho dịch vụ tra cứu bằng Java ra sao?</div></div>
+    <div class="kb-thoai"><p>Mọi phiên bản của dịch vụ tra cứu ở các chương trước đều gửi dữ liệu ở dạng rõ. Một máy nằm trên đường truyền, như router hay điểm phát Wi-Fi, đọc được từng khóa tra cứu và từng kết quả. Client cũng không có cách nào biết mình đang kết nối tới đúng server hay tới một máy giả mạo. TLS, hay Transport Layer Security, giải quyết cả hai vấn đề: mã hóa dữ liệu trên đường truyền, và xác thực server bằng chứng chỉ. Vậy TLS bảo vệ kết nối thế nào, và bật TLS cho dịch vụ tra cứu bằng Java ra sao?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Mọi phiên bản”; bước 2 khi đọc “Client cũng không”; bước 3 khi đọc “TLS, hay”; bước 4 khi đọc “Vậy TLS”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:27</span>
+      <h3>Slide 2. Trên đường truyền, dữ liệu tra cứu hiện nguyên văn</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/tls/Tap.java</span><pre><code>Socket server = new Socket(&quot;127.0.0.1&quot;, 9199);
+System.out.println(direction + &quot; &quot; + n + &quot; bytes: &quot; + show(buf, n));
+out.write(buf, 0, n);  // chuyển tiếp nguyên vẹn</code></pre></div></div>
+    <div class="kb-thoai"><p>Mình viết chương trình Tap đóng vai một máy trên đường truyền. Tap nhận kết nối ở port 9200, mở kết nối tới server tra cứu ở port 9199, rồi chuyển tiếp nguyên vẹn mọi byte theo cả hai chiều, đồng thời in ra những gì đi qua. Client kết nối tới Tap thay vì server mà không nhận ra khác biệt nào. Kết quả: Tap đọc được nguyên văn khóa hanoi và phản hồi của server. Đã đọc được thì một máy như vậy cũng sửa được phản hồi trước khi chuyển tiếp, mà client không hề biết.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã ba dòng phía trên, kết quả phía dưới; highlight hai dòng client -&gt; server, server -&gt; client.
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:06</span>
+      <h3>Slide 3. Handshake TLS: thỏa thuận khóa, xác thực server, rồi mã hóa</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Handshake TLS**: trao đổi phần khóa để có khóa phiên, server chứng minh danh tính bằng chứng chỉ; sau đó mọi dữ liệu được mã hóa.</li></ul></div></div>
+    <div class="kb-thoai"><p>Mọi kết nối TLS mở đầu bằng handshake TLS. Client gửi ClientHello, message chứa các bộ mã hóa client hỗ trợ và phần khóa của client. Server trả ServerHello với bộ mã đã chọn và phần khóa của server. Từ hai phần khóa này, mỗi bên tự tính ra cùng một khóa phiên, nên khóa phiên không bao giờ đi trên đường truyền. Tiếp theo, server gửi chứng chỉ, chữ ký chứng minh mình giữ khóa riêng, và message Finished, tất cả đã được mã hóa. Client kiểm tra chứng chỉ rồi cũng gửi Finished. Từ đây, dữ liệu ứng dụng đi trong các bản ghi đã mã hóa. Như vậy, chỉ sau một vòng gửi và nhận, hai bên đã có khóa chung và client đã biết server là ai.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình handshake-tls: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Client gửi ClientHello”; bước 2 khi đọc “Tiếp theo, server gửi”; bước 3 khi đọc “Từ đây”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:52</span>
+      <h3>Slide 4. Chứng chỉ, keystore, truststore và kiểm tra hostname</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Keystore** (server): khóa riêng và chứng chỉ. **Truststore** (client): các CA được tin. Client kiểm tra chuỗi tin cậy rồi **kiểm tra hostname**.</li></ul></div></div>
+    <div class="kb-thoai"><p>Client tin chứng chỉ của server dựa vào đâu? Chứng chỉ X.509 gắn một tên, như localhost, với một khóa công khai, và được một bên khác ký. Phía server giữ keystore, gồm chứng chỉ và khóa riêng không bao giờ rời server. Trên Internet, chứng chỉ của server do một tổ chức cấp chứng chỉ, gọi là CA, ký, thường qua một CA trung gian rồi mới tới CA gốc. Client giữ truststore, tập các CA mình tin, và lần ngược chuỗi chữ ký tới một CA trong đó. Chuỗi tin cậy hợp lệ vẫn chưa đủ: client còn phải kiểm tra hostname, tức so tên trong chứng chỉ với tên máy mình đã kết nối. Như vậy, keystore để server chứng minh mình là ai, còn truststore để client quyết định tin ai.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình chuoi-tin-cay: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Phía server giữ keystore”; bước 2 khi đọc “Trên Internet”; bước 3 khi đọc “Chuỗi tin cậy hợp lệ”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:39</span>
+      <h3>Slide 5. Tạo keystore và truststore bằng keytool</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">make-certs.sh</span><pre><code>keytool -genkeypair -alias lookup -keyalg EC -validity 365 \
+    -dname &quot;CN=localhost&quot; -ext &quot;SAN=dns:localhost&quot; \
+    -keystore server.p12 -storepass changeit
+keytool -exportcert -alias lookup -rfc -file server.crt \
+    -keystore server.p12 -storepass changeit
+keytool -importcert -alias lookup -file server.crt -noprompt \
+    -keystore client-trust.p12 -storepass changeit</code></pre></div></div>
+    <div class="kb-thoai"><p>Ví dụ của phần dùng chứng chỉ tự ký, tạo bằng công cụ keytool của JDK qua ba lệnh. Lệnh genkeypair tạo cặp khóa và chứng chỉ cho tên localhost trong keystore server.p12; tùy chọn SAN ghi tên thay thế, nơi client tìm tên khi kiểm tra hostname. Tiếp đó, lệnh exportcert xuất riêng chứng chỉ, và lệnh importcert đưa chứng chỉ ấy vào truststore client-trust.p12. Kết quả: ba lệnh chạy thành công, chứng chỉ có hạn 365 ngày.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Script phía trên, kết quả phía dưới. Highlight từng lệnh keytool theo lời đọc.
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:18</span>
+      <h3>Slide 6. Server TLS chỉ đổi cách tạo listening socket; Tap chỉ thấy bản ghi mã hóa</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/tls/LookupServer.java</span><pre><code>System.setProperty(&quot;javax.net.ssl.keyStore&quot;, &quot;server.p12&quot;);  // khóa riêng và chứng chỉ của server
+System.setProperty(&quot;javax.net.ssl.keyStorePassword&quot;, &quot;changeit&quot;);
+listener = SSLServerSocketFactory.getDefault().createServerSocket(9199);  // listening socket TLS</code></pre></div></div>
+    <div class="kb-thoai"><p>Phía server, bản TLS chỉ khác bản rõ ở cách tạo listening socket: hai thuộc tính hệ thống trỏ tới keystore và mật khẩu, rồi phương thức createServerSocket của SSLServerSocketFactory tạo SSLServerSocket ở port 9199. Phần accept, đọc và ghi từng dòng giữ nguyên. Mình lại cho client kết nối qua Tap. Kết quả: Tap chỉ thấy các bản ghi TLS. Hai bản ghi đầu, bắt đầu bằng byte 16, là ClientHello và ServerHello ở dạng rõ. Mọi bản ghi bắt đầu bằng byte 17 đều đã được mã hóa, kể cả chứng chỉ, khóa hanoi và phản hồi.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới; highlight hai dòng 16 03 03 rồi các dòng 17 03 03.
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:06</span>
+      <h3>Slide 7. SSLSocket không tự kiểm tra hostname; đừng tắt kiểm tra</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>SSLSocket **không tự kiểm tra hostname**: phải đặt endpoint identification algorithm</li><li>Tắt kiểm tra chứng chỉ hay hostname để chương trình chạy được là **lỗ hổng**</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/tls/LookupClient.java</span><pre><code>SSLSocket socket = (SSLSocket) SSLSocketFactory.getDefault().createSocket(host, port);
+SSLParameters params = socket.getSSLParameters();
+params.setEndpointIdentificationAlgorithm(&quot;HTTPS&quot;);  // bật kiểm tra hostname theo chứng chỉ
+socket.setSSLParameters(params);</code></pre></div></div>
+    <div class="kb-thoai"><p>Phía client, SSLSocket kiểm tra chuỗi tin cậy nhưng không tự kiểm tra hostname. Muốn bật, client gọi phương thức setEndpointIdentificationAlgorithm với giá trị HTTPS. Mình thử ba lần kết nối: lần thứ nhất tới 127.0.0.1 trong khi chứng chỉ chỉ ghi localhost, lần thứ hai cũng tới 127.0.0.1 nhưng tắt kiểm tra hostname, lần thứ ba dùng truststore mặc định của JDK. Các bạn thử đoán: lần nào kết nối thành công? Kết quả: lần thứ nhất thất bại vì không tên nào trong chứng chỉ khớp 127.0.0.1, lần thứ ba thất bại vì truststore mặc định không có chứng chỉ tự ký. Lần thứ hai lại thành công, dù chứng chỉ không cấp cho tên đã kết nối. Vì vậy, đừng tắt kiểm tra chứng chỉ hay hostname chỉ để chương trình chạy được: client sẽ mất khả năng phát hiện server giả mạo.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới. Sau câu &quot;lần nào kết nối thành công&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện.
+Hiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Lần thứ hai lại thành công”; bước 3 khi đọc “Vì vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:07</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Hai file .p12 vừa tạo dễ bị nhầm vai trò với nhau.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Trong ví dụ của phần, file client-trust.p12 là truststore. Truststore chứa gì và bên nào dùng?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Khóa riêng của server; server dùng để ký trong handshake.</li>
+      <li><b>B.</b> Mật khẩu của client; server dùng để xác thực client.</li>
+      <li><b>C.</b> Các chứng chỉ được tin (thường là CA); client dùng để kiểm tra chứng chỉ server gửi tới.</li>
+      <li><b>D.</b> Khóa phiên đã thỏa thuận; cả hai bên dùng để mã hóa.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: C</b> — <span>Truststore chứa các chứng chỉ, tức khóa công khai, mà client tin. Khóa riêng của server nằm trong keystore ở server và không bao giờ được gửi đi; khóa phiên được tính ra trong handshake, không lưu trong file.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là C. Phương án A mô tả keystore của server: khóa riêng nằm ở server và không bao giờ được gửi đi. Truststore chỉ chứa chứng chỉ, tức các khóa công khai mà client tin.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án C được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:29</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Tình huống tấn công sau cho thấy vì sao không được bỏ kiểm tra hostname.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Kẻ tấn công có một chứng chỉ hợp lệ, do CA mà client tin cấp, cho tên miền của chính họ. Nếu client kiểm tra chuỗi tin cậy nhưng không kiểm tra hostname, điều gì xảy ra khi kẻ đó chặn kết nối của client tới lookup.example?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Client chấp nhận server giả, vì chứng chỉ của kẻ tấn công cũng có chuỗi tin cậy hợp lệ.</li>
+      <li><b>B.</b> Handshake thất bại vì chứng chỉ không hợp lệ.</li>
+      <li><b>C.</b> Dữ liệu vẫn an toàn vì đã được mã hóa.</li>
+      <li><b>D.</b> Kẻ tấn công không thể chặn một kết nối TLS.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: A</b> — <span>Chuỗi tin cậy chỉ cho biết chứng chỉ do một CA được tin cấp; kiểm tra hostname mới cho biết chứng chỉ cấp cho đúng server client muốn kết nối. Dữ liệu vẫn được mã hóa, nhưng mã hóa tới chính kẻ tấn công.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là A. Phương án C là hiểu nhầm hay gặp: dữ liệu vẫn được mã hóa, nhưng mã hóa tới chính kẻ tấn công. Chuỗi tin cậy chỉ cho biết chứng chỉ do một CA được tin cấp; kiểm tra hostname mới cho biết chứng chỉ đó cấp cho đúng server mà client muốn kết nối.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án A.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:56</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**TLS** mã hóa đường truyền; **handshake TLS** thỏa thuận khóa phiên và xác thực server</li><li>**Chứng chỉ X.509** gắn tên với khóa công khai; server giữ **keystore**, client giữ **truststore**</li><li>**SSLSocket** cần bật **kiểm tra hostname**; không tắt kiểm tra để chương trình chạy được</li></ul></div>
+    <div class="kb-thoai"><p>TLS đặt một lớp mã hóa giữa TCP và giao thức ứng dụng: handshake TLS thỏa thuận khóa phiên và xác thực server trước khi dữ liệu được mã hóa. Danh tính của server nằm trong chứng chỉ X.509, gắn một tên với một khóa công khai. Server giữ keystore, còn client giữ truststore gồm các CA được tin. Về phía Java, bản TLS chỉ đổi cách tạo socket, nhưng client phải tự bật kiểm tra hostname và không tắt kiểm tra cho chương trình chạy được. Bảy từ khóa của bảo mật đường truyền là TLS, handshake TLS, chứng chỉ X.509, keystore, truststore, kiểm tra hostname và SSLSocket.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “TLS đặt”; bước 2 khi đọc “Danh tính của server”; bước 3 khi đọc “Về phía Java”; bước 4 khi đọc “Bảy từ khóa”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-12" data-index="12">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:36</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(12)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(12, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>TLS ở phần này chỉ xác thực server; với mutual TLS, server cũng đòi chứng chỉ của client, còn certificate pinning cho client chỉ tin một chứng chỉ hay khóa cụ thể. Bài tập mở rộng là tạo một CA riêng bằng keytool, dùng CA đó ký chứng chỉ cho server, rồi cấu hình client chỉ tin CA này.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “TLS ở phần này”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-13" data-index="13">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:56</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(13)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(13, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Đường truyền đã được bảo vệ, nhưng client nào cũng gọi được thao tác cập nhật của dịch vụ tra cứu. Phần tiếp theo bàn về xác thực và phân quyền với OAuth 2.0 và JWT.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V30", "tieu_de": "Bảo mật: TLS và secure socket trong Java", "giong": "vi-VN-NamMinhNeural", "tong": 488.27, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/93d1049a6241323d.mp3", "dur": 16.46, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Chương", 1], [2.2, "5", 1], [2.413, "là", 1], [2.525, "chương", 1], [2.788, "cuối,", 1], [3.288, "đưa", 1], [3.487, "dịch", 1], [3.675, "vụ", 1], [3.888, "tra", 1], [4.075, "cứu", 1], [4.338, "qua", 1], [4.537, "các", 1], [4.725, "chủ", 1], [4.925, "đề", 1], [5.088, "nâng", 1], [5.312, "cao,", 1], [5.838, "mở", 1], [6.088, "đầu", 1], [6.3, "bằng", 1], [6.5, "bảo", 1], [6.7, "mật.", 1], [7.787, "Dữ", 2], [8.05, "liệu", 2], [8.262, "tra", 2], [8.463, "cứu", 2], [8.738, "đang", 2], [8.938, "đi", 2], [9.05, "trên", 2], [9.25, "mạng", 2], [9.488, "ở", 2], [9.562, "dạng", 2], [9.8, "rõ:", 2], [10.387, "làm", 2], [10.637, "sao", 2], [10.9, "để", 2], [11.0, "không", 2], [11.213, "ai", 2], [11.363, "đọc", 2], [11.537, "hay", 2], [11.7, "sửa", 2], [11.925, "được", 2], [12.075, "trên", 2], [12.262, "đường", 2], [12.45, "truyền,", 2], [12.963, "và", 2], [13.213, "client", 2], [13.562, "biết", 2], [13.75, "chắc", 2], [13.925, "mình", 2], [14.137, "đang", 2], [14.3, "kết", 2], [14.512, "nối", 2], [14.7, "tới", 2], [14.9, "đúng", 2], [15.1, "server?", 2]], "cues": [], "lang": 0.6}, {"ten": "Giới thiệu chương", "loai": "mo-chuong", "slide": "CH", "dung": "Slide lộ trình sinh từ kế hoạch; bốn nhóm hiện lần lượt, phần hiện tại được tô nổi.\nHiện dần: bước 1 khi đọc “Nhóm Bảo mật”; bước 2 khi đọc “Nhóm Hiệu năng”; bước 3 khi đọc “Nhóm Độ tin cậy”; bước 4 khi đọc “nhóm IoT”.", "start": 17.06, "audio": "audio/d7a8b5e50225e8a5.mp3", "dur": 36.34, "words": [[0.1, "Chương", 0], [0.45, "gồm", 0], [0.662, "bảy", 0], [0.875, "phần,", 0], [1.375, "chia", 0], [1.7, "làm", 0], [1.962, "bốn", 0], [2.237, "nhóm.", 0], [3.425, "Nhóm", 1], [3.75, "Bảo", 1], [3.925, "mật", 1], [4.138, "có", 1], [4.263, "hai", 1], [4.438, "phần:", 1], [5.056, "TLS", 1], [5.675, "và", 1], [5.862, "secure", 1], [6.225, "socket", 1], [6.662, "trong", 1], [6.875, "Java,", 1], [7.575, "rồi", 1], [7.838, "xác", 1], [8.05, "thực", 1], [8.225, "và", 1], [8.363, "phân", 1], [8.562, "quyền", 1], [8.825, "với", 1], [9.225, "OAuth", 1], [9.625, "2.0", 1], [10.025, "và", 1], [11.069, "JWT.", 1], [12.113, "Nhóm", 2], [12.45, "Hiệu", 2], [12.625, "năng", 2], [12.825, "đi", 2], [12.95, "từ", 2], [13.137, "lời", 2], [13.312, "gọi", 2], [13.537, "không", 2], [13.762, "chặn", 2], [14.012, "với", 2], [14.125, "CompletableFuture", 2], [15.137, "và", 2], [15.619, "gRPC", 2], [16.1, "async", 2], [16.488, "stub", 2], [16.85, "tới", 2], [17.462, "NIO,", 2], [18.075, "Selector", 2], [18.688, "và", 2], [18.825, "mẫu", 2], [19.075, "Reactor.", 2], [20.363, "Nhóm", 3], [20.688, "Độ", 3], [20.825, "tin", 3], [21.05, "cậy", 3], [21.262, "gồm", 3], [21.538, "retry,", 3], [22.25, "request", 3], [22.556, "ID", 3], [22.863, "và", 3], [22.988, "checksum", 3], [23.462, "trên", 3], [24.0, "UDP,", 3], [24.538, "rồi", 3], [24.825, "backoff,", 3], [25.488, "circuit", 3], [25.938, "breaker", 3], [26.45, "và", 3], [26.65, "health", 3], [26.837, "check.", 3], [27.95, "Sáu", 4], [28.262, "phần", 4], [28.45, "này", 4], [28.65, "cùng", 4], [28.875, "nâng", 4], [29.038, "cấp", 4], [29.212, "dịch", 4], [29.387, "vụ", 4], [29.6, "tra", 4], [29.762, "cứu;", 4], [30.35, "cuối", 4], [30.55, "chương,", 4], [31.125, "nhóm", 4], [31.5, "IoT", 4], [31.988, "có", 4], [32.112, "bài", 4], [32.275, "toán", 4], [32.587, "ứng", 4], [32.737, "dụng", 4], [32.975, "giám", 4], [33.212, "sát", 4], [33.475, "cảm", 4], [33.675, "biến", 4], [33.925, "với", 4], [34.419, "MQTT", 4], [34.913, "và", 4], [34.913, "CoAP.", 4]], "cues": [3.425, 12.113, 20.363, 31.125], "lang": 0.6}, {"ten": "Slide 1. Dữ liệu dạng rõ, server không được xác thực", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Mọi phiên bản”; bước 2 khi đọc “Client cũng không”; bước 3 khi đọc “TLS, hay”; bước 4 khi đọc “Vậy TLS”.", "start": 54.0, "audio": "audio/fe38374edb9b4c67.mp3", "dur": 32.83, "words": [[0.1, "Mọi", 0], [0.45, "phiên", 0], [0.688, "bản", 0], [0.925, "của", 0], [1.038, "dịch", 0], [1.212, "vụ", 0], [1.425, "tra", 0], [1.613, "cứu", 0], [1.938, "ở", 0], [2.038, "các", 0], [2.2, "chương", 0], [2.462, "trước", 0], [2.725, "đều", 0], [2.888, "gửi", 0], [3.112, "dữ", 0], [3.325, "liệu", 0], [3.6, "ở", 0], [3.712, "dạng", 0], [3.987, "rõ.", 0], [5.225, "Một", 1], [5.6, "máy", 1], [5.787, "nằm", 1], [5.987, "trên", 1], [6.175, "đường", 1], [6.35, "truyền,", 1], [6.862, "như", 1], [7.162, "router", 1], [7.638, "hay", 1], [7.787, "điểm", 1], [8.0, "phát", 1], [8.2, "Wi-Fi,", 1], [8.912, "đọc", 1], [9.113, "được", 1], [9.312, "từng", 1], [9.525, "khóa", 1], [9.738, "tra", 1], [9.938, "cứu", 1], [10.275, "và", 1], [10.438, "từng", 1], [10.688, "kết", 1], [10.875, "quả.", 1], [12.15, "Client", 2], [12.688, "cũng", 2], [12.875, "không", 2], [13.062, "có", 2], [13.162, "cách", 2], [13.338, "nào", 2], [13.537, "biết", 2], [13.762, "mình", 2], [13.975, "đang", 2], [14.15, "kết", 2], [14.363, "nối", 2], [14.55, "tới", 2], [14.775, "đúng", 2], [14.988, "server", 2], [15.475, "hay", 2], [15.688, "tới", 2], [15.85, "một", 2], [16.05, "máy", 2], [16.225, "giả", 2], [16.425, "mạo.", 2], [17.538, "TLS,", 3], [18.65, "hay", 3], [18.863, "Transport", 3], [19.387, "Layer", 3], [19.625, "Security,", 3], [20.575, "giải", 3], [20.8, "quyết", 3], [21.038, "cả", 3], [21.2, "hai", 3], [21.387, "vấn", 3], [21.575, "đề:", 3], [22.062, "mã", 3], [22.262, "hóa", 3], [22.512, "dữ", 3], [22.688, "liệu", 3], [22.925, "trên", 3], [23.125, "đường", 3], [23.325, "truyền,", 3], [23.825, "và", 3], [24.075, "xác", 3], [24.288, "thực", 3], [24.425, "server", 3], [24.863, "bằng", 3], [25.125, "chứng", 3], [25.337, "chỉ.", 3], [26.575, "Vậy", 4], [27.038, "TLS", 4], [27.5, "bảo", 4], [27.712, "vệ", 4], [27.875, "kết", 4], [28.113, "nối", 4], [28.3, "thế", 4], [28.438, "nào,", 4], [28.9, "và", 4], [29.1, "bật", 4], [29.507, "TLS", 4], [29.913, "cho", 4], [30.012, "dịch", 4], [30.188, "vụ", 4], [30.387, "tra", 4], [30.575, "cứu", 4], [30.863, "bằng", 4], [31.125, "Java", 4], [31.512, "ra", 4], [31.637, "sao?", 4]], "cues": [0.1, 12.15, 17.538, 26.575], "lang": 0.6}, {"ten": "Slide 2. Trên đường truyền, dữ liệu tra cứu hiện nguyên văn", "loai": "slide", "slide": "S02", "dung": "Mã ba dòng phía trên, kết quả phía dưới; highlight hai dòng client -> server, server -> client.\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 87.43, "audio": "audio/f9a167c2fccbe632.mp3", "dur": 29.45, "words": [[0.1, "Mình", 0], [0.475, "viết", 0], [0.7, "chương", 0], [0.95, "trình", 0], [1.188, "Tap", 0], [1.5, "đóng", 0], [1.738, "vai", 0], [1.9, "một", 0], [2.112, "máy", 0], [2.325, "trên", 0], [2.538, "đường", 0], [2.737, "truyền.", 0], [3.888, "Tap", 1], [4.225, "nhận", 1], [4.45, "kết", 1], [4.65, "nối", 1], [4.862, "ở", 1], [4.987, "port", 1], [5.662, "9200,", 1], [6.338, "mở", 1], [6.575, "kết", 1], [6.775, "nối", 1], [6.925, "tới", 1], [7.162, "server", 1], [7.525, "tra", 1], [7.725, "cứu", 1], [8.05, "ở", 1], [8.162, "port", 1], [8.85, "9199,", 1], [9.537, "rồi", 1], [9.762, "chuyển", 1], [9.988, "tiếp", 1], [10.175, "nguyên", 1], [10.4, "vẹn", 1], [10.625, "mọi", 1], [10.775, "byte", 1], [10.988, "theo", 1], [11.162, "cả", 1], [11.338, "hai", 1], [11.512, "chiều,", 1], [12.05, "đồng", 1], [12.275, "thời", 1], [12.488, "in", 1], [12.688, "ra", 1], [12.887, "những", 1], [13.125, "gì", 1], [13.287, "đi", 1], [13.425, "qua.", 1], [14.6, "Client", 2], [15.037, "kết", 2], [15.275, "nối", 2], [15.475, "tới", 2], [15.688, "Tap", 2], [15.975, "thay", 2], [16.163, "vì", 2], [16.337, "server", 2], [16.825, "mà", 2], [17.012, "không", 2], [17.25, "nhận", 2], [17.488, "ra", 2], [17.6, "khác", 2], [17.825, "biệt", 2], [18.012, "nào.", 2], [19.137, "Kết", 3], [19.337, "quả:", 3], [19.95, "Tap", 3], [20.15, "đọc", 3], [20.337, "được", 3], [20.538, "nguyên", 3], [20.788, "văn", 3], [20.975, "khóa", 3], [21.212, "hanoi", 3], [21.637, "và", 3], [21.788, "phản", 3], [22.038, "hồi", 3], [22.25, "của", 3], [22.438, "server.", 3], [23.75, "Đã", 4], [23.975, "đọc", 4], [24.137, "được", 4], [24.375, "thì", 4], [24.488, "một", 4], [24.663, "máy", 4], [24.837, "như", 4], [25.0, "vậy", 4], [25.225, "cũng", 4], [25.413, "sửa", 4], [25.637, "được", 4], [25.775, "phản", 4], [26.012, "hồi", 4], [26.2, "trước", 4], [26.387, "khi", 4], [26.538, "chuyển", 4], [26.775, "tiếp,", 4], [27.312, "mà", 4], [27.575, "client", 4], [27.988, "không", 4], [28.212, "hề", 4], [28.337, "biết.", 4]], "cues": [19.137], "lang": 9.6}, {"ten": "Slide 3. Handshake TLS: thỏa thuận khóa, xác thực server, rồi mã hóa", "loai": "slide", "slide": "S03", "dung": "Hình handshake-tls: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Client gửi ClientHello”; bước 2 khi đọc “Tiếp theo, server gửi”; bước 3 khi đọc “Từ đây”; bước 4 khi đọc “Như vậy”.", "start": 126.48, "audio": "audio/cf028a442fc857fd.mp3", "dur": 43.25, "words": [[0.1, "Mọi", 0], [0.5, "kết", 0], [0.75, "nối", 0], [1.256, "TLS", 0], [1.762, "mở", 0], [1.962, "đầu", 0], [2.138, "bằng", 0], [2.375, "handshake", 0], [3.406, "TLS.", 0], [4.438, "Client", 1], [4.9, "gửi", 1], [5.138, "ClientHello,", 1], [6.138, "message", 1], [6.625, "chứa", 1], [6.888, "các", 1], [7.062, "bộ", 1], [7.213, "mã", 1], [7.412, "hóa", 1], [7.65, "client", 1], [8.012, "hỗ", 1], [8.213, "trợ", 1], [8.5, "và", 1], [8.65, "phần", 1], [8.887, "khóa", 1], [9.15, "của", 1], [9.325, "client.", 1], [10.613, "Server", 2], [11.075, "trả", 2], [11.363, "ServerHello", 2], [12.15, "với", 2], [12.3, "bộ", 2], [12.475, "mã", 2], [12.762, "đã", 2], [12.887, "chọn", 2], [13.213, "và", 2], [13.325, "phần", 2], [13.562, "khóa", 2], [13.838, "của", 2], [14.025, "server.", 2], [15.35, "Từ", 3], [15.675, "hai", 3], [15.863, "phần", 3], [16.062, "khóa", 3], [16.275, "này,", 3], [16.725, "mỗi", 3], [16.95, "bên", 3], [17.15, "tự", 3], [17.312, "tính", 3], [17.55, "ra", 3], [17.725, "cùng", 3], [17.938, "một", 3], [18.087, "khóa", 3], [18.275, "phiên,", 3], [18.887, "nên", 3], [19.163, "khóa", 3], [19.375, "phiên", 3], [19.625, "không", 3], [19.85, "bao", 3], [19.988, "giờ", 3], [20.25, "đi", 3], [20.413, "trên", 3], [20.613, "đường", 3], [20.825, "truyền.", 3], [21.975, "Tiếp", 4], [22.275, "theo,", 4], [22.725, "server", 4], [23.137, "gửi", 4], [23.337, "chứng", 4], [23.562, "chỉ,", 4], [24.113, "chữ", 4], [24.312, "ký", 4], [24.538, "chứng", 4], [24.762, "minh", 4], [24.875, "mình", 4], [25.113, "giữ", 4], [25.288, "khóa", 4], [25.525, "riêng,", 4], [26.038, "và", 4], [26.3, "message", 4], [26.7, "Finished,", 4], [27.337, "tất", 4], [27.525, "cả", 4], [27.788, "đã", 4], [27.925, "được", 4], [28.113, "mã", 4], [28.3, "hóa.", 4], [29.562, "Client", 5], [30.012, "kiểm", 5], [30.25, "tra", 5], [30.425, "chứng", 5], [30.663, "chỉ", 5], [30.875, "rồi", 5], [31.113, "cũng", 5], [31.35, "gửi", 5], [31.575, "Finished.", 5], [32.862, "Từ", 6], [33.15, "đây,", 6], [33.587, "dữ", 6], [33.788, "liệu", 6], [34.038, "ứng", 6], [34.212, "dụng", 6], [34.462, "đi", 6], [34.65, "trong", 6], [34.837, "các", 6], [35.013, "bản", 6], [35.263, "ghi", 6], [35.487, "đã", 6], [35.625, "mã", 6], [35.825, "hóa.", 6], [37.087, "Như", 7], [37.325, "vậy,", 7], [37.725, "chỉ", 7], [37.913, "sau", 7], [38.087, "một", 7], [38.25, "vòng", 7], [38.475, "gửi", 7], [38.7, "và", 7], [38.837, "nhận,", 7], [39.375, "hai", 7], [39.612, "bên", 7], [39.825, "đã", 7], [39.925, "có", 7], [40.062, "khóa", 7], [40.275, "chung", 7], [40.575, "và", 7], [40.7, "client", 7], [41.15, "đã", 7], [41.288, "biết", 7], [41.475, "server", 7], [41.913, "là", 7], [42.138, "ai.", 7]], "cues": [4.438, 21.975, 32.862, 37.087], "lang": 2.6}, {"ten": "Slide 4. Chứng chỉ, keystore, truststore và kiểm tra hostname", "loai": "slide", "slide": "S04", "dung": "Hình chuoi-tin-cay: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Phía server giữ keystore”; bước 2 khi đọc “Trên Internet”; bước 3 khi đọc “Chuỗi tin cậy hợp lệ”; bước 4 khi đọc “Như vậy”.", "start": 172.33, "audio": "audio/9aa6730dee9d3251.mp3", "dur": 44.59, "words": [[0.1, "Client", 0], [0.562, "tin", 0], [0.812, "chứng", 0], [1.05, "chỉ", 0], [1.3, "của", 0], [1.55, "server", 0], [1.988, "dựa", 0], [2.237, "vào", 0], [2.388, "đâu?", 0], [3.5, "Chứng", 1], [3.763, "chỉ", 1], [4.351, "X.509", 1], [4.938, "gắn", 1], [5.15, "một", 1], [5.325, "tên,", 1], [5.838, "như", 1], [6.138, "localhost,", 1], [6.987, "với", 1], [7.175, "một", 1], [7.375, "khóa", 1], [7.6, "công", 1], [7.787, "khai,", 1], [8.338, "và", 1], [8.525, "được", 1], [8.7, "một", 1], [8.875, "bên", 1], [9.075, "khác", 1], [9.287, "ký.", 1], [10.475, "Phía", 2], [10.775, "server", 2], [11.175, "giữ", 2], [11.412, "keystore,", 2], [12.225, "gồm", 2], [12.525, "chứng", 2], [12.75, "chỉ", 2], [13.012, "và", 2], [13.137, "khóa", 2], [13.35, "riêng", 2], [13.588, "không", 2], [13.812, "bao", 2], [13.95, "giờ", 2], [14.175, "rời", 2], [14.363, "server.", 2], [15.675, "Trên", 3], [16.087, "Internet,", 3], [16.85, "chứng", 3], [17.075, "chỉ", 3], [17.312, "của", 3], [17.512, "server", 3], [17.962, "do", 3], [18.125, "một", 3], [18.312, "tổ", 3], [18.488, "chức", 3], [18.675, "cấp", 3], [18.863, "chứng", 3], [19.1, "chỉ,", 3], [19.675, "gọi", 3], [19.938, "là", 3], [20.344, "CA,", 3], [20.75, "ký,", 3], [21.337, "thường", 3], [21.587, "qua", 3], [21.725, "một", 3], [21.988, "CA", 3], [22.25, "trung", 3], [22.462, "gian", 3], [22.712, "rồi", 3], [22.887, "mới", 3], [23.075, "tới", 3], [23.375, "CA", 3], [23.675, "gốc.", 3], [24.762, "Client", 4], [25.262, "giữ", 4], [25.5, "truststore,", 4], [26.375, "tập", 4], [26.587, "các", 4], [26.881, "CA", 4], [27.175, "mình", 4], [27.413, "tin,", 4], [27.913, "và", 4], [28.087, "lần", 4], [28.25, "ngược", 4], [28.475, "chuỗi", 4], [28.663, "chữ", 4], [28.837, "ký", 4], [29.1, "tới", 4], [29.275, "một", 4], [29.569, "CA", 4], [29.863, "trong", 4], [30.062, "đó.", 4], [31.238, "Chuỗi", 5], [31.488, "tin", 5], [31.7, "cậy", 5], [31.875, "hợp", 5], [32.05, "lệ", 5], [32.288, "vẫn", 5], [32.5, "chưa", 5], [32.7, "đủ:", 5], [33.263, "client", 5], [33.712, "còn", 5], [33.9, "phải", 5], [34.025, "kiểm", 5], [34.263, "tra", 5], [34.438, "hostname,", 5], [35.15, "tức", 5], [35.325, "so", 5], [35.525, "tên", 5], [35.763, "trong", 5], [35.962, "chứng", 5], [36.212, "chỉ", 5], [36.388, "với", 5], [36.5, "tên", 5], [36.712, "máy", 5], [36.875, "mình", 5], [37.112, "đã", 5], [37.225, "kết", 5], [37.45, "nối.", 5], [38.625, "Như", 6], [38.862, "vậy,", 6], [39.35, "keystore", 6], [39.8, "để", 6], [39.95, "server", 6], [40.337, "chứng", 6], [40.575, "minh", 6], [40.7, "mình", 6], [40.888, "là", 6], [41.05, "ai,", 6], [41.55, "còn", 6], [41.812, "truststore", 6], [42.35, "để", 6], [42.5, "client", 6], [42.837, "quyết", 6], [43.038, "định", 6], [43.263, "tin", 6], [43.538, "ai.", 6]], "cues": [10.475, 15.675, 31.238, 38.625], "lang": 2.6}, {"ten": "Slide 5. Tạo keystore và truststore bằng keytool", "loai": "slide", "slide": "S05", "dung": "Script phía trên, kết quả phía dưới. Highlight từng lệnh keytool theo lời đọc.\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 219.52, "audio": "audio/9d43e48fb8b2efab.mp3", "dur": 29.66, "words": [[0.1, "Ví", 0], [0.388, "dụ", 0], [0.613, "của", 0], [0.75, "phần", 0], [0.975, "dùng", 0], [1.188, "chứng", 0], [1.438, "chỉ", 0], [1.6, "tự", 0], [1.8, "ký,", 0], [2.35, "tạo", 0], [2.575, "bằng", 0], [2.788, "công", 0], [2.987, "cụ", 0], [3.188, "keytool", 0], [3.688, "của", 0], [4.038, "JDK", 0], [4.388, "qua", 0], [4.612, "ba", 0], [4.812, "lệnh.", 0], [5.975, "Lệnh", 1], [6.362, "genkeypair", 1], [6.95, "tạo", 1], [7.188, "cặp", 1], [7.4, "khóa", 1], [7.688, "và", 1], [7.812, "chứng", 1], [8.012, "chỉ", 1], [8.225, "cho", 1], [8.363, "tên", 1], [8.6, "localhost", 1], [9.188, "trong", 1], [9.412, "keystore", 1], [9.825, "server.p12;", 1], [11.375, "tùy", 1], [11.6, "chọn", 1], [12.081, "SAN", 1], [12.562, "ghi", 1], [12.713, "tên", 1], [12.9, "thay", 1], [13.037, "thế,", 1], [13.588, "nơi", 1], [13.863, "client", 1], [14.238, "tìm", 1], [14.488, "tên", 1], [14.688, "khi", 1], [14.85, "kiểm", 1], [15.1, "tra", 1], [15.262, "hostname.", 1], [16.6, "Tiếp", 2], [16.913, "đó,", 2], [17.425, "lệnh", 2], [17.7, "exportcert", 2], [18.25, "xuất", 2], [18.488, "riêng", 2], [18.725, "chứng", 2], [18.962, "chỉ,", 2], [19.538, "và", 2], [19.725, "lệnh", 2], [19.988, "importcert", 2], [20.625, "đưa", 2], [20.788, "chứng", 2], [21.025, "chỉ", 2], [21.225, "ấy", 2], [21.425, "vào", 2], [21.6, "truststore", 2], [22.025, "client-trust.p12.", 2], [24.538, "Kết", 3], [24.75, "quả:", 3], [25.325, "ba", 3], [25.55, "lệnh", 3], [25.825, "chạy", 3], [26.012, "thành", 3], [26.225, "công,", 3], [26.738, "chứng", 3], [27.0, "chỉ", 3], [27.212, "có", 3], [27.337, "hạn", 3], [27.587, "365", 3], [28.55, "ngày.", 3]], "cues": [24.538], "lang": 9.6}, {"ten": "Slide 6. Server TLS chỉ đổi cách tạo listening socket; Tap chỉ thấy bản ghi mã hóa", "loai": "slide", "slide": "S06", "dung": "Mã phía trên, kết quả phía dưới; highlight hai dòng 16 03 03 rồi các dòng 17 03 03.\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 258.78, "audio": "audio/44374b4c971652ec.mp3", "dur": 37.87, "words": [[0.1, "Phía", 0], [0.425, "server,", 0], [1.075, "bản", 0], [1.525, "TLS", 0], [1.975, "chỉ", 0], [2.138, "khác", 0], [2.337, "bản", 0], [2.562, "rõ", 0], [2.788, "ở", 0], [2.913, "cách", 0], [3.1, "tạo", 0], [3.325, "listening", 0], [3.725, "socket:", 0], [4.4, "hai", 0], [4.6, "thuộc", 0], [4.812, "tính", 0], [4.987, "hệ", 0], [5.138, "thống", 0], [5.375, "trỏ", 0], [5.575, "tới", 0], [5.775, "keystore", 0], [6.275, "và", 0], [6.388, "mật", 0], [6.562, "khẩu,", 0], [7.175, "rồi", 0], [7.412, "phương", 0], [7.612, "thức", 0], [7.787, "createServerSocket", 0], [8.738, "của", 0], [8.738, "SSLServerSocketFactory", 0], [8.738, "tạo", 0], [8.738, "SSLServerSocket", 0], [8.738, "ở", 0], [8.738, "port", 0], [8.738, "9199.", 0], [8.738, "Phần", 1], [8.738, "accept,", 1], [8.738, "đọc", 1], [8.738, "và", 1], [8.738, "ghi", 1], [8.738, "từng", 1], [8.738, "dòng", 1], [8.738, "giữ", 1], [8.738, "nguyên.", 1], [8.738, "Mình", 2], [8.738, "lại", 2], [8.738, "cho", 2], [8.738, "client", 2], [8.738, "kết", 2], [8.738, "nối", 2], [8.738, "qua", 2], [8.738, "Tap.", 2], [8.738, "Kết", 3], [8.738, "quả:", 3], [8.738, "Tap", 3], [8.738, "chỉ", 3], [8.738, "thấy", 3], [8.738, "các", 3], [8.738, "bản", 3], [8.738, "ghi", 3], [8.738, "TLS.", 3], [8.738, "Hai", 4], [8.738, "bản", 4], [8.738, "ghi", 4], [8.738, "đầu,", 4], [8.738, "bắt", 4], [8.738, "đầu", 4], [8.738, "bằng", 4], [8.738, "byte", 4], [8.738, "16,", 4], [8.738, "là", 4], [8.738, "ClientHello", 4], [8.738, "và", 4], [8.738, "ServerHello", 4], [8.738, "ở", 4], [8.738, "dạng", 4], [8.738, "rõ.", 4], [8.738, "Mọi", 5], [8.738, "bản", 5], [8.738, "ghi", 5], [8.738, "bắt", 5], [8.738, "đầu", 5], [8.738, "bằng", 5], [8.738, "byte", 5], [8.738, "17", 5], [8.738, "đều", 5], [8.738, "đã", 5], [8.738, "được", 5], [8.738, "mã", 5], [8.738, "hóa,", 5], [8.738, "kể", 5], [8.738, "cả", 5], [8.738, "chứng", 5], [8.738, "chỉ,", 5], [8.738, "khóa", 5], [8.738, "hanoi", 5], [8.738, "và", 5], [8.738, "phản", 5], [8.738, "hồi.", 5]], "cues": [8.738], "lang": 9.6}, {"ten": "Slide 7. SSLSocket không tự kiểm tra hostname; đừng tắt kiểm tra", "loai": "slide", "slide": "S07", "dung": "Mã phía trên, kết quả phía dưới. Sau câu \"lần nào kết nối thành công\", dừng khoảng 2 giây trước khi khung kết quả hiện.\nHiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Lần thứ hai lại thành công”; bước 3 khi đọc “Vì vậy”.", "start": 306.25, "audio": "audio/bb89340c8c065625.mp3", "dur": 51.6, "words": [[0.1, "Phía", 0], [0.425, "client,", 0], [1.256, "SSLSocket", 0], [2.087, "kiểm", 0], [2.312, "tra", 0], [2.5, "chuỗi", 0], [2.7, "tin", 0], [2.913, "cậy", 0], [3.175, "nhưng", 0], [3.438, "không", 0], [3.675, "tự", 0], [3.85, "kiểm", 0], [4.1, "tra", 0], [4.287, "hostname.", 0], [5.638, "Muốn", 1], [6.075, "bật,", 1], [6.513, "client", 1], [6.912, "gọi", 1], [7.138, "phương", 1], [7.35, "thức", 1], [7.513, "setEndpointIdentificationAlgorithm", 1], [9.675, "với", 1], [9.812, "giá", 1], [10.012, "trị", 1], [11.043, "HTTPS.", 1], [12.075, "Mình", 2], [12.438, "thử", 2], [12.613, "ba", 2], [12.825, "lần", 2], [13.025, "kết", 2], [13.225, "nối:", 2], [13.75, "lần", 2], [13.95, "thứ", 2], [14.1, "nhất", 2], [14.325, "tới", 2], [14.36, "127.0.0.1", 2], [14.396, "trong", 2], [14.431, "khi", 2], [14.466, "chứng", 2], [14.501, "chỉ", 2], [14.537, "chỉ", 2], [14.572, "ghi", 2], [14.607, "localhost,", 2], [14.642, "lần", 2], [14.678, "thứ", 2], [14.713, "hai", 2], [14.731, "cũng", 2], [14.75, "tới", 2], [14.768, "127.0.0.1", 2], [14.787, "nhưng", 2], [14.805, "tắt", 2], [14.823, "kiểm", 2], [14.842, "tra", 2], [14.86, "hostname,", 2], [14.878, "lần", 2], [14.897, "thứ", 2], [14.915, "ba", 2], [14.934, "dùng", 2], [14.952, "truststore", 2], [14.97, "mặc", 2], [14.989, "định", 2], [15.007, "của", 2], [15.026, "JDK.", 2], [15.044, "Các", 3], [15.062, "bạn", 3], [15.081, "thử", 3], [15.099, "đoán:", 3], [15.118, "lần", 3], [15.136, "nào", 3], [15.154, "kết", 3], [15.173, "nối", 3], [15.191, "thành", 3], [15.21, "công?", 3], [15.228, "Kết", 4], [15.246, "quả:", 4], [15.265, "lần", 4], [15.283, "thứ", 4], [15.301, "nhất", 4], [15.32, "thất", 4], [15.338, "bại", 4], [15.357, "vì", 4], [15.375, "không", 4], [15.75, "tên", 4], [16.125, "nào", 4], [16.5, "trong", 4], [16.8, "chứng", 4], [17.062, "chỉ", 4], [17.545, "khớp", 4], [18.029, "127.0.0.1,", 4], [18.512, "lần", 4], [18.738, "thứ", 4], [18.749, "ba", 4], [18.76, "thất", 4], [18.771, "bại", 4], [18.782, "vì", 4], [18.793, "truststore", 4], [18.804, "mặc", 4], [18.815, "định", 4], [18.825, "không", 4], [18.836, "có", 4], [18.847, "chứng", 4], [18.858, "chỉ", 4], [18.869, "tự", 4], [18.88, "ký.", 4], [18.891, "Lần", 5], [18.902, "thứ", 5], [18.913, "hai", 5], [18.913, "lại", 5], [18.913, "thành", 5], [18.913, "công,", 5], [18.913, "dù", 5], [18.913, "chứng", 5], [18.913, "chỉ", 5], [18.913, "không", 5], [18.913, "cấp", 5], [18.913, "cho", 5], [18.913, "tên", 5], [18.913, "đã", 5], [18.913, "kết", 5], [18.913, "nối.", 5], [18.913, "Vì", 6], [18.913, "vậy,", 6], [18.913, "đừng", 6], [18.913, "tắt", 6], [18.913, "kiểm", 6], [18.913, "tra", 6], [18.913, "chứng", 6], [18.913, "chỉ", 6], [18.913, "hay", 6], [18.913, "hostname", 6], [18.913, "chỉ", 6], [18.913, "để", 6], [18.913, "chương", 6], [18.913, "trình", 6], [18.913, "chạy", 6], [18.913, "được:", 6], [18.913, "client", 6], [18.913, "sẽ", 6], [18.913, "mất", 6], [18.913, "khả", 6], [18.913, "năng", 6], [18.913, "phát", 6], [18.913, "hiện", 6], [18.913, "server", 6], [18.913, "giả", 6], [18.913, "mạo.", 6]], "cues": [15.228, 18.891, 18.913], "lang": 9.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án C được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 367.45, "audio": "audio/c82faa2aa31ffd33.mp3", "dur": 4.1, "words": [[0.1, "Hai", 0], [0.325, "file", 0], [0.575, ".p12", 0], [1.275, "vừa", 0], [1.425, "tạo", 0], [1.663, "dễ", 0], [1.913, "bị", 0], [2.075, "nhầm", 0], [2.362, "vai", 0], [2.55, "trò", 0], [2.812, "với", 0], [2.925, "nhau.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/daed154e63b15b88.mp3", "dur2": 11.62, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.65, "là", 0], [0.75, "C.", 0], [1.1, "Phương", 1], [1.413, "án", 1], [1.65, "A", 1], [1.75, "mô", 1], [1.925, "tả", 1], [2.175, "keystore", 1], [2.65, "của", 1], [2.85, "server:", 1], [3.6, "khóa", 1], [3.85, "riêng", 1], [4.125, "nằm", 1], [4.338, "ở", 1], [4.438, "server", 1], [4.912, "và", 1], [5.075, "không", 1], [5.287, "bao", 1], [5.412, "giờ", 1], [5.612, "được", 1], [5.763, "gửi", 1], [5.975, "đi.", 1], [7.075, "Truststore", 2], [7.688, "chỉ", 2], [7.912, "chứa", 2], [8.15, "chứng", 2], [8.363, "chỉ,", 2], [8.925, "tức", 2], [9.1, "các", 2], [9.262, "khóa", 2], [9.5, "công", 2], [9.688, "khai", 2], [9.95, "mà", 2], [10.137, "client", 2], [10.463, "tin.", 2]], "dap_an": "C", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án A.", "start": 389.77, "audio": "audio/d4f69fc1dae80e33.mp3", "dur": 4.49, "words": [[0.1, "Tình", 0], [0.338, "huống", 0], [0.55, "tấn", 0], [0.775, "công", 0], [0.988, "sau", 0], [1.188, "cho", 0], [1.337, "thấy", 0], [1.637, "vì", 0], [1.8, "sao", 0], [2.087, "không", 0], [2.312, "được", 0], [2.438, "bỏ", 0], [2.638, "kiểm", 0], [2.9, "tra", 0], [3.1, "hostname.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/4b456856e343d4cf.mp3", "dur2": 15.74, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.675, "là", 0], [0.863, "A.", 0], [1.225, "Phương", 1], [1.587, "án", 1], [1.762, "C", 1], [2.025, "là", 1], [2.15, "hiểu", 1], [2.337, "nhầm", 1], [2.6, "hay", 1], [2.75, "gặp:", 1], [3.237, "dữ", 1], [3.45, "liệu", 1], [3.7, "vẫn", 1], [3.888, "được", 1], [4.037, "mã", 1], [4.213, "hóa,", 1], [4.812, "nhưng", 1], [5.075, "mã", 1], [5.213, "hóa", 1], [5.463, "tới", 1], [5.65, "chính", 1], [5.888, "kẻ", 1], [6.1, "tấn", 1], [6.338, "công.", 1], [7.463, "Chuỗi", 2], [7.713, "tin", 2], [7.925, "cậy", 2], [8.15, "chỉ", 2], [8.312, "cho", 2], [8.438, "biết", 2], [8.637, "chứng", 2], [8.887, "chỉ", 2], [9.062, "do", 2], [9.213, "một", 2], [9.488, "CA", 2], [9.762, "được", 2], [9.938, "tin", 2], [10.162, "cấp;", 2], [10.637, "kiểm", 2], [10.863, "tra", 2], [11.05, "hostname", 2], [11.5, "mới", 2], [11.75, "cho", 2], [11.887, "biết", 2], [12.075, "chứng", 2], [12.338, "chỉ", 2], [12.488, "đó", 2], [12.662, "cấp", 2], [12.887, "cho", 2], [13.0, "đúng", 2], [13.2, "server", 2], [13.637, "mà", 2], [13.812, "client", 2], [14.162, "muốn", 2], [14.363, "kết", 2], [14.562, "nối.", 2]], "dap_an": "A", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “TLS đặt”; bước 2 khi đọc “Danh tính của server”; bước 3 khi đọc “Về phía Java”; bước 4 khi đọc “Bảy từ khóa”.", "start": 416.6, "audio": "audio/5c3eefd69bf0ecea.mp3", "dur": 39.58, "words": [[0.875, "TLS", 0], [0.875, "đặt", 0], [1.062, "một", 0], [1.238, "lớp", 0], [1.45, "mã", 0], [1.613, "hóa", 0], [1.863, "giữa", 0], [2.294, "TCP", 0], [2.725, "và", 0], [2.85, "giao", 0], [3.038, "thức", 0], [3.288, "ứng", 0], [3.438, "dụng:", 0], [3.962, "handshake", 0], [4.55, "TLS", 0], [5.138, "thỏa", 0], [5.325, "thuận", 0], [5.537, "khóa", 0], [5.725, "phiên", 0], [6.025, "và", 0], [6.175, "xác", 0], [6.388, "thực", 0], [6.525, "server", 0], [6.95, "trước", 0], [7.15, "khi", 0], [7.3, "dữ", 0], [7.487, "liệu", 0], [7.725, "được", 0], [7.888, "mã", 0], [8.062, "hóa.", 0], [9.3, "Danh", 1], [9.613, "tính", 1], [9.863, "của", 1], [10.062, "server", 1], [10.537, "nằm", 1], [10.787, "trong", 1], [10.988, "chứng", 1], [11.213, "chỉ", 1], [11.931, "X.509,", 1], [12.65, "gắn", 1], [12.887, "một", 1], [13.075, "tên", 1], [13.312, "với", 1], [13.412, "một", 1], [13.588, "khóa", 1], [13.825, "công", 1], [14.012, "khai.", 1], [15.175, "Server", 2], [15.613, "giữ", 2], [15.838, "keystore,", 2], [16.65, "còn", 2], [16.925, "client", 2], [17.325, "giữ", 2], [17.55, "truststore", 2], [18.163, "gồm", 2], [18.438, "các", 2], [18.731, "CA", 2], [19.025, "được", 2], [19.188, "tin.", 2], [20.35, "Về", 3], [20.637, "phía", 3], [20.875, "Java,", 3], [21.5, "bản", 3], [21.956, "TLS", 3], [22.413, "chỉ", 3], [22.575, "đổi", 3], [22.775, "cách", 3], [22.975, "tạo", 3], [23.212, "socket,", 3], [23.887, "nhưng", 3], [24.2, "client", 3], [24.6, "phải", 3], [24.762, "tự", 3], [24.925, "bật", 3], [25.1, "kiểm", 3], [25.312, "tra", 3], [25.5, "hostname", 3], [26.175, "và", 3], [26.35, "không", 3], [26.562, "tắt", 3], [26.725, "kiểm", 3], [26.925, "tra", 3], [27.163, "cho", 3], [27.3, "chương", 3], [27.5, "trình", 3], [27.712, "chạy", 3], [27.887, "được.", 3], [28.95, "Bảy", 4], [29.2, "từ", 4], [29.387, "khóa", 4], [29.65, "của", 4], [29.775, "bảo", 4], [29.975, "mật", 4], [30.15, "đường", 4], [30.375, "truyền", 4], [30.65, "là", 4], [31.188, "TLS,", 4], [31.725, "handshake", 4], [32.431, "TLS,", 4], [33.138, "chứng", 4], [33.375, "chỉ", 4], [34.081, "X.509,", 4], [34.788, "keystore,", 4], [35.575, "truststore,", 4], [36.425, "kiểm", 4], [36.65, "tra", 4], [36.862, "hostname", 4], [37.413, "và", 4], [37.413, "SSLSocket.", 4]], "cues": [0.875, 9.3, 20.35, 28.95], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “TLS ở phần này”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 456.78, "audio": "audio/d1b052c4154a0041.mp3", "dur": 18.94, "words": [[0.938, "TLS", 0], [0.938, "ở", 0], [1.025, "phần", 0], [1.238, "này", 0], [1.4, "chỉ", 0], [1.575, "xác", 0], [1.788, "thực", 0], [1.938, "server;", 0], [2.675, "với", 0], [2.888, "mutual", 0], [3.544, "TLS,", 0], [4.2, "server", 0], [4.612, "cũng", 0], [4.812, "đòi", 0], [4.938, "chứng", 0], [5.175, "chỉ", 0], [5.4, "của", 0], [5.562, "client,", 0], [6.188, "còn", 0], [6.45, "certificate", 0], [7.013, "pinning", 0], [7.4, "cho", 0], [7.537, "client", 0], [7.912, "chỉ", 0], [8.1, "tin", 0], [8.312, "một", 0], [8.475, "chứng", 0], [8.7, "chỉ", 0], [8.9, "hay", 0], [9.062, "khóa", 0], [9.275, "cụ", 0], [9.488, "thể.", 0], [10.725, "Bài", 1], [10.963, "tập", 1], [11.162, "mở", 1], [11.363, "rộng", 1], [11.637, "là", 1], [11.787, "tạo", 1], [12.0, "một", 1], [12.281, "CA", 1], [12.562, "riêng", 1], [12.8, "bằng", 1], [13.0, "keytool,", 1], [13.725, "dùng", 1], [14.05, "CA", 1], [14.375, "đó", 1], [14.512, "ký", 1], [14.713, "chứng", 1], [14.938, "chỉ", 1], [15.137, "cho", 1], [15.287, "server,", 1], [16.025, "rồi", 1], [16.275, "cấu", 1], [16.488, "hình", 1], [16.7, "client", 1], [17.062, "chỉ", 1], [17.262, "tin", 1], [17.556, "CA", 1], [17.85, "này.", 1]], "cues": [0.938, 10.725], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 476.32, "audio": "audio/ce3a53bbfc261100.mp3", "dur": 11.35, "words": [[0.1, "Đường", 0], [0.388, "truyền", 0], [0.65, "đã", 0], [0.75, "được", 0], [0.912, "bảo", 0], [1.125, "vệ,", 0], [1.675, "nhưng", 0], [1.975, "client", 0], [2.337, "nào", 0], [2.562, "cũng", 0], [2.775, "gọi", 0], [2.975, "được", 0], [3.138, "thao", 0], [3.312, "tác", 0], [3.525, "cập", 0], [3.7, "nhật", 0], [3.888, "của", 0], [4.025, "dịch", 0], [4.213, "vụ", 0], [4.45, "tra", 0], [4.638, "cứu.", 0], [5.862, "Phần", 1], [6.125, "tiếp", 1], [6.35, "theo", 1], [6.5, "bàn", 1], [6.737, "về", 1], [6.875, "xác", 1], [7.1, "thực", 1], [7.287, "và", 1], [7.438, "phân", 1], [7.65, "quyền", 1], [7.938, "với", 1], [8.359, "OAuth", 1], [8.779, "2.0", 1], [9.2, "và", 1], [9.2, "JWT.", 1]], "cues": [], "lang": 0.6}], "video_sau": "Bảo mật: xác thực và phân quyền với OAuth 2.0 và JWT"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

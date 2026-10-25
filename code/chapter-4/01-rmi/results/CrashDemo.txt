@@ -1,0 +1,7 @@
+  [server] bound "LookupService" in RMI registry on port 1099; object on port 9199
+  [server] lookup("hanoi") on thread RMI TCP Connection(2)-127.0.0.1
+server process killed
+call 1 after 503 ms: java.rmi.UnmarshalException
+  cause: java.net.SocketException: Connection reset
+call 2 after 1 ms: java.rmi.ConnectException
+  cause: java.net.ConnectException: Connection refused: connect

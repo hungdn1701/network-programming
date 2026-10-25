@@ -1,0 +1,9 @@
+REST on http://127.0.0.1:9199/entries/{key}
+GET /entries/hanoi -> 200
+GET /entries/atlantis -> 404
+PUT /entries/sapa -> 201
+PUT /entries/sapa -> 200
+DELETE /entries/sapa -> 204
+DELETE /entries/sapa -> 404
+POST /entries/sapa -> 405
+GET /entries/hanoi -> 200

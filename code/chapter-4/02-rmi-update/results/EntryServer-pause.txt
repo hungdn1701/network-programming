@@ -1,0 +1,8 @@
+bound EntryService, UnsafeEntryService; object port 9199; --pause
+update(sapa, no key)
+  applied: sapa = Thị trấn vùng cao (version 1)
+update(sapa, no key)
+  applied: sapa = Thị trấn vùng cao (version 2)
+update(dalat, key f3b9f374)
+  applied: dalat = Thành phố ngàn hoa (version 1)
+update(dalat, key f3b9f374)

@@ -1,0 +1,7 @@
++   3 ms  sent hanoi
++   7 ms  received hanoi found=true
++ 307 ms  sent atlantis
++ 311 ms  received atlantis found=false
++ 612 ms  sent huế
++ 615 ms  received huế found=true
++ 930 ms  server completed

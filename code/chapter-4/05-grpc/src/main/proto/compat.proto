@@ -1,0 +1,20 @@
+// V26: hai phiên bản giả định của LookupReply ở phía server, chỉ để CompatDemo thử tương thích với client dùng lookup.proto.
+syntax = "proto3";
+
+package lookup;
+
+option java_package = "netlab.grpc.compat";
+option java_multiple_files = true;
+
+// Server đổi số của hai trường đã dùng: sai, client cũ đọc sai mà không báo lỗi.
+message LookupReplyRenumbered {
+  bool found = 2;
+  string value = 1;
+}
+
+// Server thêm trường mới với số mới: đúng, client cũ bỏ qua trường lạ.
+message LookupReplyExtended {
+  bool found = 1;
+  string value = 2;
+  int64 version = 3;
+}

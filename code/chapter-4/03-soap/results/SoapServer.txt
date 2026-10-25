@@ -1,0 +1,2 @@
+SOAP endpoint http://127.0.0.1:9199/lookup, WSDL http://127.0.0.1:9199/lookup?wsdl
+lookup("hanoi")

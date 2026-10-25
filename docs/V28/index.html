@@ -1,0 +1,472 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V28 — Message broker: RabbitMQ, exchange, queue và binding · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-4/07-rabbitmq">Mã</a>
+<h1>V28 · Message broker: RabbitMQ, exchange, queue và binding</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 4</div><div class="ten">Message broker: RabbitMQ, exchange, queue và binding</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Báo sự kiện không cần chờ: giao tiếp bất đồng bộ qua message broker</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">RMI, SOAP, REST, gRPC: bên gọi <b>chờ</b> kết quả; bên nhận phải <b>đang chạy</b></li><li data-s="2">Báo sự kiện cập nhật: bên gửi không cần kết quả, không nên phụ thuộc trạng thái bên nhận</li><li data-s="3"><b>Message broker</b>: trung gian nhận, lưu và chuyển message, cho phép <b>giao tiếp bất đồng bộ</b></li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> message đi qua broker thế nào, và làm sao để message không bị mất?</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Producer gửi tới exchange; binding đưa message vào queue; consumer ack</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Producer, tức dịch vụ tra cứu, gửi message updated sapa tới exchange lookup.events kèm routing key entry.updated, rồi đi tiếp, không chờ. Trong broker RabbitMQ, binding nối exchange với queue lookup.updates theo routing key entry.updated, nên message vào queue và nằm đó, kể cả khi chưa có consumer. Consumer nhận message, xử lý xong thì gửi ack; nhận ack, broker mới xóa message khỏi queue.">
+  <defs>
+    <marker id="bd-a" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="bd-g" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#8A6508"/></marker>
+    <marker id="bd-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- broker -->
+  <rect x="462" y="60" width="838" height="380" rx="10" fill="none" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="486" y="96" font-size="21" fill="#5B6478">RabbitMQ (broker) · AMQP, port 5672</text>
+
+  <!-- ① producer gửi tới exchange -->
+  <g data-s="1">
+    <rect x="40" y="180" width="240" height="120" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="160" y="228" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">producer</text>
+    <text x="160" y="262" text-anchor="middle" font-size="20" fill="#373D4E">dịch vụ tra cứu</text>
+    <line x1="282" y1="240" x2="474" y2="240" stroke="#051A53" stroke-width="2.5" marker-end="url(#bd-a)"/>
+    <text x="372" y="222" text-anchor="middle" font-size="20" fill="#051A53" font-family="Consolas, monospace">updated sapa</text>
+    <text x="372" y="270" text-anchor="middle" font-size="20" fill="#5B6478" font-family="Consolas, monospace">entry.updated</text>
+    <rect x="480" y="180" width="250" height="120" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="605" y="228" text-anchor="middle" font-size="22" font-weight="500" fill="#6B4E06">exchange</text>
+    <text x="605" y="262" text-anchor="middle" font-size="20" fill="#6B4E06" font-family="Consolas, monospace">lookup.events</text>
+    <text x="160" y="340" text-anchor="middle" font-size="20" fill="#22603F">gửi xong đi tiếp,</text>
+    <text x="160" y="366" text-anchor="middle" font-size="20" fill="#22603F">không chờ</text>
+  </g>
+
+  <!-- ② binding đưa message vào queue -->
+  <g data-s="2">
+    <line x1="732" y1="240" x2="904" y2="240" stroke="#8A6508" stroke-width="2.5" marker-end="url(#bd-g)"/>
+    <text x="818" y="222" text-anchor="middle" font-size="20" fill="#6B4E06">binding</text>
+    <text x="818" y="270" text-anchor="middle" font-size="20" fill="#6B4E06" font-family="Consolas, monospace">entry.updated</text>
+    <rect x="910" y="180" width="360" height="120" rx="6" fill="#F4F5F8" stroke="#5B6478" stroke-width="2.5"/>
+    <text x="1090" y="214" text-anchor="middle" font-size="20" fill="#373D4E" font-family="Consolas, monospace">queue lookup.updates</text>
+    <g stroke="#5B6478" stroke-width="2" fill="#FFFFFF">
+      <rect x="1060" y="232" width="90" height="48" rx="4"/>
+      <rect x="1160" y="232" width="90" height="48" rx="4"/>
+    </g>
+    <g font-size="20" fill="#373D4E" text-anchor="middle">
+      <text x="1105" y="262">dalat</text>
+      <text x="1205" y="262">sapa</text>
+    </g>
+    <text x="1090" y="340" text-anchor="middle" font-size="20" fill="#373D4E">message nằm trong queue,</text>
+    <text x="1090" y="366" text-anchor="middle" font-size="20" fill="#373D4E">kể cả khi chưa có consumer</text>
+  </g>
+
+  <!-- ③ consumer nhận, xử lý, ack -->
+  <g data-s="3">
+    <rect x="1480" y="180" width="240" height="120" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1600" y="228" text-anchor="middle" font-size="22" font-weight="500" fill="#22603F">consumer</text>
+    <text x="1600" y="262" text-anchor="middle" font-size="20" fill="#22603F">xử lý sự kiện</text>
+    <line x1="1272" y1="224" x2="1474" y2="224" stroke="#051A53" stroke-width="2.5" marker-end="url(#bd-a)"/>
+    <text x="1374" y="208" text-anchor="middle" font-size="20" fill="#051A53">giao message</text>
+    <line x1="1478" y1="264" x2="1276" y2="264" stroke="#2F855A" stroke-width="2.5" marker-end="url(#bd-ok)"/>
+    <text x="1374" y="292" text-anchor="middle" font-size="20" fill="#22603F">ack</text>
+    <text x="1600" y="340" text-anchor="middle" font-size="20" fill="#22603F">nhận ack, broker mới</text>
+    <text x="1600" y="366" text-anchor="middle" font-size="20" fill="#22603F">xóa message</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Exchange</b> nhận message, <b>binding</b> quyết định <b>queue</b> nào nhận; message nằm trong queue đến khi consumer gửi <b>acknowledgement</b>.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Ba loại exchange thường dùng: direct, fanout, topic</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Ba loại exchange thường dùng. Direct: message có routing key entry.updated chỉ vào queue có binding entry.updated, không vào queue có binding entry.deleted. Fanout: message vào mọi queue đã bind, bỏ qua routing key. Topic: message có routing key entry.vn.hanoi vào queue có binding entry.vn.* và queue có binding entry.#, không vào queue có binding entry.jp.*; dấu sao khớp đúng một từ, dấu thăng khớp không hoặc nhiều từ.">
+  <defs>
+    <marker id="be-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- ① direct -->
+  <g data-s="1">
+    <text x="300" y="44" text-anchor="middle" font-size="23" font-weight="500" fill="#051A53">direct</text>
+    <text x="300" y="80" text-anchor="middle" font-size="20" fill="#5B6478" font-family="Consolas, monospace">message: entry.updated</text>
+    <rect x="200" y="96" width="200" height="64" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="300" y="136" text-anchor="middle" font-size="20" fill="#6B4E06">exchange</text>
+    <line x1="270" y1="162" x2="170" y2="290" stroke="#2F855A" stroke-width="2.5" marker-end="url(#be-ok)"/>
+    <line x1="330" y1="162" x2="430" y2="290" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="6 5"/>
+    <rect x="60" y="296" width="220" height="84" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="170" y="330" text-anchor="middle" font-size="20" fill="#22603F" font-family="Consolas, monospace">entry.updated</text>
+    <text x="170" y="362" text-anchor="middle" font-size="20" fill="#22603F">nhận</text>
+    <rect x="320" y="296" width="220" height="84" rx="6" fill="#F4F5F8" stroke="#9AA3B8" stroke-width="2"/>
+    <text x="430" y="330" text-anchor="middle" font-size="20" fill="#5B6478" font-family="Consolas, monospace">entry.deleted</text>
+    <text x="430" y="362" text-anchor="middle" font-size="20" fill="#5B6478">không nhận</text>
+    <text x="300" y="430" text-anchor="middle" font-size="20" fill="#373D4E">routing key khớp đúng binding</text>
+  </g>
+
+  <!-- ② fanout -->
+  <g data-s="2">
+    <text x="880" y="44" text-anchor="middle" font-size="23" font-weight="500" fill="#051A53">fanout</text>
+    <text x="880" y="80" text-anchor="middle" font-size="20" fill="#5B6478" font-family="Consolas, monospace">message: (bỏ qua routing key)</text>
+    <rect x="780" y="96" width="200" height="64" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="880" y="136" text-anchor="middle" font-size="20" fill="#6B4E06">exchange</text>
+    <line x1="850" y1="162" x2="750" y2="290" stroke="#2F855A" stroke-width="2.5" marker-end="url(#be-ok)"/>
+    <line x1="910" y1="162" x2="1010" y2="290" stroke="#2F855A" stroke-width="2.5" marker-end="url(#be-ok)"/>
+    <rect x="640" y="296" width="220" height="84" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="750" y="330" text-anchor="middle" font-size="20" fill="#22603F">queue log</text>
+    <text x="750" y="362" text-anchor="middle" font-size="20" fill="#22603F">nhận</text>
+    <rect x="900" y="296" width="220" height="84" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1010" y="330" text-anchor="middle" font-size="20" fill="#22603F">queue email</text>
+    <text x="1010" y="362" text-anchor="middle" font-size="20" fill="#22603F">nhận</text>
+    <text x="880" y="430" text-anchor="middle" font-size="20" fill="#373D4E">mọi queue đã bind đều nhận một bản</text>
+  </g>
+
+  <!-- ③ topic -->
+  <g data-s="3">
+    <text x="1460" y="44" text-anchor="middle" font-size="23" font-weight="500" fill="#051A53">topic</text>
+    <text x="1460" y="80" text-anchor="middle" font-size="20" fill="#5B6478" font-family="Consolas, monospace">message: entry.vn.hanoi</text>
+    <rect x="1360" y="96" width="200" height="64" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="1460" y="136" text-anchor="middle" font-size="20" fill="#6B4E06">exchange</text>
+    <line x1="1410" y1="162" x2="1270" y2="290" stroke="#2F855A" stroke-width="2.5" marker-end="url(#be-ok)"/>
+    <line x1="1460" y1="162" x2="1460" y2="290" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="6 5"/>
+    <line x1="1510" y1="162" x2="1650" y2="290" stroke="#2F855A" stroke-width="2.5" marker-end="url(#be-ok)"/>
+    <rect x="1190" y="296" width="170" height="84" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1275" y="330" text-anchor="middle" font-size="20" fill="#22603F" font-family="Consolas, monospace">entry.vn.*</text>
+    <text x="1275" y="362" text-anchor="middle" font-size="20" fill="#22603F">nhận</text>
+    <rect x="1375" y="296" width="170" height="84" rx="6" fill="#F4F5F8" stroke="#9AA3B8" stroke-width="2"/>
+    <text x="1460" y="330" text-anchor="middle" font-size="20" fill="#5B6478" font-family="Consolas, monospace">entry.jp.*</text>
+    <text x="1460" y="362" text-anchor="middle" font-size="20" fill="#5B6478">không nhận</text>
+    <rect x="1560" y="296" width="170" height="84" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1645" y="330" text-anchor="middle" font-size="20" fill="#22603F" font-family="Consolas, monospace">entry.#</text>
+    <text x="1645" y="362" text-anchor="middle" font-size="20" fill="#22603F">nhận</text>
+    <text x="1460" y="430" text-anchor="middle" font-size="20" fill="#373D4E">khớp mẫu: * đúng một từ, # không hoặc nhiều từ</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p>Loại <b>exchange</b> quyết định cách chọn <b>queue</b>: direct khớp đúng routing key, fanout gửi mọi queue, topic khớp theo mẫu.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Khai báo exchange, queue và binding bằng <span style="white-space:nowrap">amqp-client</span></h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span>channel.<span class="hl-m">exchangeDeclare</span>(<span class="hl-t">EXCHANGE</span>, <span class="hl-t">BuiltinExchangeType</span>.<span class="hl-t">DIRECT</span>);
+channel.<span class="hl-m">queueDeclare</span>(<span class="hl-t">QUEUE</span>, <span class="hl-k">true</span>, <span class="hl-k">false</span>, <span class="hl-k">false</span>, <span class="hl-k">null</span>);  <span class="hl-c">// durable: RabbitMQ 4.3 chặn queue thường không durable</span>
+channel.<span class="hl-m">queueBind</span>(<span class="hl-t">QUEUE</span>, <span class="hl-t">EXCHANGE</span>, <span class="hl-t">ROUTING_KEY</span>);  <span class="hl-c">// binding: message có routing key này vào queue này</span>
+</pre></div><ul class="y-nho"><li data-s="1">Producer và consumer đều khai báo trước khi dùng: khai báo lại với cùng tham số không đổi gì</li><li data-s="2">Queue <b>durable</b>: RabbitMQ 4.3 không cho tạo queue thường không durable</li><li data-s="3">Producer chỉ gọi <code>basicPublish(exchange, routingKey, ...)</code>, không biết queue nào nhận</li></ul></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Consumer tắt, message vẫn chờ trong queue</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span>channel.<span class="hl-m">basicConsume</span>(<span class="hl-t">Topology</span>.<span class="hl-t">QUEUE</span>, autoAck, onMessage, consumerTag -&gt; { });
+<span class="hl-m">sleep</span>(<span class="hl-n">200</span>);  <span class="hl-c">// mô phỏng xử lý</span>
+<span class="hl-k">if</span> (!autoAck) {
+    channel.<span class="hl-m">basicAck</span>(delivery.<span class="hl-m">getEnvelope</span>().<span class="hl-m">getDeliveryTag</span>(), <span class="hl-k">false</span>);  <span class="hl-c">// xử lý xong mới ack</span>
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>$ UpdatePublisher sapa dalat
+published "updated sapa"
+published "updated dalat"
+$ rabbitmqctl list_queues name messages_ready messages_unacknowledged
+name  messages_ready  messages_unacknowledged
+lookup.updates  2  0
+$ UpdateConsumer --max 2
+consumer waiting on lookup.updates (manual ack)
+got "updated sapa"
+got "updated dalat"
+$ rabbitmqctl list_queues name messages_ready messages_unacknowledged
+name  messages_ready  messages_unacknowledged
+lookup.updates  0  0</pre></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>autoAck: broker xóa message ngay khi giao, consumer chết là mất</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span>channel.<span class="hl-m">basicConsume</span>(<span class="hl-t">Topology</span>.<span class="hl-t">QUEUE</span>, autoAck, onMessage, consumerTag -&gt; { });
+<span class="hl-t">Runtime</span>.<span class="hl-m">getRuntime</span>().<span class="hl-m">halt</span>(<span class="hl-n">1</span>);  <span class="hl-c">// tiến trình chết giữa chừng, chưa kịp ack</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>$ UpdatePublisher sapa dalat hue
+published "updated sapa"
+published "updated dalat"
+published "updated hue"
+$ UpdateConsumer --auto-ack --crash-on dalat
+consumer waiting on lookup.updates (autoAck)
+got "updated sapa"
+got "updated dalat"
+crash while processing "updated dalat"
+$ rabbitmqctl list_queues name messages_ready messages_unacknowledged
+name  messages_ready  messages_unacknowledged
+lookup.updates  0  0</pre></div><ul class="y-nho"><li data-s="2">autoAck: sapa xử lý xong, <b>dalat và hue mất</b>, queue còn 0</li></ul></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S07"><header><h1>Ack thủ công sau khi xử lý: message chưa ack được giao lại</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span>channel.<span class="hl-m">basicAck</span>(delivery.<span class="hl-m">getEnvelope</span>().<span class="hl-m">getDeliveryTag</span>(), <span class="hl-k">false</span>);  <span class="hl-c">// xử lý xong mới ack</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>$ UpdatePublisher sapa dalat hue
+published "updated sapa"
+published "updated dalat"
+published "updated hue"
+$ UpdateConsumer --crash-on dalat
+consumer waiting on lookup.updates (manual ack)
+got "updated sapa"
+got "updated dalat"
+crash while processing "updated dalat"
+$ rabbitmqctl list_queues name messages_ready messages_unacknowledged
+name  messages_ready  messages_unacknowledged
+lookup.updates  2  0
+$ UpdateConsumer --max 2
+consumer waiting on lookup.updates (manual ack)
+got "updated dalat" (redelivered)
+got "updated hue" (redelivered)</pre></div><ul class="y-nho"><li data-s="2">Ack thủ công: dalat, hue quay lại queue; consumer sau nhận lại với cờ <b>redelivered</b></li></ul></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Trong RabbitMQ, một message nằm trong queue đến khi nào?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Đến khi producer đóng kết nối.</div></div><div class="dung"><span>B</span><div>Đến khi consumer nhận và gửi ack cho message đó (hoặc được giao với autoAck).</div></div><div class=""><span>C</span><div>Chỉ trong 1 giây, rồi broker tự xóa.</div></div><div class=""><span>D</span><div>Đến khi exchange chuyển message sang queue khác.</div></div></div><div class="giai-thich">Broker giữ message trong queue cho tới khi consumer ack. Với autoAck, broker coi message là xong ngay khi giao. Producer đóng kết nối không ảnh hưởng message đã gửi.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Trong RabbitMQ, một message nằm trong queue đến khi nào?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Đến khi producer đóng kết nối.</div></div><div class="dung"><span>B</span><div>Đến khi consumer nhận và gửi ack cho message đó (hoặc được giao với autoAck).</div></div><div class=""><span>C</span><div>Chỉ trong 1 giây, rồi broker tự xóa.</div></div><div class=""><span>D</span><div>Đến khi exchange chuyển message sang queue khác.</div></div></div><div class="giai-thich">Broker giữ message trong queue cho tới khi consumer ack. Với autoAck, broker coi message là xong ngay khi giao. Producer đóng kết nối không ảnh hưởng message đã gửi.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Consumer dùng autoAck và bị lỗi, tiến trình chết khi đang xử lý một message. Message đó ra sao?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Quay lại queue và được giao cho consumer khác.</div></div><div class=""><span>B</span><div>Được giao lại cho chính consumer đó khi nó chạy lại.</div></div><div class=""><span>C</span><div>Nằm ở trạng thái chưa ack cho tới khi quản trị viên xử lý.</div></div><div class="dung"><span>D</span><div>Mất, vì broker đã xóa message ngay khi giao.</div></div></div><div class="giai-thich">Với autoAck, broker xóa message ngay khi giao cho consumer. Consumer chết giữa chừng thì message mất; chỉ ack thủ công sau khi xử lý mới giữ được message.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Consumer dùng autoAck và bị lỗi, tiến trình chết khi đang xử lý một message. Message đó ra sao?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Quay lại queue và được giao cho consumer khác.</div></div><div class=""><span>B</span><div>Được giao lại cho chính consumer đó khi nó chạy lại.</div></div><div class=""><span>C</span><div>Nằm ở trạng thái chưa ack cho tới khi quản trị viên xử lý.</div></div><div class="dung"><span>D</span><div>Mất, vì broker đã xóa message ngay khi giao.</div></div></div><div class="giai-thich">Với autoAck, broker xóa message ngay khi giao cho consumer. Consumer chết giữa chừng thì message mất; chỉ ack thủ công sau khi xử lý mới giữ được message.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>Message broker</b> như <b>RabbitMQ</b> (<b>AMQP</b>) cho <b>giao tiếp bất đồng bộ</b>: <b>producer</b> gửi rồi đi tiếp</div></div><div class="the" data-s="2"><span class="so">2</span><div><b>Exchange</b> nhận message, <b>binding</b> chọn <b>queue</b>; message chờ trong queue tới khi <b>consumer</b> nhận</div></div><div class="the" data-s="3"><span class="so">3</span><div><b>Acknowledgement</b> sau khi xử lý xong: consumer chết thì message được giao lại; autoAck làm mất message</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>giao tiếp bất đồng bộ</span><span>message broker</span><span>RabbitMQ</span><span>AMQP</span><span>producer</span><span>consumer</span><span>exchange</span><span>queue</span><span>binding</span><span>acknowledgement</span></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>Durable queue và persistent message</li><li>Dead letter exchange</li><li>Headers exchange: định tuyến theo header của message</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Gửi message persistent (queue đã durable); khởi động lại RabbitMQ và kiểm tra message nào còn lại trong queue.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Bài toán ứng dụng: thông báo bất đồng bộ qua message broker</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Khi một khóa vừa được cập nhật, dịch vụ tra cứu cần báo cho các hệ thống khác biết. Gửi thông báo đó bằng một lời gọi từ xa có hợp lý không, và nếu không thì gửi bằng cách nào?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:13</span>
+      <h3>Slide 1. Báo sự kiện không cần chờ: giao tiếp bất đồng bộ qua message broker</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>RMI, SOAP, REST, gRPC: bên gọi **chờ** kết quả; bên nhận phải **đang chạy**</li><li>Báo sự kiện cập nhật: bên gửi không cần kết quả, không nên phụ thuộc trạng thái bên nhận</li><li>**Message broker**: trung gian nhận, lưu và chuyển message, cho phép **giao tiếp bất đồng bộ**</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** message đi qua broker thế nào, và làm sao để message không bị mất?</div></div>
+    <div class="kb-thoai"><p>Mọi cách gọi từ đầu chương đều theo một khuôn: bên gọi gửi yêu cầu rồi chờ kết quả, và nếu bên nhận không chạy thì lời gọi thất bại. Báo sự kiện cập nhật lại là một nhu cầu khác: dịch vụ tra cứu không cần kết quả nào, và không nên dừng lại chỉ vì một hệ thống nhận sự kiện đang tắt. Message broker là hệ thống trung gian nhận, lưu và chuyển message giữa bên gửi và bên nhận. Nhờ broker, hai bên giao tiếp bất đồng bộ: bên gửi chuyển message cho broker rồi làm việc tiếp, còn bên nhận xử lý khi sẵn sàng. Vậy message đi qua broker thế nào, và làm sao để message không bị mất giữa đường?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Mọi cách gọi”; bước 2 khi đọc “Báo sự kiện cập nhật”; bước 3 khi đọc “Message broker”; bước 4 khi đọc “Vậy message”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:49</span>
+      <h3>Slide 2. Producer gửi tới exchange; binding đưa message vào queue; consumer ack</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Exchange** nhận message, **binding** quyết định **queue** nào nhận; message nằm trong queue đến khi consumer gửi **acknowledgement**.</li></ul></div></div>
+    <div class="kb-thoai"><p>Để trả lời vế thứ nhất, mình theo dõi một message trong RabbitMQ, message broker mã nguồn mở hiện thực giao thức AMQP, hay Advanced Message Queuing Protocol. Bên gửi, gọi là producer, ở đây là dịch vụ tra cứu. Dịch vụ gửi message updated sapa tới một exchange tên lookup.events, kèm routing key entry.updated, rồi làm việc tiếp, chứ không gửi thẳng vào queue nào. Trong broker, binding là quy tắc nối exchange với queue: binding theo routing key entry.updated đưa message vào queue lookup.updates, và message nằm đó, kể cả khi chưa có ai nhận. Bên nhận, gọi là consumer, nhận message từ queue, xử lý xong thì gửi acknowledgement, hay ack. Như vậy, broker giữ message cho tới khi nhận được ack, tức là cho tới khi bên nhận xác nhận đã xử lý xong.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình broker-duong-di: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Bên gửi, gọi là producer”; bước 2 khi đọc “Trong broker”; bước 3 khi đọc “Bên nhận, gọi là consumer”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:42</span>
+      <h3>Slide 3. Ba loại exchange thường dùng: direct, fanout, topic</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>Loại **exchange** quyết định cách chọn **queue**: direct khớp đúng routing key, fanout gửi mọi queue, topic khớp theo mẫu.</li></ul></div></div>
+    <div class="kb-thoai"><p>Exchange chọn queue theo binding, và cách chọn tùy loại exchange. Exchange direct chuyển message tới queue có binding khớp đúng routing key: message entry.updated vào queue có binding entry.updated, không vào queue có binding entry.deleted. Exchange fanout bỏ qua routing key và gửi một bản tới mọi queue có binding tới nó, ví dụ cả queue log lẫn queue email. Exchange topic khớp routing key theo mẫu gồm các từ ngăn bởi dấu chấm, trong đó dấu sao khớp đúng một từ, còn dấu thăng khớp không hoặc nhiều từ. Vì vậy, message entry.vn.hanoi vào queue entry.vn.* và queue entry.#, nhưng không vào queue entry.jp.*. Ở cả ba loại, producer chỉ cần biết exchange và routing key, còn việc message đi tới những queue nào do binding ở broker quyết định.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình ba-loai-exchange: ba cột hiện lần lượt, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Exchange direct”; bước 2 khi đọc “Exchange fanout”; bước 3 khi đọc “Exchange topic”; bước 4 khi đọc “Ở cả ba loại”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:34</span>
+      <h3>Slide 4. Khai báo exchange, queue và binding bằng amqp-client</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Producer và consumer đều khai báo trước khi dùng: khai báo lại với cùng tham số không đổi gì</li><li>Queue **durable**: RabbitMQ 4.3 không cho tạo queue thường không durable</li><li>Producer chỉ gọi `basicPublish(exchange, routingKey, ...)`, không biết queue nào nhận</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/main/java/netlab/broker/Topology.java</span><pre><code>channel.exchangeDeclare(EXCHANGE, BuiltinExchangeType.DIRECT);
+channel.queueDeclare(QUEUE, true, false, false, null);  // durable: RabbitMQ 4.3 chặn queue thường không durable
+channel.queueBind(QUEUE, EXCHANGE, ROUTING_KEY);  // binding: message có routing key này vào queue này</code></pre></div></div>
+    <div class="kb-thoai"><p>Chương trình Java dùng thư viện amqp-client, mở một kết nối tới broker ở port 5672 rồi tạo một channel để làm việc. Ba lời gọi trên channel dựng đường đi của message: phương thức exchangeDeclare tạo exchange direct, phương thức queueDeclare tạo queue, và phương thức queueBind tạo binding theo routing key. Cả producer và consumer đều gọi ba phương thức này, vì khai báo lại với cùng tham số không thay đổi gì. Tham số thứ hai của phương thức queueDeclare đặt queue là durable, tức queue vẫn tồn tại sau khi broker khởi động lại. RabbitMQ 4.3 không cho tạo queue thường không durable. Phía producer chỉ gọi phương thức basicPublish với tên exchange và routing key, không biết có queue nào hay consumer nào.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã bên trái (hoặc phía trên nếu dòng mã dài), ba ý hiện lần lượt.
+Hiện dần: bước 1 khi đọc “Ba lời gọi”; bước 2 khi đọc “Tham số thứ hai”; bước 3 khi đọc “Phía producer”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:24</span>
+      <h3>Slide 5. Consumer tắt, message vẫn chờ trong queue</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/main/java/netlab/broker/UpdateConsumer.java</span><pre><code>channel.basicConsume(Topology.QUEUE, autoAck, onMessage, consumerTag -&gt; { });
+sleep(200);  // mô phỏng xử lý
+if (!autoAck) {
+    channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);  // xử lý xong mới ack
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Phía consumer, phương thức basicConsume đăng ký nhận message từ queue. Mỗi message đến gọi một callback, xử lý mất 200 mili giây, rồi gọi phương thức basicAck để báo đã xong. Khi consumer đang chạy, mỗi sự kiện producer gửi đi được nhận ngay, mỗi sự kiện mang khóa vừa cập nhật, như sapa hay dalat. Lần này mình tắt consumer, cho producer gửi hai sự kiện, rồi xem queue bằng rabbitmqctl, công cụ quản trị của RabbitMQ. Kết quả: producer gửi xong mà không gặp lỗi nào, và queue lookup.updates giữ 2 message sẵn sàng giao. Khi consumer chạy lại, consumer nhận đủ hai sự kiện, và queue trở về 0.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới; highlight dòng lookup.updates  2  0 rồi hai dòng got.
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:16</span>
+      <h3>Slide 6. autoAck: broker xóa message ngay khi giao, consumer chết là mất</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>autoAck: sapa xử lý xong, **dalat và hue mất**, queue còn 0</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/main/java/netlab/broker/UpdateConsumer.java</span><pre><code>channel.basicConsume(Topology.QUEUE, autoAck, onMessage, consumerTag -&gt; { });
+Runtime.getRuntime().halt(1);  // tiến trình chết giữa chừng, chưa kịp ack</code></pre></div></div>
+    <div class="kb-thoai"><p>Thí nghiệm vừa rồi có consumer tắt trước khi message đến. Nếu consumer đã nhận message rồi mới chết giữa lúc xử lý thì sao? Câu trả lời nằm ở cách ack. Với tùy chọn autoAck của phương thức basicConsume, broker coi message đã xử lý xong ngay khi giao, không chờ ack. Mình gửi ba sự kiện, rồi cho consumer chạy với autoAck và chết khi đang xử lý sự kiện dalat. Các bạn thử đoán: queue còn mấy message? Kết quả: consumer xử lý xong sapa, chết ở dalat, và queue còn 0 message. Message dalat mất vì consumer chưa xử lý xong. Message hue cũng mất, dù chưa được xử lý, vì broker đã giao trước cả ba message cho consumer và xóa ngay khi giao.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã hai dòng phía trên, kết quả phía dưới. Sau câu &quot;còn mấy message&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện.
+Hiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Message dalat”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:11</span>
+      <h3>Slide 7. Ack thủ công sau khi xử lý: message chưa ack được giao lại</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Ack thủ công: dalat, hue quay lại queue; consumer sau nhận lại với cờ **redelivered**</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/main/java/netlab/broker/UpdateConsumer.java</span><pre><code>channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);  // xử lý xong mới ack</code></pre></div></div>
+    <div class="kb-thoai"><p>Cách sửa là tắt autoAck và chỉ gọi phương thức basicAck sau khi xử lý xong. Mình chạy lại đúng kịch bản cũ: ba sự kiện, và consumer chết khi đang xử lý dalat. Kết quả: lần này queue còn 2 message, dalat và hue, vì broker chưa nhận ack của chúng. Khi kết nối của consumer đứt, broker đưa hai message trở lại queue, và consumer chạy sau nhận lại cả hai, với cờ redelivered báo rằng message đã từng được giao. Vì message có thể được giao lại, như dalat ở đây, consumer cần xử lý được một sự kiện nhiều lần mà kết quả không sai, đúng tinh thần idempotency ở phần về RMI.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã một dòng phía trên, kết quả phía dưới; highlight dòng lookup.updates  2  0 và hai dòng (redelivered).
+Hiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Vì message có thể”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:59</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Mình bắt đầu bằng vòng đời của một message.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Trong RabbitMQ, một message nằm trong queue đến khi nào?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Đến khi producer đóng kết nối.</li>
+      <li><b>B.</b> Đến khi consumer nhận và gửi ack cho message đó (hoặc được giao với autoAck).</li>
+      <li><b>C.</b> Chỉ trong 1 giây, rồi broker tự xóa.</li>
+      <li><b>D.</b> Đến khi exchange chuyển message sang queue khác.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: B</b> — <span>Broker giữ message trong queue cho tới khi consumer ack. Với autoAck, broker coi message là xong ngay khi giao. Producer đóng kết nối không ảnh hưởng message đã gửi.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là B. Phương án A là hiểu nhầm hay gặp: producer gửi xong là message thuộc về broker, nên producer đóng kết nối hay tắt hẳn cũng không làm message trong queue mất đi, như kết quả với consumer tắt vừa rồi.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án B được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:21</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Tiếp theo, các bạn đoán xem message ra sao khi consumer dùng autoAck.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Consumer dùng autoAck và bị lỗi, tiến trình chết khi đang xử lý một message. Message đó ra sao?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Quay lại queue và được giao cho consumer khác.</li>
+      <li><b>B.</b> Được giao lại cho chính consumer đó khi nó chạy lại.</li>
+      <li><b>C.</b> Nằm ở trạng thái chưa ack cho tới khi quản trị viên xử lý.</li>
+      <li><b>D.</b> Mất, vì broker đã xóa message ngay khi giao.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: D</b> — <span>Với autoAck, broker xóa message ngay khi giao cho consumer. Consumer chết giữa chừng thì message mất; chỉ ack thủ công sau khi xử lý mới giữ được message.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là D. Phương án A đúng với ack thủ công, khi message chưa ack được đưa trở lại queue. Với autoAck, broker đã xóa message ngay lúc giao, nên không còn gì để giao lại.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án D.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:45</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**Message broker** như **RabbitMQ** (**AMQP**) cho **giao tiếp bất đồng bộ**: **producer** gửi rồi đi tiếp</li><li>**Exchange** nhận message, **binding** chọn **queue**; message chờ trong queue tới khi **consumer** nhận</li><li>**Acknowledgement** sau khi xử lý xong: consumer chết thì message được giao lại; autoAck làm mất message</li></ul></div>
+    <div class="kb-thoai"><p>Message broker như RabbitMQ, hiện thực giao thức AMQP, cho hai bên giao tiếp bất đồng bộ: producer gửi xong là làm việc tiếp, không cần consumer đang chạy. Câu hỏi đầu phần có hai vế. Về đường đi, exchange nhận message, binding chọn queue, và message chờ trong queue tới khi consumer nhận. Về chuyện không mất message, broker chỉ xóa message khi consumer gửi acknowledgement, nên consumer cần ack sau khi xử lý xong, còn autoAck làm mất message khi consumer chết giữa chừng. Mười từ khóa của message broker gồm giao tiếp bất đồng bộ, message broker, RabbitMQ, AMQP, producer, consumer, exchange, queue, binding và acknowledgement.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “Message broker như RabbitMQ”; bước 2 khi đọc “Về đường đi”; bước 3 khi đọc “Về chuyện không mất message”; bước 4 khi đọc “Mười từ khóa”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:30</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Queue durable mới giữ được định nghĩa của queue khi broker khởi động lại. Muốn giữ cả message thì message phải là persistent. Các bạn có thể đọc thêm về hai khái niệm này, về dead letter exchange cho message xử lý lỗi nhiều lần, và về headers exchange, loại exchange định tuyến theo header của message. Bài tập mở rộng là gửi message persistent, khởi động lại RabbitMQ, rồi kiểm tra message nào còn lại trong queue.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Queue durable mới giữ”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-12" data-index="12">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:57</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(12)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(12, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Mỗi sự kiện ở phần này chỉ đến một consumer qua một queue. Phần cuối của chương dùng các loại exchange để đưa một sự kiện cập nhật tới nhiều hệ thống theo những cách khác nhau, với bài toán ứng dụng thông báo bất đồng bộ qua message broker.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V28", "tieu_de": "Message broker: RabbitMQ, exchange, queue và binding", "giong": "vi-VN-NamMinhNeural", "tong": 491.47, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/4b06662b42b3c220.mp3", "dur": 12.41, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Khi", 1], [2.1, "một", 1], [2.275, "khóa", 1], [2.525, "vừa", 1], [2.65, "được", 1], [2.8, "cập", 1], [2.975, "nhật,", 1], [3.413, "dịch", 1], [3.625, "vụ", 1], [3.837, "tra", 1], [4.037, "cứu", 1], [4.312, "cần", 1], [4.55, "báo", 1], [4.787, "cho", 1], [4.925, "các", 1], [5.088, "hệ", 1], [5.25, "thống", 1], [5.475, "khác", 1], [5.7, "biết.", 1], [6.775, "Gửi", 2], [7.037, "thông", 2], [7.237, "báo", 2], [7.425, "đó", 2], [7.675, "bằng", 2], [7.85, "một", 2], [8.0, "lời", 2], [8.188, "gọi", 2], [8.425, "từ", 2], [8.6, "xa", 2], [8.863, "có", 2], [8.988, "hợp", 2], [9.162, "lý", 2], [9.325, "không,", 2], [9.85, "và", 2], [10.1, "nếu", 2], [10.287, "không", 2], [10.525, "thì", 2], [10.65, "gửi", 2], [10.875, "bằng", 2], [11.062, "cách", 2], [11.25, "nào?", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Báo sự kiện không cần chờ: giao tiếp bất đồng bộ qua message broker", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Mọi cách gọi”; bước 2 khi đọc “Báo sự kiện cập nhật”; bước 3 khi đọc “Message broker”; bước 4 khi đọc “Vậy message”.", "start": 13.01, "audio": "audio/a4533247c8daff98.mp3", "dur": 36.38, "words": [[0.1, "Mọi", 0], [0.463, "cách", 0], [0.675, "gọi", 0], [0.863, "từ", 0], [1.025, "đầu", 0], [1.225, "chương", 0], [1.538, "đều", 0], [1.675, "theo", 0], [1.812, "một", 0], [1.975, "khuôn:", 0], [2.487, "bên", 0], [2.737, "gọi", 0], [2.962, "gửi", 0], [3.2, "yêu", 0], [3.375, "cầu", 0], [3.612, "rồi", 0], [3.775, "chờ", 0], [4.025, "kết", 0], [4.237, "quả,", 0], [4.838, "và", 0], [5.05, "nếu", 0], [5.225, "bên", 0], [5.388, "nhận", 0], [5.638, "không", 0], [5.875, "chạy", 0], [6.112, "thì", 0], [6.25, "lời", 0], [6.438, "gọi", 0], [6.65, "thất", 0], [6.838, "bại.", 0], [7.987, "Báo", 1], [8.25, "sự", 1], [8.425, "kiện", 1], [8.7, "cập", 1], [8.9, "nhật", 1], [9.125, "lại", 1], [9.375, "là", 1], [9.475, "một", 1], [9.688, "nhu", 1], [9.875, "cầu", 1], [10.088, "khác:", 1], [10.625, "dịch", 1], [10.838, "vụ", 1], [11.05, "tra", 1], [11.238, "cứu", 1], [11.5, "không", 1], [11.738, "cần", 1], [11.938, "kết", 1], [12.113, "quả", 1], [12.287, "nào,", 1], [12.775, "và", 1], [13.0, "không", 1], [13.213, "nên", 1], [13.387, "dừng", 1], [13.562, "lại", 1], [13.725, "chỉ", 1], [14.025, "vì", 1], [14.15, "một", 1], [14.325, "hệ", 1], [14.475, "thống", 1], [14.688, "nhận", 1], [14.912, "sự", 1], [15.062, "kiện", 1], [15.35, "đang", 1], [15.55, "tắt.", 1], [16.613, "Message", 2], [17.25, "broker", 2], [17.925, "là", 2], [18.137, "hệ", 2], [18.312, "thống", 2], [18.562, "trung", 2], [18.762, "gian", 2], [18.95, "nhận,", 2], [19.462, "lưu", 2], [19.762, "và", 2], [19.887, "chuyển", 2], [20.137, "message", 2], [20.587, "giữa", 2], [20.8, "bên", 2], [21.025, "gửi", 2], [21.275, "và", 2], [21.438, "bên", 2], [21.6, "nhận.", 2], [22.775, "Nhờ", 3], [23.125, "broker,", 3], [23.95, "hai", 3], [24.175, "bên", 3], [24.35, "giao", 3], [24.525, "tiếp", 3], [24.75, "bất", 3], [24.913, "đồng", 3], [25.137, "bộ:", 3], [25.637, "bên", 3], [25.9, "gửi", 3], [26.113, "chuyển", 3], [26.363, "message", 3], [26.788, "cho", 3], [26.95, "broker", 3], [27.488, "rồi", 3], [27.65, "làm", 3], [27.863, "việc", 3], [28.05, "tiếp,", 3], [28.562, "còn", 3], [28.775, "bên", 3], [28.913, "nhận", 3], [29.15, "xử", 3], [29.325, "lý", 3], [29.562, "khi", 3], [29.738, "sẵn", 3], [29.962, "sàng.", 3], [31.125, "Vậy", 4], [31.425, "message", 4], [31.887, "đi", 4], [32.025, "qua", 4], [32.25, "broker", 4], [32.675, "thế", 4], [32.812, "nào,", 4], [33.275, "và", 4], [33.45, "làm", 4], [33.638, "sao", 4], [33.888, "để", 4], [33.987, "message", 4], [34.45, "không", 4], [34.663, "bị", 4], [34.788, "mất", 4], [35.0, "giữa", 4], [35.212, "đường?", 4]], "cues": [0.1, 7.987, 16.613, 31.125], "lang": 0.6}, {"ten": "Slide 2. Producer gửi tới exchange; binding đưa message vào queue; consumer ack", "loai": "slide", "slide": "S02", "dung": "Hình broker-duong-di: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Bên gửi, gọi là producer”; bước 2 khi đọc “Trong broker”; bước 3 khi đọc “Bên nhận, gọi là consumer”; bước 4 khi đọc “Như vậy”.", "start": 49.99, "audio": "audio/aa4d6c1a207d6a96.mp3", "dur": 50.21, "words": [[0.1, "Để", 0], [0.312, "trả", 0], [0.5, "lời", 0], [0.725, "vế", 0], [0.85, "thứ", 0], [1.0, "nhất,", 0], [1.438, "mình", 0], [1.625, "theo", 0], [1.788, "dõi", 0], [1.988, "một", 0], [2.175, "message", 0], [2.612, "trong", 0], [2.85, "RabbitMQ,", 0], [4.0, "message", 0], [4.438, "broker", 0], [4.938, "mã", 0], [5.1, "nguồn", 0], [5.312, "mở", 0], [5.5, "hiện", 0], [5.725, "thực", 0], [5.9, "giao", 0], [6.075, "thức", 0], [6.769, "AMQP,", 0], [7.463, "hay", 0], [7.7, "Advanced", 0], [8.2, "Message", 0], [8.562, "Queuing", 0], [8.825, "Protocol.", 0], [10.387, "Bên", 1], [10.688, "gửi,", 1], [11.175, "gọi", 1], [11.438, "là", 1], [11.6, "producer,", 1], [12.575, "ở", 1], [12.762, "đây", 1], [12.963, "là", 1], [13.075, "dịch", 1], [13.262, "vụ", 1], [13.488, "tra", 1], [13.675, "cứu.", 1], [14.9, "Dịch", 2], [15.137, "vụ", 2], [15.35, "gửi", 2], [15.562, "message", 2], [16.012, "updated", 2], [16.4, "sapa", 2], [16.837, "tới", 2], [17.0, "một", 2], [17.275, "exchange", 2], [17.688, "tên", 2], [17.887, "lookup.events,", 2], [19.288, "kèm", 2], [19.575, "routing", 2], [19.988, "key", 2], [20.225, "entry.updated,", 2], [21.625, "rồi", 2], [21.837, "làm", 2], [22.038, "việc", 2], [22.212, "tiếp,", 2], [22.688, "chứ", 2], [22.925, "không", 2], [23.15, "gửi", 2], [23.312, "thẳng", 2], [23.562, "vào", 2], [23.688, "queue", 2], [23.9, "nào.", 2], [25.012, "Trong", 3], [25.363, "broker,", 3], [26.075, "binding", 3], [26.575, "là", 3], [26.7, "quy", 3], [26.887, "tắc", 3], [27.087, "nối", 3], [27.3, "exchange", 3], [27.775, "với", 3], [27.887, "queue:", 3], [28.45, "binding", 3], [28.863, "theo", 3], [29.05, "routing", 3], [29.45, "key", 3], [29.688, "entry.updated", 3], [30.762, "đưa", 3], [30.9, "message", 3], [31.35, "vào", 3], [31.512, "queue", 3], [31.75, "lookup.updates,", 3], [33.2, "và", 3], [33.425, "message", 3], [33.837, "nằm", 3], [34.038, "đó,", 3], [34.562, "kể", 3], [34.725, "cả", 3], [34.913, "khi", 3], [35.087, "chưa", 3], [35.3, "có", 3], [35.475, "ai", 3], [35.638, "nhận.", 3], [36.825, "Bên", 4], [37.062, "nhận,", 4], [37.525, "gọi", 4], [37.788, "là", 4], [37.913, "consumer,", 4], [38.8, "nhận", 4], [39.075, "message", 4], [39.487, "từ", 4], [39.7, "queue,", 4], [40.212, "xử", 4], [40.413, "lý", 4], [40.6, "xong", 4], [40.862, "thì", 4], [41.025, "gửi", 4], [41.275, "acknowledgement,", 4], [42.075, "hay", 4], [42.337, "ack.", 4], [43.4, "Như", 5], [43.638, "vậy,", 5], [44.087, "broker", 5], [44.65, "giữ", 5], [44.85, "message", 5], [45.312, "cho", 5], [45.475, "tới", 5], [45.663, "khi", 5], [45.837, "nhận", 5], [46.1, "được", 5], [46.312, "ack,", 5], [46.725, "tức", 5], [46.938, "là", 5], [47.112, "cho", 5], [47.263, "tới", 5], [47.475, "khi", 5], [47.65, "bên", 5], [47.812, "nhận", 5], [48.038, "xác", 5], [48.263, "nhận", 5], [48.525, "đã", 5], [48.65, "xử", 5], [48.837, "lý", 5], [49.025, "xong.", 5]], "cues": [10.387, 25.012, 36.825, 43.4], "lang": 2.6}, {"ten": "Slide 3. Ba loại exchange thường dùng: direct, fanout, topic", "loai": "slide", "slide": "S03", "dung": "Hình ba-loai-exchange: ba cột hiện lần lượt, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Exchange direct”; bước 2 khi đọc “Exchange fanout”; bước 3 khi đọc “Exchange topic”; bước 4 khi đọc “Ở cả ba loại”.", "start": 102.8, "audio": "audio/b2f095683a7f43d1.mp3", "dur": 49.2, "words": [[0.1, "Exchange", 0], [0.575, "chọn", 0], [0.85, "queue", 0], [1.062, "theo", 0], [1.238, "binding,", 0], [1.938, "và", 0], [2.188, "cách", 0], [2.375, "chọn", 0], [2.625, "tùy", 0], [2.825, "loại", 0], [3.062, "exchange.", 0], [4.438, "Exchange", 1], [4.925, "direct", 1], [5.287, "chuyển", 1], [5.525, "message", 1], [5.925, "tới", 1], [6.188, "queue", 1], [6.425, "có", 1], [6.55, "binding", 1], [6.925, "khớp", 1], [7.15, "đúng", 1], [7.4, "routing", 1], [7.763, "key:", 1], [8.312, "message", 1], [8.775, "entry.updated", 1], [9.863, "vào", 1], [10.05, "queue", 1], [10.287, "có", 1], [10.412, "binding", 1], [10.825, "entry.updated,", 1], [12.15, "không", 1], [12.4, "vào", 1], [12.562, "queue", 1], [12.775, "có", 1], [12.887, "binding", 1], [13.325, "entry.deleted.", 1], [15.113, "Exchange", 2], [15.588, "fanout", 2], [16.15, "bỏ", 2], [16.387, "qua", 2], [16.625, "routing", 2], [17.038, "key", 2], [17.3, "và", 2], [17.425, "gửi", 2], [17.637, "một", 2], [17.837, "bản", 2], [18.062, "tới", 2], [18.238, "mọi", 2], [18.438, "queue", 2], [18.663, "có", 2], [18.775, "binding", 2], [19.175, "tới", 2], [19.363, "nó,", 2], [19.887, "ví", 2], [20.1, "dụ", 2], [20.3, "cả", 2], [20.5, "queue", 2], [20.7, "log", 2], [20.962, "lẫn", 2], [21.225, "queue", 2], [21.462, "email.", 2], [22.712, "Exchange", 3], [23.2, "topic", 3], [23.637, "khớp", 3], [23.925, "routing", 3], [24.337, "key", 3], [24.525, "theo", 3], [24.7, "mẫu", 3], [25.012, "gồm", 3], [25.262, "các", 3], [25.462, "từ", 3], [25.625, "ngăn", 3], [25.887, "bởi", 3], [26.062, "dấu", 3], [26.25, "chấm,", 3], [26.812, "trong", 3], [27.075, "đó", 3], [27.225, "dấu", 3], [27.462, "sao", 3], [27.7, "khớp", 3], [27.938, "đúng", 3], [28.15, "một", 3], [28.312, "từ,", 3], [28.825, "còn", 3], [29.062, "dấu", 3], [29.275, "thăng", 3], [29.475, "khớp", 3], [29.712, "không", 3], [29.988, "hoặc", 3], [30.175, "nhiều", 3], [30.375, "từ.", 3], [31.512, "Vì", 4], [31.738, "vậy,", 4], [32.188, "message", 4], [32.65, "entry.vn.hanoi", 4], [34.3, "vào", 4], [34.45, "queue", 4], [34.712, "entry.vn.*", 4], [36.163, "và", 4], [36.3, "queue", 4], [36.562, "entry.#,", 4], [37.65, "nhưng", 4], [37.938, "không", 4], [38.188, "vào", 4], [38.3, "queue", 4], [38.55, "entry.jp.*.", 4], [40.925, "Ở", 5], [41.125, "cả", 5], [41.312, "ba", 5], [41.5, "loại,", 5], [42.025, "producer", 5], [42.688, "chỉ", 5], [42.875, "cần", 5], [43.075, "biết", 5], [43.325, "exchange", 5], [43.8, "và", 5], [43.925, "routing", 5], [44.312, "key,", 5], [44.85, "còn", 5], [45.075, "việc", 5], [45.275, "message", 5], [45.7, "đi", 5], [45.825, "tới", 5], [46.013, "những", 5], [46.237, "queue", 5], [46.425, "nào", 5], [46.638, "do", 5], [46.812, "binding", 5], [47.312, "ở", 5], [47.4, "broker", 5], [47.862, "quyết", 5], [48.05, "định.", 5]], "cues": [4.438, 15.113, 22.712, 40.925], "lang": 2.6}, {"ten": "Slide 4. Khai báo exchange, queue và binding bằng amqp-client", "loai": "slide", "slide": "S04", "dung": "Mã bên trái (hoặc phía trên nếu dòng mã dài), ba ý hiện lần lượt.\nHiện dần: bước 1 khi đọc “Ba lời gọi”; bước 2 khi đọc “Tham số thứ hai”; bước 3 khi đọc “Phía producer”.", "start": 154.6, "audio": "audio/0a117e9dec3cf882.mp3", "dur": 43.9, "words": [[0.1, "Chương", 0], [0.4, "trình", 0], [0.613, "Java", 0], [1.025, "dùng", 0], [1.238, "thư", 0], [1.4, "viện", 0], [2.225, "amqp-client,", 0], [3.05, "mở", 0], [3.225, "một", 0], [3.413, "kết", 0], [3.587, "nối", 0], [3.763, "tới", 0], [4.0, "broker", 0], [4.588, "ở", 0], [4.725, "port", 0], [5.306, "5672", 0], [5.888, "rồi", 0], [6.062, "tạo", 0], [6.25, "một", 0], [6.45, "channel", 0], [6.875, "để", 0], [7.0, "làm", 0], [7.2, "việc.", 0], [8.262, "Ba", 1], [8.5, "lời", 1], [8.662, "gọi", 1], [8.9, "trên", 1], [9.1, "channel", 1], [9.438, "dựng", 1], [9.688, "đường", 1], [9.887, "đi", 1], [10.05, "của", 1], [10.188, "message:", 1], [10.9, "phương", 1], [11.162, "thức", 1], [11.412, "exchangeDeclare", 1], [12.338, "tạo", 1], [12.6, "exchange", 1], [13.012, "direct,", 1], [13.613, "phương", 1], [13.9, "thức", 1], [14.075, "queueDeclare", 1], [14.75, "tạo", 1], [15.012, "queue,", 1], [15.562, "và", 1], [15.8, "phương", 1], [16.012, "thức", 1], [16.188, "queueBind", 1], [16.55, "tạo", 1], [16.788, "binding", 1], [17.188, "theo", 1], [17.375, "routing", 1], [17.762, "key.", 1], [18.9, "Cả", 2], [19.163, "producer", 2], [19.863, "và", 2], [20.025, "consumer", 2], [20.7, "đều", 2], [20.9, "gọi", 2], [21.113, "ba", 2], [21.325, "phương", 2], [21.538, "thức", 2], [21.7, "này,", 2], [22.125, "vì", 2], [22.325, "khai", 2], [22.55, "báo", 2], [22.762, "lại", 2], [22.95, "với", 2], [23.062, "cùng", 2], [23.275, "tham", 2], [23.462, "số", 2], [23.725, "không", 2], [23.938, "thay", 2], [24.05, "đổi", 2], [24.25, "gì.", 2], [25.387, "Tham", 3], [25.637, "số", 3], [25.837, "thứ", 3], [26.0, "hai", 3], [26.2, "của", 3], [26.337, "phương", 3], [26.538, "thức", 3], [26.7, "queueDeclare", 3], [27.45, "đặt", 3], [27.688, "queue", 3], [27.913, "là", 3], [28.05, "durable,", 3], [28.712, "tức", 3], [28.938, "queue", 3], [29.15, "vẫn", 3], [29.337, "tồn", 3], [29.575, "tại", 3], [29.712, "sau", 3], [29.875, "khi", 3], [30.062, "broker", 3], [30.562, "khởi", 3], [30.8, "động", 3], [31.025, "lại.", 3], [32.175, "RabbitMQ", 4], [33.175, "4.3", 4], [33.938, "không", 4], [34.188, "cho", 4], [34.3, "tạo", 4], [34.513, "queue", 4], [34.725, "thường", 4], [34.987, "không", 4], [35.225, "durable.", 4], [36.525, "Phía", 5], [36.825, "producer", 5], [37.487, "chỉ", 5], [37.688, "gọi", 5], [37.913, "phương", 5], [38.125, "thức", 5], [38.312, "basicPublish", 5], [39.125, "với", 5], [39.25, "tên", 5], [39.525, "exchange", 5], [40.038, "và", 5], [40.175, "routing", 5], [40.562, "key,", 5], [41.1, "không", 5], [41.337, "biết", 5], [41.513, "có", 5], [41.638, "queue", 5], [41.85, "nào", 5], [42.075, "hay", 5], [42.225, "consumer", 5], [42.788, "nào.", 5]], "cues": [8.262, 25.387, 36.525], "lang": 5.6}, {"ten": "Slide 5. Consumer tắt, message vẫn chờ trong queue", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, kết quả phía dưới; highlight dòng lookup.updates  2  0 rồi hai dòng got.\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 204.1, "audio": "audio/910abb88a67bbbfe.mp3", "dur": 42.38, "words": [[0.1, "Phía", 0], [0.4, "consumer,", 0], [1.262, "phương", 0], [1.538, "thức", 0], [1.775, "basicConsume", 0], [2.775, "đăng", 0], [2.975, "ký", 0], [3.163, "nhận", 0], [3.425, "message", 0], [3.862, "từ", 0], [4.088, "queue.", 0], [5.237, "Mỗi", 1], [5.625, "message", 1], [6.075, "đến", 1], [6.312, "gọi", 1], [6.513, "một", 1], [6.713, "callback,", 1], [7.287, "xử", 1], [7.5, "lý", 1], [7.688, "mất", 1], [7.875, "200", 1], [8.3, "mili", 1], [8.575, "giây,", 1], [9.1, "rồi", 1], [9.363, "gọi", 1], [9.562, "phương", 1], [9.762, "thức", 1], [9.963, "basicAck", 1], [10.637, "để", 1], [10.8, "báo", 1], [11.05, "đã", 1], [11.188, "xong.", 1], [12.363, "Khi", 2], [12.675, "consumer", 2], [13.275, "đang", 2], [13.488, "chạy,", 2], [13.988, "mỗi", 2], [14.188, "sự", 2], [14.35, "kiện", 2], [14.613, "producer", 2], [15.25, "gửi", 2], [15.463, "đi", 2], [15.613, "được", 2], [15.762, "nhận", 2], [15.963, "ngay,", 2], [16.462, "mỗi", 2], [16.675, "sự", 2], [16.837, "kiện", 2], [17.075, "mang", 2], [17.262, "khóa", 2], [17.525, "vừa", 2], [17.663, "cập", 2], [17.875, "nhật,", 2], [18.325, "như", 2], [18.6, "sapa", 2], [19.087, "hay", 2], [19.25, "dalat.", 2], [20.462, "Lần", 3], [20.725, "này", 3], [20.9, "mình", 3], [21.125, "tắt", 3], [21.3, "consumer,", 3], [22.175, "cho", 3], [22.363, "producer", 3], [23.038, "gửi", 3], [23.25, "hai", 3], [23.413, "sự", 3], [23.6, "kiện,", 3], [24.137, "rồi", 3], [24.375, "xem", 3], [24.637, "queue", 3], [24.8, "bằng", 3], [25.012, "rabbitmqctl,", 3], [26.55, "công", 3], [26.775, "cụ", 3], [26.938, "quản", 3], [27.175, "trị", 3], [27.4, "của", 3], [27.587, "RabbitMQ.", 3], [29.337, "Kết", 4], [29.538, "quả:", 4], [30.137, "producer", 4], [30.812, "gửi", 4], [31.038, "xong", 4], [31.363, "mà", 4], [31.55, "không", 4], [31.775, "gặp", 4], [31.938, "lỗi", 4], [32.138, "nào,", 4], [32.612, "và", 4], [32.825, "queue", 4], [33.075, "lookup.updates", 4], [34.212, "giữ", 4], [34.425, "2", 4], [34.638, "message", 4], [35.062, "sẵn", 4], [35.337, "sàng", 4], [35.575, "giao.", 4], [36.725, "Khi", 5], [37.025, "consumer", 5], [37.612, "chạy", 5], [37.862, "lại,", 5], [38.375, "consumer", 5], [39.013, "nhận", 5], [39.312, "đủ", 5], [39.5, "hai", 5], [39.663, "sự", 5], [39.837, "kiện,", 5], [40.375, "và", 5], [40.625, "queue", 5], [40.85, "trở", 5], [41.075, "về", 5], [41.2, "0.", 5]], "cues": [29.337], "lang": 9.6}, {"ten": "Slide 6. autoAck: broker xóa message ngay khi giao, consumer chết là mất", "loai": "slide", "slide": "S06", "dung": "Mã hai dòng phía trên, kết quả phía dưới. Sau câu \"còn mấy message\", dừng khoảng 2 giây trước khi khung kết quả hiện.\nHiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Message dalat”.", "start": 256.08, "audio": "audio/2257d2708e8d1cd3.mp3", "dur": 45.53, "words": [[0.1, "Thí", 0], [0.287, "nghiệm", 0], [0.6, "vừa", 0], [0.787, "rồi", 0], [1.0, "có", 0], [1.175, "consumer", 0], [1.738, "tắt", 0], [1.962, "trước", 0], [2.15, "khi", 0], [2.337, "message", 0], [2.775, "đến.", 0], [3.95, "Nếu", 1], [4.388, "consumer", 1], [4.975, "đã", 1], [5.1, "nhận", 1], [5.338, "message", 1], [5.912, "rồi", 1], [6.125, "mới", 1], [6.312, "chết", 1], [6.55, "giữa", 1], [6.725, "lúc", 1], [6.875, "xử", 1], [7.088, "lý", 1], [7.312, "thì", 1], [7.438, "sao?", 1], [8.625, "Câu", 2], [8.85, "trả", 2], [9.062, "lời", 2], [9.338, "nằm", 2], [9.625, "ở", 2], [9.713, "cách", 2], [9.95, "ack.", 2], [11.012, "Với", 3], [11.287, "tùy", 3], [11.488, "chọn", 3], [11.787, "autoAck", 3], [12.312, "của", 3], [12.562, "phương", 3], [12.838, "thức", 3], [13.025, "basicConsume,", 3], [14.225, "broker", 3], [14.787, "coi", 3], [14.975, "message", 3], [15.438, "đã", 3], [15.575, "xử", 3], [15.738, "lý", 3], [15.963, "xong", 3], [16.163, "ngay", 3], [16.325, "khi", 3], [16.475, "giao,", 3], [16.975, "không", 3], [17.238, "chờ", 3], [17.475, "ack.", 3], [18.525, "Mình", 4], [18.913, "gửi", 4], [19.113, "ba", 4], [19.275, "sự", 4], [19.45, "kiện,", 4], [19.962, "rồi", 4], [20.238, "cho", 4], [20.387, "consumer", 4], [20.938, "chạy", 4], [21.212, "với", 4], [21.387, "autoAck", 4], [21.988, "và", 4], [22.163, "chết", 4], [22.387, "khi", 4], [22.562, "đang", 4], [22.738, "xử", 4], [22.925, "lý", 4], [23.15, "sự", 4], [23.325, "kiện", 4], [23.587, "dalat.", 4], [24.825, "Các", 5], [25.025, "bạn", 5], [25.25, "thử", 5], [25.438, "đoán:", 5], [25.95, "queue", 5], [26.25, "còn", 5], [26.5, "mấy", 5], [26.688, "message?", 5], [28.062, "Kết", 6], [28.262, "quả:", 6], [28.863, "consumer", 6], [29.425, "xử", 6], [29.625, "lý", 6], [29.837, "xong", 6], [30.038, "sapa,", 6], [30.775, "chết", 6], [31.113, "ở", 6], [31.262, "dalat,", 6], [31.875, "và", 6], [32.125, "queue", 6], [32.362, "còn", 6], [32.587, "0", 6], [32.8, "message.", 6], [34.125, "Message", 7], [34.788, "dalat", 7], [35.163, "mất", 7], [35.362, "vì", 7], [35.612, "consumer", 7], [36.212, "chưa", 7], [36.438, "xử", 7], [36.65, "lý", 7], [36.837, "xong.", 7], [38.0, "Message", 8], [38.625, "hue", 8], [38.812, "cũng", 8], [39.013, "mất,", 8], [39.413, "dù", 8], [39.65, "chưa", 8], [39.825, "được", 8], [39.95, "xử", 8], [40.125, "lý,", 8], [40.675, "vì", 8], [40.888, "broker", 8], [41.438, "đã", 8], [41.575, "giao", 8], [41.775, "trước", 8], [41.987, "cả", 8], [42.138, "ba", 8], [42.312, "message", 8], [42.763, "cho", 8], [42.913, "consumer", 8], [43.55, "và", 8], [43.75, "xóa", 8], [44.025, "ngay", 8], [44.212, "khi", 8], [44.375, "giao.", 8]], "cues": [28.062, 34.125], "lang": 9.6}, {"ten": "Slide 7. Ack thủ công sau khi xử lý: message chưa ack được giao lại", "loai": "slide", "slide": "S07", "dung": "Mã một dòng phía trên, kết quả phía dưới; highlight dòng lookup.updates  2  0 và hai dòng (redelivered).\nHiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Vì message có thể”.", "start": 311.21, "audio": "audio/42f44090272e4d96.mp3", "dur": 38.4, "words": [[0.1, "Cách", 0], [0.287, "sửa", 0], [0.562, "là", 0], [0.725, "tắt", 0], [1.012, "autoAck", 0], [1.613, "và", 0], [1.775, "chỉ", 0], [1.975, "gọi", 0], [2.188, "phương", 0], [2.388, "thức", 0], [2.6, "basicAck", 0], [3.25, "sau", 0], [3.462, "khi", 0], [3.638, "xử", 0], [3.85, "lý", 0], [4.05, "xong.", 0], [5.213, "Mình", 1], [5.612, "chạy", 1], [5.838, "lại", 1], [6.0, "đúng", 1], [6.2, "kịch", 1], [6.35, "bản", 1], [6.562, "cũ:", 1], [7.125, "ba", 1], [7.338, "sự", 1], [7.537, "kiện,", 1], [8.075, "và", 1], [8.312, "consumer", 1], [8.887, "chết", 1], [9.137, "khi", 1], [9.35, "đang", 1], [9.525, "xử", 1], [9.713, "lý", 1], [9.938, "dalat.", 1], [11.175, "Kết", 2], [11.387, "quả:", 2], [11.975, "lần", 2], [12.2, "này", 2], [12.375, "queue", 2], [12.6, "còn", 2], [12.838, "2", 2], [13.012, "message,", 2], [13.75, "dalat", 2], [14.2, "và", 2], [14.387, "hue,", 2], [14.938, "vì", 2], [15.2, "broker", 2], [15.725, "chưa", 2], [15.95, "nhận", 2], [16.262, "ack", 2], [16.413, "của", 2], [16.562, "chúng.", 2], [17.75, "Khi", 3], [18.012, "kết", 3], [18.238, "nối", 3], [18.45, "của", 3], [18.625, "consumer", 3], [19.188, "đứt,", 3], [19.587, "broker", 3], [20.212, "đưa", 3], [20.387, "hai", 3], [20.6, "message", 3], [21.025, "trở", 3], [21.2, "lại", 3], [21.363, "queue,", 3], [21.887, "và", 3], [22.113, "consumer", 3], [22.688, "chạy", 3], [22.9, "sau", 3], [23.062, "nhận", 3], [23.312, "lại", 3], [23.462, "cả", 3], [23.637, "hai,", 3], [24.175, "với", 3], [24.4, "cờ", 3], [24.613, "redelivered", 3], [25.087, "báo", 3], [25.337, "rằng", 3], [25.575, "message", 3], [26.025, "đã", 3], [26.163, "từng", 3], [26.375, "được", 3], [26.512, "giao.", 3], [27.675, "Vì", 4], [27.938, "message", 4], [28.375, "có", 4], [28.5, "thể", 4], [28.65, "được", 4], [28.812, "giao", 4], [29.012, "lại,", 4], [29.538, "như", 4], [29.788, "dalat", 4], [30.225, "ở", 4], [30.363, "đây,", 4], [30.825, "consumer", 4], [31.425, "cần", 4], [31.788, "xử", 4], [31.938, "lý", 4], [32.175, "được", 4], [32.325, "một", 4], [32.475, "sự", 4], [32.65, "kiện", 4], [32.9, "nhiều", 4], [33.138, "lần", 4], [33.375, "mà", 4], [33.487, "kết", 4], [33.7, "quả", 4], [33.9, "không", 4], [34.087, "sai,", 4], [34.675, "đúng", 4], [34.9, "tinh", 4], [35.087, "thần", 4], [35.375, "idempotency", 4], [36.312, "ở", 4], [36.388, "phần", 4], [36.675, "về", 4], [36.675, "RMI.", 4]], "cues": [11.175, 27.675], "lang": 9.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án B được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 359.21, "audio": "audio/74962961de3c24ed.mp3", "dur": 3.29, "words": [[0.1, "Mình", 0], [0.475, "bắt", 0], [0.637, "đầu", 0], [0.85, "bằng", 0], [1.075, "vòng", 0], [1.3, "đời", 0], [1.525, "của", 0], [1.65, "một", 0], [1.875, "message.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/b32d7c3bcf132ca0.mp3", "dur2": 12.89, "words2": [[0.1, "Đáp", 0], [0.438, "án", 0], [0.637, "là", 0], [0.738, "B.", 0], [1.025, "Phương", 1], [1.325, "án", 1], [1.562, "A", 1], [1.762, "là", 1], [1.863, "hiểu", 1], [2.038, "nhầm", 1], [2.288, "hay", 1], [2.438, "gặp:", 1], [2.925, "producer", 1], [3.575, "gửi", 1], [3.775, "xong", 1], [4.05, "là", 1], [4.15, "message", 1], [4.575, "thuộc", 1], [4.775, "về", 1], [4.912, "broker,", 1], [5.737, "nên", 1], [6.013, "producer", 1], [6.65, "đóng", 1], [6.862, "kết", 1], [7.075, "nối", 1], [7.3, "hay", 1], [7.463, "tắt", 1], [7.638, "hẳn", 1], [7.912, "cũng", 1], [8.088, "không", 1], [8.287, "làm", 1], [8.45, "message", 1], [8.887, "trong", 1], [9.1, "queue", 1], [9.3, "mất", 1], [9.488, "đi,", 1], [9.963, "như", 1], [10.225, "kết", 1], [10.425, "quả", 1], [10.65, "với", 1], [10.775, "consumer", 1], [11.338, "tắt", 1], [11.575, "vừa", 1], [11.787, "rồi.", 1]], "dap_an": "B", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án D.", "start": 381.99, "audio": "audio/4bed070c73405b1a.mp3", "dur": 4.97, "words": [[0.1, "Tiếp", 0], [0.4, "theo,", 0], [0.9, "các", 0], [1.075, "bạn", 0], [1.275, "đoán", 0], [1.475, "xem", 0], [1.7, "message", 0], [2.087, "ra", 0], [2.225, "sao", 0], [2.438, "khi", 0], [2.638, "consumer", 0], [3.237, "dùng", 0], [3.562, "autoAck.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/32071835693761be.mp3", "dur2": 12.22, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.65, "là", 0], [0.762, "D.", 0], [1.137, "Phương", 1], [1.613, "án", 1], [1.863, "A", 1], [2.025, "đúng", 1], [2.25, "với", 1], [2.375, "ack", 1], [2.525, "thủ", 1], [2.712, "công,", 1], [3.212, "khi", 1], [3.45, "message", 1], [3.875, "chưa", 1], [4.112, "ack", 1], [4.338, "được", 1], [4.5, "đưa", 1], [4.688, "trở", 1], [4.888, "lại", 1], [5.062, "queue.", 1], [6.25, "Với", 2], [6.6, "autoAck,", 2], [7.388, "broker", 2], [8.012, "đã", 2], [8.162, "xóa", 2], [8.4, "message", 2], [8.863, "ngay", 2], [9.062, "lúc", 2], [9.238, "giao,", 2], [9.762, "nên", 2], [10.05, "không", 2], [10.275, "còn", 2], [10.475, "gì", 2], [10.675, "để", 2], [10.825, "giao", 2], [11.025, "lại.", 2]], "dap_an": "D", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “Message broker như RabbitMQ”; bước 2 khi đọc “Về đường đi”; bước 3 khi đọc “Về chuyện không mất message”; bước 4 khi đọc “Mười từ khóa”.", "start": 405.78, "audio": "audio/b861de2c280b7aaa.mp3", "dur": 44.14, "words": [[0.1, "Message", 0], [0.713, "broker", 0], [1.225, "như", 0], [1.462, "RabbitMQ,", 0], [2.612, "hiện", 0], [2.85, "thực", 0], [3.038, "giao", 0], [3.212, "thức", 0], [3.887, "AMQP,", 0], [4.562, "cho", 0], [4.763, "hai", 0], [4.975, "bên", 0], [5.138, "giao", 0], [5.312, "tiếp", 0], [5.525, "bất", 0], [5.688, "đồng", 0], [5.9, "bộ:", 0], [6.4, "producer", 0], [7.062, "gửi", 0], [7.275, "xong", 0], [7.562, "là", 0], [7.662, "làm", 0], [7.862, "việc", 0], [8.037, "tiếp,", 0], [8.512, "không", 0], [8.762, "cần", 0], [8.963, "consumer", 0], [9.512, "đang", 0], [9.725, "chạy.", 0], [10.887, "Câu", 1], [11.1, "hỏi", 1], [11.35, "đầu", 1], [11.562, "phần", 1], [11.863, "có", 1], [12.0, "hai", 1], [12.188, "vế.", 1], [13.363, "Về", 2], [13.625, "đường", 2], [13.838, "đi,", 2], [14.312, "exchange", 2], [14.7, "nhận", 2], [14.938, "message,", 2], [15.662, "binding", 2], [16.125, "chọn", 2], [16.387, "queue,", 2], [16.9, "và", 2], [17.125, "message", 2], [17.538, "chờ", 2], [17.788, "trong", 2], [17.988, "queue", 2], [18.175, "tới", 2], [18.413, "khi", 2], [18.613, "consumer", 2], [19.225, "nhận.", 2], [20.413, "Về", 3], [20.675, "chuyện", 3], [20.925, "không", 3], [21.125, "mất", 3], [21.325, "message,", 3], [22.012, "broker", 3], [22.55, "chỉ", 3], [22.762, "xóa", 3], [22.975, "message", 3], [23.413, "khi", 3], [23.6, "consumer", 3], [24.188, "gửi", 3], [24.438, "acknowledgement,", 3], [25.225, "nên", 3], [25.488, "consumer", 3], [26.05, "cần", 3], [26.375, "ack", 3], [26.488, "sau", 3], [26.663, "khi", 3], [26.825, "xử", 3], [27.0, "lý", 3], [27.175, "xong,", 3], [27.725, "còn", 3], [28.0, "autoAck", 3], [28.538, "làm", 3], [28.738, "mất", 3], [28.95, "message", 3], [29.387, "khi", 3], [29.575, "consumer", 3], [30.125, "chết", 3], [30.387, "giữa", 3], [30.562, "chừng.", 3], [31.7, "Mười", 4], [32.038, "từ", 4], [32.225, "khóa", 4], [32.462, "của", 4], [32.587, "message", 4], [32.987, "broker", 4], [33.5, "gồm", 4], [33.812, "giao", 4], [34.013, "tiếp", 4], [34.225, "bất", 4], [34.4, "đồng", 4], [34.625, "bộ,", 4], [35.15, "message", 4], [35.6, "broker,", 4], [36.4, "RabbitMQ,", 4], [36.4, "AMQP,", 4], [36.4, "producer,", 4], [36.4, "consumer,", 4], [36.4, "exchange,", 4], [36.4, "queue,", 4], [36.4, "binding", 4], [36.4, "và", 4], [36.4, "acknowledgement.", 4]], "cues": [0.1, 13.363, 20.413, 31.7], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Queue durable mới giữ”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 450.52, "audio": "audio/b13885ec2746877d.mp3", "dur": 26.09, "words": [[0.1, "Queue", 0], [0.35, "durable", 0], [0.713, "mới", 0], [0.938, "giữ", 0], [1.113, "được", 0], [1.262, "định", 0], [1.475, "nghĩa", 0], [1.712, "của", 0], [1.85, "queue", 0], [2.062, "khi", 0], [2.3, "broker", 0], [2.85, "khởi", 0], [3.1, "động", 0], [3.325, "lại.", 0], [4.5, "Muốn", 1], [4.9, "giữ", 1], [5.138, "cả", 1], [5.325, "message", 1], [5.875, "thì", 1], [6.075, "message", 1], [6.513, "phải", 1], [6.713, "là", 1], [6.85, "persistent.", 1], [8.412, "Các", 2], [8.613, "bạn", 2], [8.825, "có", 2], [8.925, "thể", 2], [9.05, "đọc", 2], [9.213, "thêm", 2], [9.488, "về", 2], [9.613, "hai", 2], [9.787, "khái", 2], [10.0, "niệm", 2], [10.213, "này,", 2], [10.662, "về", 2], [10.887, "dead", 2], [11.125, "letter", 2], [11.463, "exchange", 2], [11.963, "cho", 2], [12.088, "message", 2], [12.5, "xử", 2], [12.688, "lý", 2], [12.887, "lỗi", 2], [13.088, "nhiều", 2], [13.312, "lần,", 2], [13.775, "và", 2], [14.025, "về", 2], [14.175, "headers", 2], [14.525, "exchange,", 2], [15.338, "loại", 2], [15.637, "exchange", 2], [16.038, "định", 2], [16.25, "tuyến", 2], [16.5, "theo", 2], [16.675, "header", 2], [17.087, "của", 2], [17.25, "message.", 2], [18.625, "Bài", 3], [18.863, "tập", 3], [19.062, "mở", 3], [19.25, "rộng", 3], [19.525, "là", 3], [19.663, "gửi", 3], [19.875, "message", 3], [20.3, "persistent,", 3], [21.2, "khởi", 3], [21.413, "động", 3], [21.663, "lại", 3], [21.863, "RabbitMQ,", 3], [23.0, "rồi", 3], [23.275, "kiểm", 3], [23.512, "tra", 3], [23.688, "message", 3], [24.125, "nào", 3], [24.312, "còn", 3], [24.55, "lại", 3], [24.738, "trong", 3], [24.938, "queue.", 3]], "cues": [0.1, 18.625], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 477.21, "audio": "audio/b790a8b54381aef8.mp3", "dur": 13.66, "words": [[0.1, "Mỗi", 0], [0.475, "sự", 0], [0.662, "kiện", 0], [0.95, "ở", 0], [1.038, "phần", 0], [1.25, "này", 0], [1.462, "chỉ", 0], [1.637, "đến", 0], [1.837, "một", 0], [2.038, "consumer", 0], [2.6, "qua", 0], [2.862, "một", 0], [3.087, "queue.", 0], [4.25, "Phần", 1], [4.55, "cuối", 1], [4.737, "của", 1], [4.875, "chương", 1], [5.138, "dùng", 1], [5.312, "các", 1], [5.487, "loại", 1], [5.7, "exchange", 1], [6.325, "để", 1], [6.487, "đưa", 1], [6.638, "một", 1], [6.8, "sự", 1], [6.975, "kiện", 1], [7.237, "cập", 1], [7.425, "nhật", 1], [7.638, "tới", 1], [7.8, "nhiều", 1], [8.05, "hệ", 1], [8.188, "thống", 1], [8.425, "theo", 1], [8.625, "những", 1], [8.825, "cách", 1], [8.975, "khác", 1], [9.15, "nhau,", 1], [9.637, "với", 1], [9.812, "bài", 1], [9.988, "toán", 1], [10.275, "ứng", 1], [10.412, "dụng", 1], [10.65, "thông", 1], [10.825, "báo", 1], [11.025, "bất", 1], [11.213, "đồng", 1], [11.438, "bộ", 1], [11.625, "qua", 1], [11.863, "message", 1], [12.262, "broker.", 1]], "cues": [], "lang": 0.6}], "video_sau": "Bài toán ứng dụng: thông báo bất đồng bộ qua message broker"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

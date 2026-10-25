@@ -1,0 +1,7 @@
+$ NotifyDemo
+published 6 events, email prefetch unlimited
+  log      6: hanoi hue tokyo sapa osaka dalat
+  vn-audit 4: hanoi hue sapa dalat
+  email-1  3: hanoi tokyo osaka
+  email-2  3: hue sapa dalat
+  all email sent after 1830 ms

@@ -1,0 +1,1 @@
+GET hanoi: HTTP 200, response body 53 bytes

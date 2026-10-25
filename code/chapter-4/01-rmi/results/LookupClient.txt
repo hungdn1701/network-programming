@@ -1,0 +1,4 @@
+stub class: jdk.proxy1.$Proxy0
+stub ref: UnicastRef [liveRef: [endpoint:[127.0.0.1:9199](remote),objID:[572ec23c:1a170c56e9c:-7fff, 9141332462191274964]]]
+hanoi -> Thủ đô của Việt Nam
+atlantis -> null (không có khóa)

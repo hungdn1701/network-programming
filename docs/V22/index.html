@@ -1,0 +1,449 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V22 — RPC: lời gọi thủ tục từ xa và Java RMI · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-4/01-rmi">Mã</a>
+<h1>V22 · RPC: lời gọi thủ tục từ xa và Java RMI</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 4</div><div class="ten">RPC: lời gọi thủ tục từ xa và Java RMI</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="CH"><header><h1>Chương 4: Kỹ thuật lập trình phân tán</h1></header><main class="bo-cuc-lo-trinh"><div class="lo-trinh" style="--cot: 4"><div class="chang" data-s="1"><div class="ten-chang"><span class="so">1</span>RPC</div><ol><li class="hien-tai"><span>Lời gọi thủ tục từ xa và Java RMI</span></li><li class=""><span>Truyền tham số, idempotency và truy cập đồng thời trong RMI</span></li></ol></div><div class="chang" data-s="2"><div class="ten-chang"><span class="so">2</span>Web service</div><ol><li class=""><span>SOAP, hợp đồng WSDL và message XML</span></li><li class=""><span>REST, tài nguyên, phương thức HTTP và JSON</span></li></ol></div><div class="chang" data-s="3"><div class="ten-chang"><span class="so">3</span>gRPC</div><ol><li class=""><span>Protocol Buffers và lời gọi unary</span></li><li class=""><span>Streaming, deadline và mã trạng thái</span></li></ol></div><div class="chang" data-s="4"><div class="ten-chang"><span class="so">4</span>Message broker</div><ol><li class=""><span>RabbitMQ, exchange, queue và binding</span></li><li class=""><span>Bài toán ứng dụng: thông báo bất đồng bộ qua message broker</span></li></ol></div></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Lời gọi từ xa: gọi phương thức trên máy khác như gọi cục bộ</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Ba chương trước: tự định nghĩa giao thức, tự <b>đọc ghi</b> từng dòng, từng datagram</li><li data-s="2"><b>RPC</b>: gọi phương thức trên máy khác như gọi cục bộ; thư viện đóng gói tham số và truyền qua mạng</li><li data-s="3">Lời gọi vẫn đi qua mạng: có thể <b>thất bại</b> theo cách lời gọi cục bộ không có</li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> lời gọi từ xa hoạt động thế nào, viết bằng Java RMI ra sao, và thất bại thế nào?</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Stub đóng gói lời gọi, dispatcher ở server gọi phương thức thật</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Tiến trình client gọi lookup với khóa hanoi trên stub; stub có cùng interface với dịch vụ, marshalling tên phương thức và tham số thành byte rồi gửi qua mạng. Ở tiến trình server, dispatcher unmarshalling tham số và gọi phương thức lookup của đối tượng thật; RPC cổ điển gọi thành phần này là skeleton. Kết quả đi theo chiều ngược lại: server marshalling giá trị trả về, stub unmarshalling và trả về cho mã client như một lời gọi cục bộ.">
+  <defs>
+    <marker id="sr-a" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="sr-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- khung hai tiến trình -->
+  <rect x="40" y="40" width="560" height="420" rx="8" fill="none" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="60" y="76" font-size="21" fill="#5B6478">tiến trình client (JVM 1)</text>
+  <rect x="1160" y="40" width="560" height="420" rx="8" fill="none" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="1180" y="76" font-size="21" fill="#5B6478">tiến trình server (JVM 2)</text>
+  <text x="880" y="456" text-anchor="middle" font-size="21" fill="#5B6478">mạng (kết nối TCP)</text>
+
+  <!-- ① mã client gọi stub, stub marshalling và gửi -->
+  <g data-s="1">
+    <rect x="90" y="100" width="460" height="80" rx="6" fill="#F4F5F8" stroke="#5B6478" stroke-width="2.5"/>
+    <text x="320" y="132" text-anchor="middle" font-size="20" fill="#5B6478">mã client</text>
+    <text x="320" y="164" text-anchor="middle" font-size="21" fill="#051A53" font-family="Consolas, monospace">service.lookup("hanoi")</text>
+    <line x1="260" y1="182" x2="260" y2="242" stroke="#051A53" stroke-width="2.5" marker-end="url(#sr-a)"/>
+    <rect x="90" y="246" width="460" height="120" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="320" y="282" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">stub</text>
+    <text x="320" y="314" text-anchor="middle" font-size="20" fill="#373D4E">cùng interface LookupService</text>
+    <text x="320" y="344" text-anchor="middle" font-size="20" fill="#373D4E">marshalling: phương thức, tham số → byte</text>
+    <line x1="552" y1="280" x2="1154" y2="280" stroke="#051A53" stroke-width="2.5" marker-end="url(#sr-a)"/>
+    <text x="856" y="266" text-anchor="middle" font-size="20" fill="#051A53" font-family="Consolas, monospace">lookup, "hanoi"</text>
+  </g>
+
+  <!-- ② dispatcher unmarshalling, gọi phương thức thật -->
+  <g data-s="2">
+    <rect x="1210" y="246" width="460" height="120" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="1440" y="282" text-anchor="middle" font-size="22" font-weight="500" fill="#6B4E06">dispatcher (RMI runtime)</text>
+    <text x="1440" y="314" text-anchor="middle" font-size="20" fill="#6B4E06">unmarshalling, chọn phương thức</text>
+    <text x="1440" y="344" text-anchor="middle" font-size="20" fill="#6B4E06">RPC cổ điển: skeleton</text>
+    <line x1="1380" y1="244" x2="1380" y2="186" stroke="#8A6508" stroke-width="2.5" marker-end="url(#sr-a)"/>
+    <rect x="1210" y="100" width="460" height="80" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1440" y="132" text-anchor="middle" font-size="20" fill="#22603F">đối tượng thật</text>
+    <text x="1440" y="164" text-anchor="middle" font-size="21" fill="#22603F" font-family="Consolas, monospace">LookupServer.lookup("hanoi")</text>
+  </g>
+
+  <!-- ③ kết quả đi theo chiều ngược lại -->
+  <g data-s="3">
+    <line x1="1500" y1="182" x2="1500" y2="240" stroke="#2F855A" stroke-width="2.5" marker-end="url(#sr-ok)"/>
+    <line x1="1208" y1="330" x2="556" y2="330" stroke="#2F855A" stroke-width="2.5" marker-end="url(#sr-ok)"/>
+    <text x="882" y="362" text-anchor="middle" font-size="20" fill="#22603F">"Thủ đô của Việt Nam"</text>
+    <line x1="400" y1="244" x2="400" y2="186" stroke="#2F855A" stroke-width="2.5" marker-end="url(#sr-ok)"/>
+    <text x="416" y="222" font-size="20" fill="#22603F">trả về như cục bộ</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Stub</b> phía client và <b>dispatcher</b> phía server lo <b>marshalling</b> và truyền; mã ở hai đầu chỉ thấy một lời gọi phương thức.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Client tra tên trong RMI registry để lấy stub, rồi gọi thẳng đối tượng</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Tiến trình server export đối tượng LookupServer ở port 9199 và đăng ký stub vào RMI registry ở port 1099 dưới tên LookupService. Client gửi tên LookupService tới registry và nhận về stub; stub ghi endpoint 127.0.0.1:9199 của đối tượng. Client gọi lookup với khóa hanoi qua stub, kết nối thẳng tới port 9199, không đi qua registry.">
+  <defs>
+    <marker id="rr-a" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="rr-g" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#8A6508"/></marker>
+    <marker id="rr-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- tiến trình client, tiến trình server -->
+  <rect x="40" y="150" width="380" height="200" rx="8" fill="#F4F5F8" stroke="#5B6478" stroke-width="2.5"/>
+  <text x="230" y="240" text-anchor="middle" font-size="22" font-weight="500" fill="#373D4E">client</text>
+  <text x="230" y="274" text-anchor="middle" font-size="20" fill="#5B6478">LookupClient</text>
+  <rect x="1100" y="30" width="620" height="440" rx="8" fill="none" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="1120" y="64" font-size="21" fill="#5B6478">tiến trình server</text>
+
+  <!-- ① server export đối tượng, đăng ký stub vào registry -->
+  <g data-s="1">
+    <rect x="1180" y="84" width="460" height="110" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="1410" y="124" text-anchor="middle" font-size="22" font-weight="500" fill="#6B4E06">RMI registry · port 1099</text>
+    <text x="1410" y="162" text-anchor="middle" font-size="20" fill="#6B4E06" font-family="Consolas, monospace">"LookupService" → stub</text>
+    <rect x="1180" y="320" width="460" height="110" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1410" y="360" text-anchor="middle" font-size="22" font-weight="500" fill="#22603F">LookupServer · port 9199</text>
+    <text x="1410" y="398" text-anchor="middle" font-size="20" fill="#22603F">đối tượng đã export</text>
+    <line x1="1300" y1="316" x2="1300" y2="200" stroke="#8A6508" stroke-width="2.5" marker-end="url(#rr-g)"/>
+    <text x="1316" y="264" font-size="20" fill="#6B4E06" font-family="Consolas, monospace">rebind("LookupService", stub)</text>
+  </g>
+
+  <!-- ② client tra tên, nhận stub -->
+  <g data-s="2">
+    <line x1="424" y1="176" x2="1174" y2="120" stroke="#051A53" stroke-width="2.5" marker-end="url(#rr-a)"/>
+    <text x="760" y="128" text-anchor="middle" font-size="20" fill="#051A53" font-family="Consolas, monospace">lookup("LookupService")</text>
+    <line x1="1174" y1="166" x2="424" y2="222" stroke="#8A6508" stroke-width="2.5" marker-end="url(#rr-g)"/>
+    <text x="800" y="232" text-anchor="middle" font-size="20" fill="#6B4E06">stub: endpoint 127.0.0.1:9199</text>
+  </g>
+
+  <!-- ③ client gọi thẳng đối tượng qua stub -->
+  <g data-s="3">
+    <line x1="424" y1="300" x2="1174" y2="352" stroke="#051A53" stroke-width="2.5" marker-end="url(#rr-a)"/>
+    <text x="760" y="306" text-anchor="middle" font-size="20" fill="#051A53" font-family="Consolas, monospace">lookup("hanoi")</text>
+    <line x1="1174" y1="398" x2="424" y2="346" stroke="#2F855A" stroke-width="2.5" marker-end="url(#rr-ok)"/>
+    <text x="760" y="410" text-anchor="middle" font-size="20" fill="#22603F">"Thủ đô của Việt Nam"</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>RMI registry</b> chỉ ánh xạ tên tới stub; lời gọi đi thẳng từ stub tới endpoint của đối tượng.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Remote interface là hợp đồng chung của client và server</h1></header><main class="bo-cuc-ma"><div class="ma-hang ma-y"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">public</span> <span class="hl-k">interface</span> <span class="hl-t">LookupService</span> <span class="hl-k">extends</span> <span class="hl-t">Remote</span> {
+
+    <span class="hl-c">/** Trả giá trị của khóa, hoặc null nếu không có khóa. */</span>
+    <span class="hl-t">String</span> <span class="hl-m">lookup</span>(<span class="hl-t">String</span> key) <span class="hl-k">throws</span> <span class="hl-t">RemoteException</span>;
+}
+</pre><ul class="y-nho"><li data-s="1"><b>Remote interface</b>: kế thừa <code>java.rmi.Remote</code>; server hiện thực, client gọi qua stub</li><li data-s="2">Mọi phương thức khai báo <b>RemoteException</b>: lời gọi có thể thất bại vì mạng hoặc vì server</li><li data-s="3">Tham số và giá trị trả về đi qua mạng bằng <b>serialization</b></li></ul></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Server export đối tượng, đăng ký stub; RMI runtime nhận lời gọi</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">System</span>.<span class="hl-m">setProperty</span>(<span class="hl-s">"</span><span class="hl-s">java.rmi.server.hostname</span><span class="hl-s">"</span>, <span class="hl-s">"</span><span class="hl-s">127.0.0.1</span><span class="hl-s">"</span>);  <span class="hl-c">// địa chỉ ghi vào stub</span>
+service = <span class="hl-k">new</span> <span class="hl-m">LookupServer</span>(delay);
+<span class="hl-t">LookupService</span> stub = (<span class="hl-t">LookupService</span>) <span class="hl-t">UnicastRemoteObject</span>.<span class="hl-m">exportObject</span>(service, <span class="hl-n">9199</span>);  <span class="hl-c">// nhận lời gọi ở port 9199</span>
+registry = <span class="hl-t">LocateRegistry</span>.<span class="hl-m">createRegistry</span>(<span class="hl-n">1099</span>);  <span class="hl-c">// RMI registry chạy trong tiến trình server</span>
+registry.<span class="hl-m">rebind</span>(<span class="hl-s">"</span><span class="hl-s">LookupService</span><span class="hl-s">"</span>, stub);  <span class="hl-c">// đăng ký stub dưới tên "LookupService"</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>bound "LookupService" in RMI registry on port 1099; object on port 9199
+lookup("hanoi") on thread RMI TCP Connection(2)-127.0.0.1
+lookup("atlantis") on thread RMI TCP Connection(2)-127.0.0.1</pre></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>Client tra tên, nhận stub và gọi như gọi một đối tượng cục bộ</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">Registry</span> registry = <span class="hl-t">LocateRegistry</span>.<span class="hl-m">getRegistry</span>(<span class="hl-s">"</span><span class="hl-s">127.0.0.1</span><span class="hl-s">"</span>, <span class="hl-n">1099</span>);  <span class="hl-c">// stub của registry, chưa kết nối</span>
+<span class="hl-t">LookupService</span> service = (<span class="hl-t">LookupService</span>) registry.<span class="hl-m">lookup</span>(<span class="hl-s">"</span><span class="hl-s">LookupService</span><span class="hl-s">"</span>);  <span class="hl-c">// tra tên, nhận stub của dịch vụ</span>
+<span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">stub class: </span><span class="hl-s">"</span> + service.<span class="hl-m">getClass</span>().<span class="hl-m">getName</span>());
+<span class="hl-t">String</span> value = service.<span class="hl-m">lookup</span>(key);  <span class="hl-c">// lời gọi từ xa, cú pháp như lời gọi cục bộ</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>stub class: jdk.proxy1.$Proxy0
+stub ref: UnicastRef [liveRef: [endpoint:[127.0.0.1:9199](remote),objID:[572ec23c:1a170c56e9c:-7fff, 9141332462191274964]]]
+hanoi -&gt; Thủ đô của Việt Nam
+atlantis -&gt; null (không có khóa)</pre></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S07"><header><h1>Lời gọi thất bại giữa chừng: client không biết server đã chạy hay chưa</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span>server.<span class="hl-m">destroyForcibly</span>();  <span class="hl-c">// tắt hẳn server khi lookup đang chạy</span>
+<span class="hl-m">call</span>(service, <span class="hl-n">1</span>);
+server.<span class="hl-m">waitFor</span>();
+<span class="hl-m">call</span>(service, <span class="hl-n">2</span>);
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>  [server] bound "LookupService" in RMI registry on port 1099; object on port 9199
+  [server] lookup("hanoi") on thread RMI TCP Connection(2)-127.0.0.1
+server process killed
+call 1 after 503 ms: java.rmi.UnmarshalException
+  cause: java.net.SocketException: Connection reset
+call 2 after 1 ms: java.rmi.ConnectException
+  cause: java.net.ConnectException: Connection refused: connect</pre></div><ul class="y-nho"><li data-s="2">Lần gọi 1: <b>UnmarshalException</b> sau khoảng 500 ms, trong khi server đã bắt đầu chạy <code>lookup</code></li><li data-s="3">Lần gọi 2: <b>ConnectException</b> ngay lập tức: không còn tiến trình nào nhận ở port 9199</li><li data-s="4">Lời gọi từ xa thất bại: client <b>không biết</b> server đã thực hiện phương thức hay chưa</li></ul></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Trong Java RMI, stub nằm ở phía nào và làm việc gì?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Ở server; nhận byte từ mạng và gọi phương thức của đối tượng thật.</div></div><div class="dung"><span>B</span><div>Ở client; có cùng interface với dịch vụ, đóng gói lời gọi và gửi tới endpoint của đối tượng.</div></div><div class=""><span>C</span><div>Ở RMI registry; chuyển tiếp mọi lời gọi từ client tới server.</div></div><div class=""><span>D</span><div>Ở client; giữ bản sao dữ liệu của server để trả lời mà không cần mạng.</div></div></div><div class="giai-thich">Stub là đối tượng phía client có cùng interface với dịch vụ; nó đóng gói lời gọi và gửi tới endpoint của đối tượng. Nhận byte và gọi phương thức thật là việc của dispatcher ở server; registry chỉ ánh xạ tên tới stub.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Trong Java RMI, stub nằm ở phía nào và làm việc gì?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Ở server; nhận byte từ mạng và gọi phương thức của đối tượng thật.</div></div><div class="dung"><span>B</span><div>Ở client; có cùng interface với dịch vụ, đóng gói lời gọi và gửi tới endpoint của đối tượng.</div></div><div class=""><span>C</span><div>Ở RMI registry; chuyển tiếp mọi lời gọi từ client tới server.</div></div><div class=""><span>D</span><div>Ở client; giữ bản sao dữ liệu của server để trả lời mà không cần mạng.</div></div></div><div class="giai-thich">Stub là đối tượng phía client có cùng interface với dịch vụ; nó đóng gói lời gọi và gửi tới endpoint của đối tượng. Nhận byte và gọi phương thức thật là việc của dispatcher ở server; registry chỉ ánh xạ tên tới stub.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Client gọi một phương thức RMI và nhận UnmarshalException trong lúc chờ kết quả. Có thể kết luận gì về phía server?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Server chưa nhận lời gọi, nên gọi lại luôn an toàn.</div></div><div class=""><span>B</span><div>Server đã thực hiện xong phương thức.</div></div><div class="dung"><span>C</span><div>Không biết chắc: server có thể chưa chạy, đang chạy dở hoặc đã chạy xong phương thức.</div></div><div class=""><span>D</span><div>RMI sẽ tự gọi lại cho tới khi thành công, nên client không cần xử lý.</div></div></div><div class="giai-thich">Lỗi xảy ra sau khi lời gọi đã gửi đi, nên phía client không phân biệt được server đã thực hiện phương thức hay chưa. RMI không tự gọi lại.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Client gọi một phương thức RMI và nhận UnmarshalException trong lúc chờ kết quả. Có thể kết luận gì về phía server?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Server chưa nhận lời gọi, nên gọi lại luôn an toàn.</div></div><div class=""><span>B</span><div>Server đã thực hiện xong phương thức.</div></div><div class="dung"><span>C</span><div>Không biết chắc: server có thể chưa chạy, đang chạy dở hoặc đã chạy xong phương thức.</div></div><div class=""><span>D</span><div>RMI sẽ tự gọi lại cho tới khi thành công, nên client không cần xử lý.</div></div></div><div class="giai-thich">Lỗi xảy ra sau khi lời gọi đã gửi đi, nên phía client không phân biệt được server đã thực hiện phương thức hay chưa. RMI không tự gọi lại.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>RPC</b>: gọi phương thức trên máy khác như gọi cục bộ; <b>stub</b> và dispatcher lo <b>marshalling</b> và truyền</div></div><div class="the" data-s="2"><span class="so">2</span><div>Java RMI: <b>remote interface</b> kế thừa <code>Remote</code>; server export đối tượng, đăng ký stub vào <b>RMI registry</b></div></div><div class="the" data-s="3"><span class="so">3</span><div>Mọi phương thức khai báo <b>RemoteException</b>; khi lỗi, client không biết server đã thực hiện hay chưa</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>RPC</span><span>IPC</span><span>stub</span><span>marshalling</span><span>remote interface</span><span>RMI registry</span><span>RemoteException</span></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>Các ngộ nhận về hệ phân tán (fallacies of distributed computing)</li><li>Vì sao RMI ít dùng giữa các hệ thống viết bằng ngôn ngữ khác nhau</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Thêm phương thức lookupAll(List&lt;String&gt; keys) vào dịch vụ RMI; so sánh thời gian một lời gọi với nhiều lời gọi lookup.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">RPC: truyền tham số, idempotency và truy cập đồng thời trong RMI</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Chương 4 bàn về kỹ thuật lập trình phân tán. Ở ba chương trước, chương trình tự định nghĩa giao thức và tự đọc ghi từng message. Câu hỏi mở đầu chương là: có cách nào gọi một phương thức của đối tượng nằm trên máy khác, với cú pháp như gọi một phương thức cục bộ?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:18</span>
+      <h3>Giới thiệu chương</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chương gồm tám phần, chia làm bốn nhóm, đi theo dòng tiến hóa của lời gọi từ xa, với cùng dịch vụ tra cứu của các chương trước. Nhóm RPC có hai phần: lời gọi thủ tục từ xa và Java RMI, sau đó là truyền tham số, idempotency và truy cập đồng thời trong RMI. Nhóm Web service đưa dịch vụ ra ngoài Java theo hai cách: SOAP, hợp đồng WSDL và message XML; và REST, tài nguyên, phương thức HTTP và JSON. Nhóm gRPC quay lại mô hình RPC trên HTTP/2, bắt đầu với Protocol Buffers và lời gọi unary, tiếp theo là streaming, deadline và mã trạng thái. Cuối chương, nhóm Message broker chuyển sang giao tiếp bất đồng bộ với RabbitMQ, exchange, queue và binding, và khép lại bằng bài toán ứng dụng thông báo bất đồng bộ qua message broker.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide lộ trình sinh từ kế hoạch; bốn nhóm hiện lần lượt, phần hiện tại được tô nổi.
+Hiện dần: bước 1 khi đọc “Nhóm RPC có hai phần”; bước 2 khi đọc “Nhóm Web service”; bước 3 khi đọc “Nhóm gRPC”; bước 4 khi đọc “nhóm Message broker”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:09</span>
+      <h3>Slide 1. Lời gọi từ xa: gọi phương thức trên máy khác như gọi cục bộ</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Ba chương trước: tự định nghĩa giao thức, tự **đọc ghi** từng dòng, từng datagram</li><li>**RPC**: gọi phương thức trên máy khác như gọi cục bộ; thư viện đóng gói tham số và truyền qua mạng</li><li>Lời gọi vẫn đi qua mạng: có thể **thất bại** theo cách lời gọi cục bộ không có</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** lời gọi từ xa hoạt động thế nào, viết bằng Java RMI ra sao, và thất bại thế nào?</div></div>
+    <div class="kb-thoai"><p>Để tra cứu một khóa ở Chương 2, mình phải viết cả hai đầu của giao thức: client ghi một dòng, server đọc dòng, tách khóa rồi ghi phản hồi theo đặc tả. Mỗi thao tác mới lại cần thêm một dạng message và thêm mã đọc ghi. RPC, hay Remote Procedure Call, là lời gọi thủ tục từ xa: chương trình gọi một phương thức nằm trên máy khác với cú pháp như gọi phương thức cục bộ, còn thư viện đảm nhận việc đóng gói tham số và truyền qua mạng. Nhưng lời gọi vẫn đi qua mạng, nên có thể thất bại vì mạng hoặc vì server, những lỗi mà lời gọi cục bộ không gặp. Phần đầu chương lần lượt trả lời ba câu hỏi: lời gọi từ xa hoạt động thế nào, viết bằng Java RMI ra sao, và thất bại thế nào?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Để tra cứu một khóa”; bước 2 khi đọc “RPC, hay”; bước 3 khi đọc “Nhưng lời gọi”; bước 4 khi đọc “Phần đầu chương”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:50</span>
+      <h3>Slide 2. Stub đóng gói lời gọi, dispatcher ở server gọi phương thức thật</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Stub** phía client và **dispatcher** phía server lo **marshalling** và truyền; mã ở hai đầu chỉ thấy một lời gọi phương thức.</li></ul></div></div>
+    <div class="kb-thoai"><p>RPC là một dạng IPC, hay Inter-Process Communication, giao tiếp giữa các tiến trình. Các bạn theo dõi một lời gọi trên hình: mã client gọi phương thức lookup với khóa hanoi trên một stub, đối tượng đại diện phía client có cùng interface với dịch vụ. Stub thực hiện marshalling, hay đóng gói lời gọi: tên phương thức và tham số được đổi thành dãy byte, rồi gửi qua một kết nối TCP. Ở tiến trình server, dispatcher, thành phần mà RPC cổ điển gọi là skeleton, nhận dãy byte, giải mã tham số, hay unmarshalling, rồi gọi phương thức lookup của đối tượng thật. Kết quả đi theo chiều ngược lại: server đóng gói giá trị trả về, stub nhận và giải mã, rồi trả về cho client như kết quả của một lời gọi cục bộ. Như vậy, ở cả hai chiều, phần mạng nằm gọn trong stub và dispatcher, còn mã ở hai đầu chỉ thấy một lời gọi phương thức.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình stub-rpc: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Các bạn theo dõi”; bước 2 khi đọc “Ở tiến trình server”; bước 3 khi đọc “Kết quả đi theo chiều ngược lại”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:44</span>
+      <h3>Slide 3. Client tra tên trong RMI registry để lấy stub, rồi gọi thẳng đối tượng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**RMI registry** chỉ ánh xạ tên tới stub; lời gọi đi thẳng từ stub tới endpoint của đối tượng.</li></ul></div></div>
+    <div class="kb-thoai"><p>Còn một câu hỏi: client lấy stub ở đâu? Java RMI, hay Remote Method Invocation, giải quyết bằng RMI registry, dịch vụ ánh xạ tên tới stub. Trước hết, server export đối tượng dịch vụ ở port 9199, tức là cho RMI runtime nhận lời gọi tới đối tượng qua port đó, rồi đăng ký stub vào registry ở port 1099 dưới tên LookupService. Khi cần gọi, client gửi tên LookupService tới registry và nhận về stub. Bên trong stub có endpoint của đối tượng, 127.0.0.1 port 9199. Từ đó, mỗi lời gọi lookup đi thẳng từ stub tới port 9199, không qua registry nữa. Vậy registry chỉ tham gia ở bước tra tên.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình rmi-registry: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Trước hết, server”; bước 2 khi đọc “Khi cần gọi”; bước 3 khi đọc “Từ đó”; bước 4 khi đọc “Vậy registry”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:33</span>
+      <h3>Slide 4. Remote interface là hợp đồng chung của client và server</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**Remote interface**: kế thừa `java.rmi.Remote`; server hiện thực, client gọi qua stub</li><li>Mọi phương thức khai báo **RemoteException**: lời gọi có thể thất bại vì mạng hoặc vì server</li><li>Tham số và giá trị trả về đi qua mạng bằng **serialization**</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/rmi/LookupService.java</span><pre><code>public interface LookupService extends Remote {
+
+    /** Trả giá trị của khóa, hoặc null nếu không có khóa. */
+    String lookup(String key) throws RemoteException;
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Mình bắt đầu viết dịch vụ tra cứu bằng remote interface. Hợp đồng giữa hai đầu là interface LookupService, kế thừa java.rmi.Remote, một interface không có phương thức nào, chỉ dùng để đánh dấu: server hiện thực LookupService, còn client gọi qua stub có cùng interface. Mỗi phương thức phải khai báo RemoteException, ngoại lệ của lời gọi từ xa, vì bất cứ lời gọi nào cũng có thể thất bại do mạng hoặc do server. Tham số và giá trị trả về được truyền bằng serialization như ở Chương 1, và ở đây cả khóa lẫn giá trị đều là String, một kiểu Serializable.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã bên trái, ba ý bên phải hiện lần lượt. Highlight extends Remote rồi throws RemoteException theo lời đọc.
+Hiện dần: bước 1 khi đọc “Hợp đồng giữa hai đầu”; bước 2 khi đọc “Mỗi phương thức”; bước 3 khi đọc “Tham số và giá trị trả về”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:13</span>
+      <h3>Slide 5. Server export đối tượng, đăng ký stub; RMI runtime nhận lời gọi</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/rmi/LookupServer.java</span><pre><code>System.setProperty(&quot;java.rmi.server.hostname&quot;, &quot;127.0.0.1&quot;);  // địa chỉ ghi vào stub
+service = new LookupServer(delay);
+LookupService stub = (LookupService) UnicastRemoteObject.exportObject(service, 9199);  // nhận lời gọi ở port 9199
+registry = LocateRegistry.createRegistry(1099);  // RMI registry chạy trong tiến trình server
+registry.rebind(&quot;LookupService&quot;, stub);  // đăng ký stub dưới tên &quot;LookupService&quot;</code></pre></div></div>
+    <div class="kb-thoai"><p>Phía server, lớp LookupServer hiện thực remote interface: phương thức lookup chỉ tra một map rồi trả giá trị, không đọc ghi socket nào. Trong hàm main, dòng đầu đặt thuộc tính java.rmi.server.hostname, tức địa chỉ được ghi vào stub, ở đây là địa chỉ loopback. Phương thức exportObject của lớp UnicastRemoteObject export đối tượng ở port 9199 và trả về stub của nó. Phương thức createRegistry của lớp LocateRegistry chạy một RMI registry ngay trong tiến trình server, ở port 1099. Cuối cùng, phương thức rebind của registry đăng ký stub dưới tên LookupService. Theo log, mỗi lời gọi chạy trên một thread do RMI runtime tạo ra, vì vòng lặp accept nằm trong RMI runtime chứ không nằm trong mã của mình.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, log của server phía dưới. Highlight dòng exportObject, dòng createRegistry, dòng rebind theo lời đọc.
+Hiện dần: bước 1 khi đọc “Theo log”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:09</span>
+      <h3>Slide 6. Client tra tên, nhận stub và gọi như gọi một đối tượng cục bộ</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/rmi/LookupClient.java</span><pre><code>Registry registry = LocateRegistry.getRegistry(&quot;127.0.0.1&quot;, 1099);  // stub của registry, chưa kết nối
+LookupService service = (LookupService) registry.lookup(&quot;LookupService&quot;);  // tra tên, nhận stub của dịch vụ
+System.out.println(&quot;stub class: &quot; + service.getClass().getName());
+String value = service.lookup(key);  // lời gọi từ xa, cú pháp như lời gọi cục bộ</code></pre></div></div>
+    <div class="kb-thoai"><p>Phía client, phương thức getRegistry chỉ tạo stub của chính registry, chưa mở kết nối nào. Phương thức lookup của registry gửi tên LookupService và nhận về stub của dịch vụ. Từ đây, lời gọi lookup với từng khóa có cú pháp như gọi một đối tượng cục bộ. Kết quả cho thấy lớp của stub là một lớp proxy do JDK sinh lúc chạy, không có trong mã nguồn, và tham chiếu bên trong stub ghi endpoint 127.0.0.1 port 9199 của đối tượng ở server. Lời gọi với khóa hanoi trả về Thủ đô của Việt Nam, còn khóa atlantis trả về null.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới. Highlight dòng registry.lookup rồi dòng service.lookup(key) theo lời đọc; trong kết quả, highlight endpoint:[127.0.0.1:9199].
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:54</span>
+      <h3>Slide 7. Lời gọi thất bại giữa chừng: client không biết server đã chạy hay chưa</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Lần gọi 1: **UnmarshalException** sau khoảng 500 ms, trong khi server đã bắt đầu chạy `lookup`</li><li>Lần gọi 2: **ConnectException** ngay lập tức: không còn tiến trình nào nhận ở port 9199</li><li>Lời gọi từ xa thất bại: client **không biết** server đã thực hiện phương thức hay chưa</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/rmi/CrashDemo.java</span><pre><code>server.destroyForcibly();  // tắt hẳn server khi lookup đang chạy
+call(service, 1);
+server.waitFor();
+call(service, 2);</code></pre></div></div>
+    <div class="kb-thoai"><p>Mình kiểm chứng việc lời gọi từ xa thất bại giữa chừng bằng chương trình CrashDemo. Server chạy trong một tiến trình con, mỗi lời gọi lookup mất 2 giây; sau 500 mili giây, chương trình tắt hẳn tiến trình server, rồi gọi thêm một lần nữa. Các bạn thử đoán: hai lần gọi nhận được gì? Kết quả: hai lần gọi nhận hai lớp con khác nhau của RemoteException. Lần gọi thứ nhất nhận UnmarshalException sau khoảng 500 mili giây, vì kết nối bị reset khi client đang chờ kết quả, trong khi log cho thấy server đã bắt đầu thực hiện phương thức lookup. Lần gọi thứ hai nhận ConnectException ngay lập tức, vì không còn tiến trình nào nhận ở port 9199. Vì vậy, khi một lời gọi từ xa thất bại sau khi đã gửi đi, client không biết server đã thực hiện phương thức hay chưa.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã bốn dòng (các bước chính của CrashDemo) phía trên, kết quả phía dưới. Sau câu &quot;nhận được gì&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện.
+Hiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Lần gọi thứ nhất”; bước 3 khi đọc “Lần gọi thứ hai”; bước 4 khi đọc “Vì vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:51</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Trước hết, các bạn xác định lại vị trí và vai trò của stub.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Trong Java RMI, stub nằm ở phía nào và làm việc gì?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Ở server; nhận byte từ mạng và gọi phương thức của đối tượng thật.</li>
+      <li><b>B.</b> Ở client; có cùng interface với dịch vụ, đóng gói lời gọi và gửi tới endpoint của đối tượng.</li>
+      <li><b>C.</b> Ở RMI registry; chuyển tiếp mọi lời gọi từ client tới server.</li>
+      <li><b>D.</b> Ở client; giữ bản sao dữ liệu của server để trả lời mà không cần mạng.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: B</b> — <span>Stub là đối tượng phía client có cùng interface với dịch vụ; nó đóng gói lời gọi và gửi tới endpoint của đối tượng. Nhận byte và gọi phương thức thật là việc của dispatcher ở server; registry chỉ ánh xạ tên tới stub.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là B. Phương án A mô tả dispatcher ở phía server. Phương án C là hiểu nhầm hay gặp: registry chỉ trả stub cho client một lần, còn mọi lời gọi sau đó đi thẳng từ stub tới endpoint của đối tượng.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án B được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:16</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu thứ hai quay lại kết quả của CrashDemo.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Client gọi một phương thức RMI và nhận UnmarshalException trong lúc chờ kết quả. Có thể kết luận gì về phía server?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Server chưa nhận lời gọi, nên gọi lại luôn an toàn.</li>
+      <li><b>B.</b> Server đã thực hiện xong phương thức.</li>
+      <li><b>C.</b> Không biết chắc: server có thể chưa chạy, đang chạy dở hoặc đã chạy xong phương thức.</li>
+      <li><b>D.</b> RMI sẽ tự gọi lại cho tới khi thành công, nên client không cần xử lý.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: C</b> — <span>Lỗi xảy ra sau khi lời gọi đã gửi đi, nên phía client không phân biệt được server đã thực hiện phương thức hay chưa. RMI không tự gọi lại.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là C. Phương án A chỉ đúng với ConnectException, khi lời gọi chưa tới được server. Với UnmarshalException, lời gọi đã tới server, và CrashDemo cho thấy server đã bắt đầu chạy phương thức.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án C.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:39</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**RPC**: gọi phương thức trên máy khác như gọi cục bộ; **stub** và dispatcher lo **marshalling** và truyền</li><li>Java RMI: **remote interface** kế thừa `Remote`; server export đối tượng, đăng ký stub vào **RMI registry**</li><li>Mọi phương thức khai báo **RemoteException**; khi lỗi, client không biết server đã thực hiện hay chưa</li></ul></div>
+    <div class="kb-thoai"><p>Lời gọi thủ tục từ xa cho phép gọi phương thức trên máy khác như gọi cục bộ, nhờ stub và dispatcher đảm nhận marshalling và truyền qua mạng. Với Java RMI, client và server dùng chung một remote interface; server export đối tượng rồi đăng ký stub vào RMI registry, client tra tên để lấy stub. Cú pháp giống lời gọi cục bộ, nhưng mọi phương thức khai báo RemoteException, và khi lời gọi thất bại, client không biết server đã thực hiện phương thức hay chưa. Phần mở đầu chương để lại bảy từ khóa: RPC, IPC, stub, marshalling, remote interface, RMI registry và RemoteException.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “Lời gọi thủ tục từ xa”; bước 2 khi đọc “Với Java RMI”; bước 3 khi đọc “Cú pháp giống”; bước 4 khi đọc “Phần mở đầu chương để lại”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-12" data-index="12">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">8:18</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(12)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(12, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Các bạn có thể đọc thêm về các ngộ nhận về hệ phân tán, hay fallacies of distributed computing, như cho rằng mạng không bao giờ hỏng, và về lý do RMI ít được dùng giữa các hệ thống viết bằng ngôn ngữ khác nhau. Bài tập mở rộng là thêm phương thức lookupAll nhận một danh sách khóa, rồi so sánh một lời gọi lookupAll với nhiều lời gọi lookup.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Các bạn có thể đọc thêm”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-13" data-index="13">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">8:39</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(13)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(13, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Dịch vụ tra cứu qua RMI mới chỉ đọc dữ liệu. Phần tiếp theo thêm thao tác cập nhật, và cùng với nó là truyền tham số, idempotency và truy cập đồng thời trong RMI.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V22", "tieu_de": "RPC: lời gọi thủ tục từ xa và Java RMI", "giong": "vi-VN-NamMinhNeural", "tong": 531.12, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/0848a9d2f7b0fed9.mp3", "dur": 17.59, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Chương", 1], [2.212, "4", 1], [2.45, "bàn", 1], [2.675, "về", 1], [2.812, "kỹ", 1], [2.987, "thuật", 1], [3.2, "lập", 1], [3.438, "trình", 1], [3.663, "phân", 1], [3.888, "tán.", 1], [5.1, "Ở", 2], [5.312, "ba", 2], [5.5, "chương", 2], [5.75, "trước,", 2], [6.225, "chương", 2], [6.487, "trình", 2], [6.7, "tự", 2], [6.838, "định", 2], [7.037, "nghĩa", 2], [7.275, "giao", 2], [7.463, "thức", 2], [7.688, "và", 2], [7.888, "tự", 2], [8.088, "đọc", 2], [8.3, "ghi", 2], [8.488, "từng", 2], [8.738, "message.", 2], [10.1, "Câu", 3], [10.3, "hỏi", 3], [10.512, "mở", 3], [10.713, "đầu", 3], [10.875, "chương", 3], [11.113, "là:", 3], [11.6, "có", 3], [11.725, "cách", 3], [11.912, "nào", 3], [12.137, "gọi", 3], [12.312, "một", 3], [12.488, "phương", 3], [12.713, "thức", 3], [12.887, "của", 3], [13.012, "đối", 3], [13.175, "tượng", 3], [13.463, "nằm", 3], [13.675, "trên", 3], [13.85, "máy", 3], [14.0, "khác,", 3], [14.512, "với", 3], [14.75, "cú", 3], [14.938, "pháp", 3], [15.238, "như", 3], [15.425, "gọi", 3], [15.625, "một", 3], [15.812, "phương", 3], [16.038, "thức", 3], [16.225, "cục", 3], [16.387, "bộ?", 3]], "cues": [], "lang": 0.6}, {"ten": "Giới thiệu chương", "loai": "mo-chuong", "slide": "CH", "dung": "Slide lộ trình sinh từ kế hoạch; bốn nhóm hiện lần lượt, phần hiện tại được tô nổi.\nHiện dần: bước 1 khi đọc “Nhóm RPC có hai phần”; bước 2 khi đọc “Nhóm Web service”; bước 3 khi đọc “Nhóm gRPC”; bước 4 khi đọc “nhóm Message broker”.", "start": 18.19, "audio": "audio/809461ba83566545.mp3", "dur": 50.38, "words": [[0.1, "Chương", 0], [0.425, "gồm", 0], [0.65, "tám", 0], [0.938, "phần,", 0], [1.413, "chia", 0], [1.7, "làm", 0], [1.913, "bốn", 0], [2.15, "nhóm,", 0], [2.65, "đi", 0], [2.837, "theo", 0], [3.038, "dòng", 0], [3.263, "tiến", 0], [3.513, "hóa", 0], [3.737, "của", 0], [3.85, "lời", 0], [4.05, "gọi", 0], [4.25, "từ", 0], [4.425, "xa,", 0], [5.0, "với", 0], [5.175, "cùng", 0], [5.4, "dịch", 0], [5.562, "vụ", 0], [5.775, "tra", 0], [5.963, "cứu", 0], [6.263, "của", 0], [6.4, "các", 0], [6.588, "chương", 0], [6.825, "trước.", 0], [7.95, "Nhóm", 1], [8.444, "RPC", 1], [8.938, "có", 1], [9.075, "hai", 1], [9.238, "phần:", 1], [9.75, "lời", 1], [9.975, "gọi", 1], [10.15, "thủ", 1], [10.35, "tục", 1], [10.575, "từ", 1], [10.75, "xa", 1], [11.05, "và", 1], [11.188, "Java", 1], [11.894, "RMI,", 1], [12.6, "sau", 1], [12.85, "đó", 1], [12.975, "là", 1], [13.075, "truyền", 1], [13.312, "tham", 1], [13.488, "số,", 1], [14.088, "idempotency", 1], [14.925, "và", 1], [15.088, "truy", 1], [15.275, "cập", 1], [15.463, "đồng", 1], [15.688, "thời", 1], [15.912, "trong", 1], [16.768, "RMI.", 1], [17.625, "Nhóm", 2], [17.975, "Web", 2], [18.137, "service", 2], [18.613, "đưa", 2], [18.8, "dịch", 2], [18.988, "vụ", 2], [19.212, "ra", 2], [19.337, "ngoài", 2], [19.575, "Java", 2], [19.962, "theo", 2], [20.137, "hai", 2], [20.288, "cách:", 2], [20.794, "SOAP,", 2], [21.3, "hợp", 2], [21.512, "đồng", 2], [21.512, "WSDL", 2], [21.512, "và", 2], [21.512, "message", 2], [21.512, "XML;", 2], [21.512, "và", 2], [21.512, "REST,", 2], [21.512, "tài", 2], [21.512, "nguyên,", 2], [21.512, "phương", 2], [21.512, "thức", 2], [21.512, "HTTP", 2], [21.512, "và", 2], [21.512, "JSON.", 2], [21.512, "Nhóm", 3], [21.512, "gRPC", 3], [21.512, "quay", 3], [21.512, "lại", 3], [21.512, "mô", 3], [21.512, "hình", 3], [21.512, "RPC", 3], [21.512, "trên", 3], [21.512, "HTTP/2,", 3], [21.512, "bắt", 3], [21.512, "đầu", 3], [21.512, "với", 3], [21.512, "Protocol", 3], [21.512, "Buffers", 3], [21.512, "và", 3], [21.512, "lời", 3], [21.512, "gọi", 3], [21.512, "unary,", 3], [21.512, "tiếp", 3], [21.512, "theo", 3], [21.512, "là", 3], [21.512, "streaming,", 3], [21.512, "deadline", 3], [21.512, "và", 3], [21.512, "mã", 3], [21.512, "trạng", 3], [21.512, "thái.", 3], [21.512, "Cuối", 4], [21.512, "chương,", 4], [21.512, "nhóm", 4], [21.512, "Message", 4], [21.512, "broker", 4], [21.512, "chuyển", 4], [21.512, "sang", 4], [21.512, "giao", 4], [21.512, "tiếp", 4], [21.512, "bất", 4], [21.512, "đồng", 4], [21.512, "bộ", 4], [21.512, "với", 4], [21.512, "RabbitMQ,", 4], [21.512, "exchange,", 4], [21.512, "queue", 4], [21.512, "và", 4], [21.512, "binding,", 4], [21.512, "và", 4], [21.512, "khép", 4], [21.512, "lại", 4], [21.512, "bằng", 4], [21.512, "bài", 4], [21.512, "toán", 4], [21.512, "ứng", 4], [21.512, "dụng", 4], [21.512, "thông", 4], [21.512, "báo", 4], [21.512, "bất", 4], [21.512, "đồng", 4], [21.512, "bộ", 4], [21.512, "qua", 4], [21.512, "message", 4], [21.512, "broker.", 4]], "cues": [7.95, 17.625, 21.512, 21.512], "lang": 0.6}, {"ten": "Slide 1. Lời gọi từ xa: gọi phương thức trên máy khác như gọi cục bộ", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Để tra cứu một khóa”; bước 2 khi đọc “RPC, hay”; bước 3 khi đọc “Nhưng lời gọi”; bước 4 khi đọc “Phần đầu chương”.", "start": 69.17, "audio": "audio/7167c6e4ce63d136.mp3", "dur": 40.94, "words": [[0.1, "Để", 0], [0.325, "tra", 0], [0.525, "cứu", 0], [0.762, "một", 0], [0.963, "khóa", 0], [1.225, "ở", 0], [1.337, "Chương", 0], [1.587, "2,", 0], [2.1, "mình", 0], [2.325, "phải", 0], [2.462, "viết", 0], [2.638, "cả", 0], [2.788, "hai", 0], [2.975, "đầu", 0], [3.188, "của", 0], [3.337, "giao", 0], [3.513, "thức:", 0], [4.013, "client", 0], [4.463, "ghi", 0], [4.612, "một", 0], [4.812, "dòng,", 0], [5.275, "server", 0], [5.688, "đọc", 0], [5.862, "dòng,", 0], [6.375, "tách", 0], [6.55, "khóa", 0], [6.85, "rồi", 0], [7.013, "ghi", 0], [7.213, "phản", 0], [7.475, "hồi", 0], [7.662, "theo", 0], [7.825, "đặc", 0], [7.975, "tả.", 0], [9.238, "Mỗi", 1], [9.613, "thao", 1], [9.775, "tác", 1], [10.062, "mới", 1], [10.262, "lại", 1], [10.412, "cần", 1], [10.637, "thêm", 1], [10.863, "một", 1], [11.012, "dạng", 1], [11.275, "message", 1], [11.838, "và", 1], [12.0, "thêm", 1], [12.238, "mã", 1], [12.438, "đọc", 1], [12.637, "ghi.", 1], [13.706, "RPC,", 2], [14.775, "hay", 2], [14.988, "Remote", 2], [15.287, "Procedure", 2], [15.7, "Call,", 2], [16.225, "là", 2], [16.425, "lời", 2], [16.6, "gọi", 2], [16.788, "thủ", 2], [16.975, "tục", 2], [17.188, "từ", 2], [17.35, "xa:", 2], [17.938, "chương", 2], [18.163, "trình", 2], [18.375, "gọi", 2], [18.538, "một", 2], [18.7, "phương", 2], [18.913, "thức", 2], [19.125, "nằm", 2], [19.35, "trên", 2], [19.525, "máy", 2], [19.663, "khác", 2], [19.938, "với", 2], [20.038, "cú", 2], [20.225, "pháp", 2], [20.512, "như", 2], [20.688, "gọi", 2], [20.887, "phương", 2], [21.1, "thức", 2], [21.275, "cục", 2], [21.425, "bộ,", 2], [21.913, "còn", 2], [22.113, "thư", 2], [22.275, "viện", 2], [22.475, "đảm", 2], [22.675, "nhận", 2], [22.925, "việc", 2], [23.087, "đóng", 2], [23.312, "gói", 2], [23.475, "tham", 2], [23.688, "số", 2], [24.0, "và", 2], [24.15, "truyền", 2], [24.4, "qua", 2], [24.55, "mạng.", 2], [25.762, "Nhưng", 3], [26.038, "lời", 3], [26.225, "gọi", 3], [26.475, "vẫn", 3], [26.65, "đi", 3], [26.762, "qua", 3], [26.975, "mạng,", 3], [27.5, "nên", 3], [27.788, "có", 3], [27.9, "thể", 3], [28.05, "thất", 3], [28.238, "bại", 3], [28.462, "vì", 3], [28.6, "mạng", 3], [28.887, "hoặc", 3], [29.087, "vì", 3], [29.238, "server,", 3], [30.0, "những", 3], [30.238, "lỗi", 3], [30.462, "mà", 3], [30.637, "lời", 3], [30.837, "gọi", 3], [31.025, "cục", 3], [31.225, "bộ", 3], [31.438, "không", 3], [31.663, "gặp.", 3], [32.688, "Phần", 4], [32.938, "đầu", 4], [33.125, "chương", 4], [33.337, "lần", 4], [33.487, "lượt", 4], [33.65, "trả", 4], [33.825, "lời", 4], [34.025, "ba", 4], [34.225, "câu", 4], [34.413, "hỏi:", 4], [35.0, "lời", 4], [35.237, "gọi", 4], [35.45, "từ", 4], [35.625, "xa", 4], [35.825, "hoạt", 4], [36.0, "động", 4], [36.225, "thế", 4], [36.35, "nào,", 4], [36.812, "viết", 4], [37.05, "bằng", 4], [37.3, "Java", 4], [37.856, "RMI", 4], [38.413, "ra", 4], [38.525, "sao,", 4], [39.075, "và", 4], [39.3, "thất", 4], [39.475, "bại", 4], [39.65, "thế", 4], [39.775, "nào?", 4]], "cues": [0.1, 13.706, 25.762, 32.688], "lang": 0.6}, {"ten": "Slide 2. Stub đóng gói lời gọi, dispatcher ở server gọi phương thức thật", "loai": "slide", "slide": "S02", "dung": "Hình stub-rpc: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Các bạn theo dõi”; bước 2 khi đọc “Ở tiến trình server”; bước 3 khi đọc “Kết quả đi theo chiều ngược lại”; bước 4 khi đọc “Như vậy”.", "start": 110.71, "audio": "audio/3ed0504919eebbdf.mp3", "dur": 51.62, "words": [[0.762, "RPC", 0], [0.762, "là", 0], [0.85, "một", 0], [1.025, "dạng", 0], [1.625, "IPC,", 0], [2.225, "hay", 0], [2.513, "Inter-Process", 0], [3.225, "Communication,", 0], [4.112, "giao", 0], [4.362, "tiếp", 0], [4.638, "giữa", 0], [4.8, "các", 0], [5.0, "tiến", 0], [5.25, "trình.", 0], [6.35, "Các", 1], [6.55, "bạn", 1], [6.737, "theo", 1], [6.9, "dõi", 1], [7.1, "một", 1], [7.287, "lời", 1], [7.487, "gọi", 1], [7.713, "trên", 1], [7.912, "hình:", 1], [8.387, "mã", 1], [8.6, "client", 1], [9.0, "gọi", 1], [9.225, "phương", 1], [9.438, "thức", 1], [9.625, "lookup", 1], [10.088, "với", 1], [10.3, "khóa", 1], [10.55, "hanoi", 1], [10.963, "trên", 1], [11.137, "một", 1], [11.287, "stub,", 1], [11.85, "đối", 1], [12.062, "tượng", 1], [12.325, "đại", 1], [12.438, "diện", 1], [12.662, "phía", 1], [12.875, "client", 1], [13.275, "có", 1], [13.4, "cùng", 1], [13.675, "interface", 1], [14.2, "với", 1], [14.338, "dịch", 1], [14.512, "vụ.", 1], [15.7, "Stub", 2], [16.087, "thực", 2], [16.25, "hiện", 2], [16.475, "marshalling,", 2], [17.35, "hay", 2], [17.55, "đóng", 2], [17.75, "gói", 2], [17.913, "lời", 2], [18.062, "gọi:", 2], [18.587, "tên", 2], [18.8, "phương", 2], [19.038, "thức", 2], [19.238, "và", 2], [19.4, "tham", 2], [19.613, "số", 2], [19.887, "được", 2], [20.025, "đổi", 2], [20.2, "thành", 2], [20.4, "dãy", 2], [20.575, "byte,", 2], [21.05, "rồi", 2], [21.325, "gửi", 2], [21.538, "qua", 2], [21.738, "một", 2], [21.925, "kết", 2], [22.125, "nối", 2], [23.0, "TCP.", 2], [23.875, "Ở", 3], [24.062, "tiến", 3], [24.325, "trình", 3], [24.525, "server,", 3], [25.238, "dispatcher,", 3], [26.188, "thành", 3], [26.387, "phần", 3], [26.613, "mà", 3], [26.962, "RPC", 3], [27.312, "cổ", 3], [27.525, "điển", 3], [27.775, "gọi", 3], [28.012, "là", 3], [28.15, "skeleton,", 3], [28.95, "nhận", 3], [29.25, "dãy", 3], [29.462, "byte,", 3], [29.95, "giải", 3], [30.175, "mã", 3], [30.375, "tham", 3], [30.562, "số,", 3], [31.163, "hay", 3], [31.387, "unmarshalling,", 3], [32.288, "rồi", 3], [32.55, "gọi", 3], [32.763, "phương", 3], [32.95, "thức", 3], [33.125, "lookup", 3], [33.55, "của", 3], [33.75, "đối", 3], [33.925, "tượng", 3], [34.163, "thật.", 3], [35.2, "Kết", 4], [35.438, "quả", 4], [35.675, "đi", 4], [35.788, "theo", 4], [35.938, "chiều", 4], [36.138, "ngược", 4], [36.337, "lại:", 4], [36.825, "server", 4], [37.275, "đóng", 4], [37.5, "gói", 4], [37.65, "giá", 4], [37.825, "trị", 4], [38.038, "trả", 4], [38.275, "về,", 4], [38.737, "stub", 4], [39.038, "nhận", 4], [39.3, "và", 4], [39.413, "giải", 4], [39.612, "mã,", 4], [40.212, "rồi", 4], [40.438, "trả", 4], [40.663, "về", 4], [40.825, "cho", 4], [40.987, "client", 4], [41.388, "như", 4], [41.6, "kết", 4], [41.812, "quả", 4], [42.075, "của", 4], [42.163, "một", 4], [42.35, "lời", 4], [42.587, "gọi", 4], [42.763, "cục", 4], [42.962, "bộ.", 4], [44.112, "Như", 5], [44.362, "vậy,", 5], [44.85, "ở", 5], [45.025, "cả", 5], [45.212, "hai", 5], [45.388, "chiều,", 5], [45.913, "phần", 5], [46.138, "mạng", 5], [46.388, "nằm", 5], [46.575, "gọn", 5], [46.837, "trong", 5], [47.013, "stub", 5], [47.3, "và", 5], [47.525, "dispatcher,", 5], [48.425, "còn", 5], [48.663, "mã", 5], [48.888, "ở", 5], [49.025, "hai", 5], [49.188, "đầu", 5], [49.388, "chỉ", 5], [49.575, "thấy", 5], [49.75, "một", 5], [49.925, "lời", 5], [50.138, "gọi", 5], [50.35, "phương", 5], [50.575, "thức.", 5]], "cues": [6.35, 23.875, 35.2, 44.112], "lang": 2.6}, {"ten": "Slide 3. Client tra tên trong RMI registry để lấy stub, rồi gọi thẳng đối tượng", "loai": "slide", "slide": "S03", "dung": "Hình rmi-registry: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Trước hết, server”; bước 2 khi đọc “Khi cần gọi”; bước 3 khi đọc “Từ đó”; bước 4 khi đọc “Vậy registry”.", "start": 164.93, "audio": "audio/8eb8ebcc8b752312.mp3", "dur": 45.86, "words": [[0.1, "Còn", 0], [0.338, "một", 0], [0.512, "câu", 0], [0.65, "hỏi:", 0], [1.238, "client", 0], [1.663, "lấy", 0], [1.875, "stub", 0], [2.25, "ở", 0], [2.35, "đâu?", 0], [3.475, "Java", 1], [4.225, "RMI,", 1], [4.975, "hay", 1], [5.175, "Remote", 1], [5.513, "Method", 1], [6.062, "Invocation,", 1], [7.0, "giải", 1], [7.213, "quyết", 1], [7.45, "bằng", 1], [7.863, "RMI", 1], [8.275, "registry,", 1], [9.125, "dịch", 1], [9.338, "vụ", 1], [9.562, "ánh", 1], [9.762, "xạ", 1], [10.0, "tên", 1], [10.225, "tới", 1], [10.412, "stub.", 1], [11.6, "Trước", 2], [11.838, "hết,", 2], [12.25, "server", 2], [12.662, "export", 2], [13.1, "đối", 2], [13.262, "tượng", 2], [13.5, "dịch", 2], [13.662, "vụ", 2], [13.887, "ở", 2], [14.0, "port", 2], [14.688, "9199,", 2], [15.375, "tức", 2], [15.613, "là", 2], [15.812, "cho", 2], [16.231, "RMI", 2], [16.65, "runtime", 2], [17.087, "nhận", 2], [17.363, "lời", 2], [17.512, "gọi", 2], [17.7, "tới", 2], [17.9, "đối", 2], [18.05, "tượng", 2], [18.3, "qua", 2], [18.462, "port", 2], [18.663, "đó,", 2], [19.175, "rồi", 2], [19.413, "đăng", 2], [19.587, "ký", 2], [19.775, "stub", 2], [20.075, "vào", 2], [20.3, "registry", 2], [20.95, "ở", 2], [21.1, "port", 2], [21.663, "1099", 2], [22.225, "dưới", 2], [22.375, "tên", 2], [22.613, "LookupService.", 2], [24.35, "Khi", 3], [24.575, "cần", 3], [24.788, "gọi,", 3], [25.288, "client", 3], [25.688, "gửi", 3], [25.938, "tên", 3], [26.188, "LookupService", 3], [26.938, "tới", 3], [27.137, "registry", 3], [27.75, "và", 3], [27.925, "nhận", 3], [28.2, "về", 3], [28.337, "stub.", 3], [29.525, "Bên", 4], [29.85, "trong", 4], [30.038, "stub", 4], [30.337, "có", 4], [30.55, "endpoint", 4], [31.038, "của", 4], [31.188, "đối", 4], [31.363, "tượng,", 4], [31.448, "127.0.0.1", 4], [31.532, "port", 4], [31.617, "9199.", 4], [31.701, "Từ", 5], [31.786, "đó,", 5], [31.87, "mỗi", 5], [31.955, "lời", 5], [32.039, "gọi", 5], [32.124, "lookup", 5], [32.208, "đi", 5], [32.293, "thẳng", 5], [32.377, "từ", 5], [32.462, "stub", 5], [32.546, "tới", 5], [32.631, "port", 5], [32.715, "9199,", 5], [32.8, "không", 5], [32.8, "qua", 5], [32.8, "registry", 5], [32.8, "nữa.", 5], [32.8, "Vậy", 6], [32.8, "registry", 6], [32.8, "chỉ", 6], [32.8, "tham", 6], [32.8, "gia", 6], [32.8, "ở", 6], [32.8, "bước", 6], [32.8, "tra", 6], [32.8, "tên.", 6]], "cues": [11.6, 24.35, 31.701, 32.8], "lang": 2.6}, {"ten": "Slide 4. Remote interface là hợp đồng chung của client và server", "loai": "slide", "slide": "S04", "dung": "Mã bên trái, ba ý bên phải hiện lần lượt. Highlight extends Remote rồi throws RemoteException theo lời đọc.\nHiện dần: bước 1 khi đọc “Hợp đồng giữa hai đầu”; bước 2 khi đọc “Mỗi phương thức”; bước 3 khi đọc “Tham số và giá trị trả về”.", "start": 213.39, "audio": "audio/88e5e7afee1f3dd5.mp3", "dur": 34.1, "words": [[0.1, "Mình", 0], [0.475, "bắt", 0], [0.637, "đầu", 0], [0.825, "viết", 0], [1.012, "dịch", 0], [1.2, "vụ", 0], [1.425, "tra", 0], [1.625, "cứu", 0], [1.938, "bằng", 0], [2.2, "remote", 0], [2.663, "interface.", 0], [4.037, "Hợp", 1], [4.263, "đồng", 1], [4.513, "giữa", 1], [4.688, "hai", 1], [4.862, "đầu", 1], [5.062, "là", 1], [5.25, "interface", 1], [5.737, "LookupService,", 1], [6.75, "kế", 1], [6.987, "thừa", 1], [7.213, "java.rmi.Remote,", 1], [8.625, "một", 1], [8.938, "interface", 1], [9.425, "không", 1], [9.7, "có", 1], [9.8, "phương", 1], [9.988, "thức", 1], [10.15, "nào,", 1], [10.575, "chỉ", 1], [10.762, "dùng", 1], [10.988, "để", 1], [11.088, "đánh", 1], [11.25, "dấu:", 1], [11.775, "server", 1], [12.175, "hiện", 1], [12.387, "thực", 1], [12.588, "LookupService,", 1], [13.65, "còn", 1], [13.912, "client", 1], [14.3, "gọi", 1], [14.512, "qua", 1], [14.7, "stub", 1], [15.0, "có", 1], [15.15, "cùng", 1], [15.412, "interface.", 1], [16.788, "Mỗi", 2], [17.163, "phương", 2], [17.375, "thức", 2], [17.538, "phải", 2], [17.7, "khai", 2], [17.9, "báo", 2], [18.15, "RemoteException,", 2], [19.538, "ngoại", 2], [19.775, "lệ", 2], [19.962, "của", 2], [20.087, "lời", 2], [20.288, "gọi", 2], [20.5, "từ", 2], [20.675, "xa,", 2], [21.275, "vì", 2], [21.488, "bất", 2], [21.675, "cứ", 2], [21.85, "lời", 2], [22.025, "gọi", 2], [22.238, "nào", 2], [22.475, "cũng", 2], [22.65, "có", 2], [22.738, "thể", 2], [22.9, "thất", 2], [23.087, "bại", 2], [23.288, "do", 2], [23.45, "mạng", 2], [23.75, "hoặc", 2], [23.95, "do", 2], [24.15, "server.", 2], [25.462, "Tham", 3], [25.725, "số", 3], [26.012, "và", 3], [26.113, "giá", 3], [26.288, "trị", 3], [26.5, "trả", 3], [26.8, "về", 3], [26.925, "được", 3], [27.1, "truyền", 3], [27.337, "bằng", 3], [27.538, "serialization", 3], [28.35, "như", 3], [28.6, "ở", 3], [28.712, "Chương", 3], [28.962, "1,", 3], [29.4, "và", 3], [29.663, "ở", 3], [29.788, "đây", 3], [29.925, "cả", 3], [30.1, "khóa", 3], [30.35, "lẫn", 3], [30.562, "giá", 3], [30.725, "trị", 3], [30.988, "đều", 3], [31.15, "là", 3], [31.262, "String,", 3], [31.85, "một", 3], [32.087, "kiểu", 3], [32.325, "Serializable.", 3]], "cues": [4.037, 16.788, 25.462], "lang": 5.6}, {"ten": "Slide 5. Server export đối tượng, đăng ký stub; RMI runtime nhận lời gọi", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, log của server phía dưới. Highlight dòng exportObject, dòng createRegistry, dòng rebind theo lời đọc.\nHiện dần: bước 1 khi đọc “Theo log”.", "start": 253.09, "audio": "audio/45e6b431c363e996.mp3", "dur": 46.75, "words": [[0.1, "Phía", 0], [0.425, "server,", 0], [1.113, "lớp", 0], [1.4, "LookupServer", 0], [2.212, "hiện", 0], [2.45, "thực", 0], [2.65, "remote", 0], [3.062, "interface:", 0], [3.763, "phương", 0], [4.05, "thức", 0], [4.275, "lookup", 0], [4.7, "chỉ", 0], [4.925, "tra", 0], [5.1, "một", 0], [5.3, "map", 0], [5.5, "rồi", 0], [5.713, "trả", 0], [5.95, "giá", 0], [6.112, "trị,", 0], [6.625, "không", 0], [6.862, "đọc", 0], [7.037, "ghi", 0], [7.2, "socket", 0], [7.612, "nào.", 0], [8.725, "Trong", 1], [9.05, "hàm", 1], [9.213, "main,", 1], [9.662, "dòng", 1], [9.912, "đầu", 1], [10.1, "đặt", 1], [10.275, "thuộc", 1], [10.45, "tính", 1], [10.7, "java.rmi.server.hostname,", 1], [12.688, "tức", 1], [12.912, "địa", 1], [13.113, "chỉ", 1], [13.287, "được", 1], [13.463, "ghi", 1], [13.662, "vào", 1], [13.838, "stub,", 1], [14.412, "ở", 1], [14.6, "đây", 1], [14.787, "là", 1], [14.912, "địa", 1], [15.1, "chỉ", 1], [15.338, "loopback.", 1], [16.625, "Phương", 2], [16.9, "thức", 2], [17.15, "exportObject", 2], [17.9, "của", 2], [18.163, "lớp", 2], [18.45, "UnicastRemoteObject", 2], [19.775, "export", 2], [20.188, "đối", 2], [20.363, "tượng", 2], [20.812, "ở", 2], [20.875, "port", 2], [21.45, "9199", 2], [22.025, "và", 2], [22.137, "trả", 2], [22.425, "về", 2], [22.575, "stub", 2], [22.875, "của", 2], [23.038, "nó.", 2], [24.25, "Phương", 3], [24.538, "thức", 3], [24.725, "createRegistry", 3], [25.65, "của", 3], [25.8, "lớp", 3], [26.038, "LocateRegistry", 3], [27.125, "chạy", 3], [27.337, "một", 3], [27.737, "RMI", 3], [28.137, "registry", 3], [28.762, "ngay", 3], [28.975, "trong", 3], [29.188, "tiến", 3], [29.425, "trình", 3], [29.6, "server,", 3], [30.312, "ở", 3], [30.512, "port", 3], [31.537, "1099.", 3], [32.562, "Cuối", 4], [32.812, "cùng,", 4], [33.275, "phương", 4], [33.513, "thức", 4], [33.7, "rebind", 4], [34.112, "của", 4], [34.35, "registry", 4], [34.95, "đăng", 4], [35.138, "ký", 4], [35.362, "stub", 4], [35.725, "dưới", 4], [35.913, "tên", 4], [36.15, "LookupService.", 4], [37.862, "Theo", 5], [38.112, "log,", 5], [38.575, "mỗi", 5], [38.763, "lời", 5], [38.938, "gọi", 5], [39.112, "chạy", 5], [39.35, "trên", 5], [39.513, "một", 5], [39.663, "thread", 5], [39.938, "do", 5], [40.382, "RMI", 5], [40.825, "runtime", 5], [41.263, "tạo", 5], [41.5, "ra,", 5], [41.975, "vì", 5], [42.188, "vòng", 5], [42.413, "lặp", 5], [42.675, "accept", 5], [43.087, "nằm", 5], [43.362, "trong", 5], [43.725, "RMI", 5], [44.087, "runtime", 5], [44.525, "chứ", 5], [44.712, "không", 5], [44.925, "nằm", 5], [45.125, "trong", 5], [45.312, "mã", 5], [45.5, "của", 5], [45.625, "mình.", 5]], "cues": [37.862], "lang": 9.6}, {"ten": "Slide 6. Client tra tên, nhận stub và gọi như gọi một đối tượng cục bộ", "loai": "slide", "slide": "S06", "dung": "Mã phía trên, kết quả phía dưới. Highlight dòng registry.lookup rồi dòng service.lookup(key) theo lời đọc; trong kết quả, highlight endpoint:[127.0.0.1:9199].\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 309.44, "audio": "audio/86e71f6d7d65e4a8.mp3", "dur": 35.86, "words": [[0.1, "Phía", 0], [0.412, "client,", 0], [0.988, "phương", 0], [1.262, "thức", 0], [1.488, "getRegistry", 0], [2.288, "chỉ", 0], [2.5, "tạo", 0], [2.725, "stub", 0], [3.038, "của", 0], [3.25, "chính", 0], [3.525, "registry,", 0], [4.375, "chưa", 0], [4.65, "mở", 0], [4.875, "kết", 0], [5.125, "nối", 0], [5.3, "nào.", 0], [6.412, "Phương", 1], [6.7, "thức", 1], [6.912, "lookup", 1], [7.338, "của", 1], [7.625, "registry", 1], [8.3, "gửi", 1], [8.525, "tên", 1], [8.787, "LookupService", 1], [9.55, "và", 1], [9.738, "nhận", 1], [10.0, "về", 1], [10.137, "stub", 1], [10.45, "của", 1], [10.613, "dịch", 1], [10.787, "vụ.", 1], [11.975, "Từ", 2], [12.262, "đây,", 2], [12.713, "lời", 2], [12.963, "gọi", 2], [13.225, "lookup", 2], [13.65, "với", 2], [13.838, "từng", 2], [14.062, "khóa", 2], [14.338, "có", 2], [14.45, "cú", 2], [14.625, "pháp", 2], [14.963, "như", 2], [15.162, "gọi", 2], [15.35, "một", 2], [15.562, "đối", 2], [15.738, "tượng", 2], [16.0, "cục", 2], [16.188, "bộ.", 2], [17.337, "Kết", 3], [17.575, "quả", 3], [17.8, "cho", 3], [17.938, "thấy", 3], [18.113, "lớp", 3], [18.35, "của", 3], [18.55, "stub", 3], [18.962, "là", 3], [19.125, "một", 3], [19.325, "lớp", 3], [19.538, "proxy", 3], [20.025, "do", 3], [20.35, "JDK", 3], [20.675, "sinh", 3], [20.9, "lúc", 3], [21.062, "chạy,", 3], [21.575, "không", 3], [21.8, "có", 3], [21.95, "trong", 3], [22.113, "mã", 3], [22.25, "nguồn,", 3], [22.775, "và", 3], [22.988, "tham", 3], [23.212, "chiếu", 3], [23.438, "bên", 3], [23.663, "trong", 3], [23.85, "stub", 3], [24.163, "ghi", 3], [24.425, "endpoint", 3], [24.425, "127.0.0.1", 3], [24.425, "port", 3], [24.425, "9199", 3], [24.425, "của", 3], [24.425, "đối", 3], [24.425, "tượng", 3], [24.425, "ở", 3], [24.425, "server.", 3], [24.425, "Lời", 4], [24.425, "gọi", 4], [24.425, "với", 4], [24.425, "khóa", 4], [24.425, "hanoi", 4], [24.425, "trả", 4], [24.425, "về", 4], [24.425, "Thủ", 4], [24.425, "đô", 4], [24.425, "của", 4], [24.425, "Việt", 4], [24.425, "Nam,", 4], [24.425, "còn", 4], [24.425, "khóa", 4], [24.425, "atlantis", 4], [24.425, "trả", 4], [24.425, "về", 4], [24.425, "null.", 4]], "cues": [17.337], "lang": 9.6}, {"ten": "Slide 7. Lời gọi thất bại giữa chừng: client không biết server đã chạy hay chưa", "loai": "slide", "slide": "S07", "dung": "Mã bốn dòng (các bước chính của CrashDemo) phía trên, kết quả phía dưới. Sau câu \"nhận được gì\", dừng khoảng 2 giây trước khi khung kết quả hiện.\nHiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “Lần gọi thứ nhất”; bước 3 khi đọc “Lần gọi thứ hai”; bước 4 khi đọc “Vì vậy”.", "start": 354.9, "audio": "audio/810580ef0ccf2271.mp3", "dur": 47.47, "words": [[0.1, "Mình", 0], [0.512, "kiểm", 0], [0.738, "chứng", 0], [0.95, "việc", 0], [1.113, "lời", 0], [1.312, "gọi", 0], [1.575, "từ", 0], [1.762, "xa", 0], [2.0, "thất", 0], [2.175, "bại", 0], [2.388, "giữa", 0], [2.625, "chừng", 0], [2.888, "bằng", 0], [3.1, "chương", 0], [3.337, "trình", 0], [3.562, "CrashDemo.", 0], [5.138, "Server", 1], [5.6, "chạy", 1], [5.862, "trong", 1], [6.025, "một", 1], [6.175, "tiến", 1], [6.412, "trình", 1], [6.6, "con,", 1], [7.088, "mỗi", 1], [7.287, "lời", 1], [7.475, "gọi", 1], [7.725, "lookup", 1], [8.175, "mất", 1], [8.338, "2", 1], [8.525, "giây;", 1], [9.025, "sau", 1], [9.3, "500", 1], [9.7, "mili", 1], [9.963, "giây,", 1], [10.475, "chương", 1], [10.762, "trình", 1], [10.975, "tắt", 1], [11.137, "hẳn", 1], [11.4, "tiến", 1], [11.662, "trình", 1], [11.85, "server,", 1], [12.537, "rồi", 1], [12.812, "gọi", 1], [13.012, "thêm", 1], [13.213, "một", 1], [13.35, "lần", 1], [13.55, "nữa.", 1], [14.75, "Các", 2], [14.95, "bạn", 2], [15.175, "thử", 2], [15.363, "đoán:", 2], [15.925, "hai", 2], [16.137, "lần", 2], [16.375, "gọi", 2], [16.575, "nhận", 2], [16.85, "được", 2], [17.0, "gì?", 2], [18.15, "Kết", 3], [18.35, "quả:", 3], [18.925, "hai", 3], [19.113, "lần", 3], [19.325, "gọi", 3], [19.525, "nhận", 3], [19.788, "hai", 3], [19.988, "lớp", 3], [20.212, "con", 3], [20.4, "khác", 3], [20.625, "nhau", 3], [20.837, "của", 3], [21.062, "RemoteException.", 3], [23.025, "Lần", 4], [23.312, "gọi", 4], [23.488, "thứ", 4], [23.637, "nhất", 4], [23.875, "nhận", 4], [24.137, "UnmarshalException", 4], [25.413, "sau", 4], [25.663, "khoảng", 4], [25.962, "500", 4], [26.337, "mili", 4], [26.6, "giây,", 4], [27.1, "vì", 4], [27.337, "kết", 4], [27.538, "nối", 4], [27.75, "bị", 4], [27.913, "reset", 4], [28.312, "khi", 4], [28.5, "client", 4], [28.887, "đang", 4], [29.075, "chờ", 4], [29.288, "kết", 4], [29.5, "quả,", 4], [30.087, "trong", 4], [30.275, "khi", 4], [30.438, "log", 4], [30.675, "cho", 4], [30.812, "thấy", 4], [31.0, "server", 4], [31.45, "đã", 4], [31.575, "bắt", 4], [31.738, "đầu", 4], [31.938, "thực", 4], [32.1, "hiện", 4], [32.312, "phương", 4], [32.513, "thức", 4], [32.712, "lookup.", 4], [33.95, "Lần", 5], [34.237, "gọi", 5], [34.4, "thứ", 5], [34.612, "hai", 5], [34.812, "nhận", 5], [35.075, "ConnectException", 5], [36.125, "ngay", 5], [36.35, "lập", 5], [36.538, "tức,", 5], [36.975, "vì", 5], [37.212, "không", 5], [37.425, "còn", 5], [37.625, "tiến", 5], [37.837, "trình", 5], [38.0, "nào", 5], [38.163, "nhận", 5], [38.525, "ở", 5], [38.587, "port", 5], [39.612, "9199.", 5], [40.638, "Vì", 6], [40.888, "vậy,", 6], [41.275, "khi", 6], [41.45, "một", 6], [41.612, "lời", 6], [41.812, "gọi", 6], [42.025, "từ", 6], [42.2, "xa", 6], [42.425, "thất", 6], [42.6, "bại", 6], [42.825, "sau", 6], [42.987, "khi", 6], [43.15, "đã", 6], [43.288, "gửi", 6], [43.5, "đi,", 6], [44.013, "client", 6], [44.425, "không", 6], [44.638, "biết", 6], [44.788, "server", 6], [45.225, "đã", 6], [45.337, "thực", 6], [45.525, "hiện", 6], [45.763, "phương", 6], [45.975, "thức", 6], [46.125, "hay", 6], [46.288, "chưa.", 6]], "cues": [18.15, 23.025, 33.95, 40.638], "lang": 9.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án B được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 411.97, "audio": "audio/21346b6f52cc832d.mp3", "dur": 4.32, "words": [[0.1, "Trước", 0], [0.375, "hết,", 0], [0.812, "các", 0], [1.0, "bạn", 0], [1.188, "xác", 0], [1.4, "định", 0], [1.625, "lại", 0], [1.812, "vị", 0], [2.0, "trí", 0], [2.325, "và", 0], [2.487, "vai", 0], [2.688, "trò", 0], [2.962, "của", 0], [3.112, "stub.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/9ae11161055eed89.mp3", "dur2": 13.44, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.65, "là", 0], [0.75, "B.", 0], [1.125, "Phương", 1], [1.475, "án", 1], [1.712, "A", 1], [1.825, "mô", 1], [2.0, "tả", 1], [2.25, "dispatcher", 1], [2.9, "ở", 1], [3.05, "phía", 1], [3.275, "server.", 1], [4.588, "Phương", 2], [4.925, "án", 2], [5.112, "C", 2], [5.362, "là", 2], [5.487, "hiểu", 2], [5.675, "nhầm", 2], [5.938, "hay", 2], [6.088, "gặp:", 2], [6.6, "registry", 2], [7.275, "chỉ", 2], [7.487, "trả", 2], [7.688, "stub", 2], [8.037, "cho", 2], [8.175, "client", 2], [8.488, "một", 2], [8.688, "lần,", 2], [9.15, "còn", 2], [9.387, "mọi", 2], [9.537, "lời", 2], [9.7, "gọi", 2], [9.9, "sau", 2], [10.062, "đó", 2], [10.262, "đi", 2], [10.387, "thẳng", 2], [10.675, "từ", 2], [10.85, "stub", 2], [11.175, "tới", 2], [11.4, "endpoint", 2], [11.9, "của", 2], [12.05, "đối", 2], [12.213, "tượng.", 2]], "dap_an": "B", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án C.", "start": 436.33, "audio": "audio/ef5fb8a1ac2c95e8.mp3", "dur": 3.5, "words": [[0.1, "Câu", 0], [0.287, "thứ", 0], [0.512, "hai", 0], [0.7, "quay", 0], [0.925, "lại", 0], [1.113, "kết", 0], [1.337, "quả", 0], [1.613, "của", 0], [1.863, "CrashDemo.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/747b22c17cdd2828.mp3", "dur2": 13.51, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.65, "là", 0], [0.75, "C.", 0], [1.1, "Phương", 1], [1.425, "án", 1], [1.637, "A", 1], [1.8, "chỉ", 1], [1.962, "đúng", 1], [2.175, "với", 1], [2.3, "ConnectException,", 1], [3.675, "khi", 1], [3.913, "lời", 1], [4.088, "gọi", 1], [4.338, "chưa", 1], [4.537, "tới", 1], [4.775, "được", 1], [4.925, "server.", 1], [6.213, "Với", 2], [6.537, "UnmarshalException,", 2], [8.213, "lời", 2], [8.45, "gọi", 2], [8.7, "đã", 2], [8.825, "tới", 2], [9.037, "server,", 2], [9.762, "và", 2], [10.025, "CrashDemo", 2], [10.675, "cho", 2], [10.825, "thấy", 2], [11.025, "server", 2], [11.475, "đã", 2], [11.625, "bắt", 2], [11.812, "đầu", 2], [12.025, "chạy", 2], [12.225, "phương", 2], [12.438, "thức.", 2]], "dap_an": "C", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “Lời gọi thủ tục từ xa”; bước 2 khi đọc “Với Java RMI”; bước 3 khi đọc “Cú pháp giống”; bước 4 khi đọc “Phần mở đầu chương để lại”.", "start": 459.94, "audio": "audio/3b591ecfb500b69c.mp3", "dur": 38.35, "words": [[0.1, "Lời", 0], [0.4, "gọi", 0], [0.575, "thủ", 0], [0.762, "tục", 0], [0.988, "từ", 0], [1.15, "xa", 0], [1.425, "cho", 0], [1.562, "phép", 0], [1.812, "gọi", 0], [2.013, "phương", 0], [2.212, "thức", 0], [2.4, "trên", 0], [2.575, "máy", 0], [2.725, "khác", 0], [3.0, "như", 0], [3.15, "gọi", 0], [3.325, "cục", 0], [3.525, "bộ,", 0], [4.062, "nhờ", 0], [4.325, "stub", 0], [4.662, "và", 0], [4.85, "dispatcher", 0], [5.45, "đảm", 0], [5.688, "nhận", 0], [5.912, "marshalling", 0], [6.588, "và", 0], [6.737, "truyền", 0], [6.987, "qua", 0], [7.162, "mạng.", 0], [8.375, "Với", 1], [8.688, "Java", 1], [9.388, "RMI,", 1], [10.088, "client", 1], [10.55, "và", 1], [10.688, "server", 1], [11.075, "dùng", 1], [11.35, "chung", 1], [11.55, "một", 1], [11.713, "remote", 1], [12.1, "interface;", 1], [12.812, "server", 1], [13.25, "export", 1], [13.688, "đối", 1], [13.863, "tượng", 1], [14.15, "rồi", 1], [14.275, "đăng", 1], [14.475, "ký", 1], [14.675, "stub", 1], [15.025, "vào", 1], [15.494, "RMI", 1], [15.963, "registry,", 1], [16.812, "client", 1], [17.175, "tra", 1], [17.35, "tên", 1], [17.613, "để", 1], [17.738, "lấy", 1], [17.913, "stub.", 1], [19.075, "Cú", 2], [19.312, "pháp", 2], [19.575, "giống", 2], [19.812, "lời", 2], [19.975, "gọi", 2], [20.137, "cục", 2], [20.337, "bộ,", 2], [20.85, "nhưng", 2], [21.1, "mọi", 2], [21.275, "phương", 2], [21.475, "thức", 2], [21.637, "khai", 2], [21.837, "báo", 2], [22.087, "RemoteException,", 2], [23.438, "và", 2], [23.637, "khi", 2], [23.837, "lời", 2], [24.025, "gọi", 2], [24.212, "thất", 2], [24.387, "bại,", 2], [24.925, "client", 2], [25.3, "không", 2], [25.512, "biết", 2], [25.65, "server", 2], [26.075, "đã", 2], [26.2, "thực", 2], [26.387, "hiện", 2], [26.613, "phương", 2], [26.812, "thức", 2], [26.975, "hay", 2], [27.125, "chưa.", 2], [28.3, "Phần", 3], [28.55, "mở", 3], [28.75, "đầu", 3], [28.938, "chương", 3], [29.225, "để", 3], [29.337, "lại", 3], [29.512, "bảy", 3], [29.712, "từ", 3], [29.863, "khóa:", 3], [29.863, "RPC,", 3], [29.863, "IPC,", 3], [29.863, "stub,", 3], [29.863, "marshalling,", 3], [29.863, "remote", 3], [29.863, "interface,", 3], [29.863, "RMI", 3], [29.863, "registry", 3], [29.863, "và", 3], [29.863, "RemoteException.", 3]], "cues": [0.1, 8.375, 19.075, 28.3], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Các bạn có thể đọc thêm”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 498.89, "audio": "audio/7e3e846ad490f1af.mp3", "dur": 19.7, "words": [[0.1, "Các", 0], [0.3, "bạn", 0], [0.512, "có", 0], [0.613, "thể", 0], [0.738, "đọc", 0], [0.9, "thêm", 0], [1.175, "về", 0], [1.288, "các", 0], [1.462, "ngộ", 0], [1.637, "nhận", 0], [1.913, "về", 0], [2.038, "hệ", 0], [2.188, "phân", 0], [2.4, "tán,", 0], [2.962, "hay", 0], [3.188, "fallacies", 0], [3.812, "of", 0], [4.025, "distributed", 0], [4.4, "computing,", 0], [5.237, "như", 0], [5.513, "cho", 0], [5.688, "rằng", 0], [5.888, "mạng", 0], [6.088, "không", 0], [6.275, "bao", 0], [6.4, "giờ", 0], [6.575, "hỏng,", 0], [7.088, "và", 0], [7.275, "về", 0], [7.4, "lý", 0], [7.625, "do", 0], [8.075, "RMI", 0], [8.525, "ít", 0], [8.7, "được", 0], [8.85, "dùng", 0], [9.1, "giữa", 0], [9.262, "các", 0], [9.412, "hệ", 0], [9.55, "thống", 0], [9.787, "viết", 0], [9.963, "bằng", 0], [10.162, "ngôn", 0], [10.363, "ngữ", 0], [10.562, "khác", 0], [10.8, "nhau.", 0], [11.925, "Bài", 1], [12.162, "tập", 1], [12.375, "mở", 1], [12.562, "rộng", 1], [12.85, "là", 1], [13.025, "thêm", 1], [13.287, "phương", 1], [13.488, "thức", 1], [13.7, "lookupAll", 1], [14.35, "nhận", 1], [14.613, "một", 1], [14.8, "danh", 1], [14.988, "sách", 1], [15.15, "khóa,", 1], [15.713, "rồi", 1], [15.988, "so", 1], [16.175, "sánh", 1], [16.4, "một", 1], [16.538, "lời", 1], [16.725, "gọi", 1], [16.988, "lookupAll", 1], [17.663, "với", 1], [17.775, "nhiều", 1], [17.988, "lời", 1], [18.188, "gọi", 1], [18.438, "lookup.", 1]], "cues": [0.1, 11.925], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 519.19, "audio": "audio/6ce4f98cbe6a9c99.mp3", "dur": 11.33, "words": [[0.1, "Dịch", 0], [0.362, "vụ", 0], [0.562, "tra", 0], [0.775, "cứu", 0], [1.025, "qua", 0], [1.506, "RMI", 0], [1.988, "mới", 0], [2.263, "chỉ", 0], [2.438, "đọc", 0], [2.612, "dữ", 0], [2.812, "liệu.", 0], [3.987, "Phần", 1], [4.263, "tiếp", 1], [4.513, "theo", 1], [4.675, "thêm", 1], [4.925, "thao", 1], [5.088, "tác", 1], [5.3, "cập", 1], [5.463, "nhật,", 1], [5.9, "và", 1], [6.088, "cùng", 1], [6.312, "với", 1], [6.425, "nó", 1], [6.6, "là", 1], [6.7, "truyền", 1], [6.938, "tham", 1], [7.125, "số,", 1], [7.737, "idempotency", 1], [8.588, "và", 1], [8.75, "truy", 1], [8.938, "cập", 1], [9.125, "đồng", 1], [9.35, "thời", 1], [9.575, "trong", 1], [9.575, "RMI.", 1]], "cues": [], "lang": 0.6}], "video_sau": "RPC: truyền tham số, idempotency và truy cập đồng thời trong RMI"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

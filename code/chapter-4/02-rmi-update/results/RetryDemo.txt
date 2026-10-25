@@ -1,0 +1,6 @@
+no idempotency key:
+  attempt 1: UnmarshalException, cause java.net.SocketTimeoutException: Read timed out
+  attempt 2: version 2
+idempotency key f3b9f374:
+  attempt 1: UnmarshalException, cause java.net.SocketTimeoutException: Read timed out
+  attempt 2: version 1

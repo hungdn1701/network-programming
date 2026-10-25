@@ -1,0 +1,424 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V23 — RPC: truyền tham số, idempotency và truy cập đồng thời trong RMI · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-4/02-rmi-update">Mã</a>
+<h1>V23 · RPC: truyền tham số, idempotency và truy cập đồng thời trong RMI</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 4</div><div class="ten">RPC: truyền tham số, idempotency và truy cập đồng thời trong RMI</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Thêm thao tác cập nhật: ba câu hỏi mới cho lời gọi từ xa</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Tham số <code>Entry</code> đi qua mạng: server nhận <b>chính đối tượng</b> của client hay một <b>bản sao</b>?</li><li data-s="2">Gọi lại sau RemoteException: cập nhật có bị <b>áp dụng hai lần</b>?</li><li data-s="3">Nhiều client cùng cập nhật một khóa: remote object có còn <b>đúng</b> khi các lời gọi chạy song song?</li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> RMI truyền tham số thế nào, gọi lại sao cho an toàn, và remote object chịu truy cập đồng thời ra sao?</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Tham số Serializable thành bản sao, tham số Remote thành stub</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 440" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Trái: tham số Entry là Serializable, được serialization thành byte và server nhận một bản sao. Server đặt version của bản sao thành 1, client sửa value trên bản của mình; hai đối tượng độc lập, sửa ở một đầu không ảnh hưởng đầu kia. Phải: tham số listener là đối tượng Remote đã export ở client; server nhận stub của nó, và lời gọi qua stub chạy trên đối tượng gốc ở client.">
+  <defs>
+    <marker id="tt-a" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="tt-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- ① truyền theo giá trị: server nhận bản sao -->
+  <g data-s="1">
+    <text x="450" y="40" text-anchor="middle" font-size="23" font-weight="500" fill="#051A53">truyền theo giá trị · tham số Serializable</text>
+    <rect x="40" y="64" width="330" height="250" rx="8" fill="none" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="60" y="96" font-size="20" fill="#5B6478">client</text>
+    <rect x="530" y="64" width="330" height="250" rx="8" fill="none" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="550" y="96" font-size="20" fill="#5B6478">server</text>
+    <rect x="70" y="116" width="270" height="110" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="205" y="152" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">Entry</text>
+    <text x="205" y="184" text-anchor="middle" font-size="20" fill="#373D4E" font-family="Consolas, monospace">key sapa</text>
+    <text x="205" y="212" text-anchor="middle" font-size="20" fill="#373D4E" font-family="Consolas, monospace">version 0</text>
+    <rect x="560" y="116" width="270" height="110" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="695" y="152" text-anchor="middle" font-size="22" font-weight="500" fill="#6B4E06">Entry (bản sao)</text>
+    <text x="695" y="184" text-anchor="middle" font-size="20" fill="#6B4E06" font-family="Consolas, monospace">key sapa</text>
+    <line x1="342" y1="171" x2="554" y2="171" stroke="#051A53" stroke-width="2.5" marker-end="url(#tt-a)"/>
+    <text x="448" y="158" text-anchor="middle" font-size="20" fill="#051A53">byte</text>
+    <text x="448" y="198" text-anchor="middle" font-size="20" fill="#051A53">serialization</text>
+  </g>
+
+  <!-- ② hai bản độc lập -->
+  <g data-s="2">
+    <text x="695" y="212" text-anchor="middle" font-size="20" fill="#BC2626" font-family="Consolas, monospace">version 0 → 1</text>
+    <text x="205" y="262" text-anchor="middle" font-size="20" fill="#BC2626">client sửa value</text>
+    <text x="695" y="262" text-anchor="middle" font-size="20" fill="#BC2626">server sửa version</text>
+    <text x="450" y="370" text-anchor="middle" font-size="21" fill="#373D4E">hai đối tượng độc lập:</text>
+    <text x="450" y="402" text-anchor="middle" font-size="21" fill="#373D4E">sửa ở một đầu không ảnh hưởng đầu kia</text>
+  </g>
+
+  <!-- ③ remote reference: server nhận stub -->
+  <g data-s="3">
+    <text x="1310" y="40" text-anchor="middle" font-size="23" font-weight="500" fill="#051A53">remote reference · tham số Remote</text>
+    <rect x="900" y="64" width="360" height="250" rx="8" fill="none" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="920" y="96" font-size="20" fill="#5B6478">client</text>
+    <rect x="1390" y="64" width="330" height="250" rx="8" fill="none" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="1410" y="96" font-size="20" fill="#5B6478">server</text>
+    <rect x="930" y="116" width="290" height="110" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1075" y="152" text-anchor="middle" font-size="22" font-weight="500" fill="#22603F">listener</text>
+    <text x="1075" y="184" text-anchor="middle" font-size="20" fill="#22603F">đối tượng Remote,</text>
+    <text x="1075" y="212" text-anchor="middle" font-size="20" fill="#22603F">đã export</text>
+    <rect x="1420" y="116" width="270" height="110" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1555" y="152" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">stub</text>
+    <text x="1555" y="184" text-anchor="middle" font-size="20" fill="#373D4E">trỏ về listener</text>
+    <text x="1555" y="212" text-anchor="middle" font-size="20" fill="#373D4E">ở client</text>
+    <line x1="1222" y1="146" x2="1414" y2="146" stroke="#051A53" stroke-width="2.5" marker-end="url(#tt-a)"/>
+    <text x="1318" y="134" text-anchor="middle" font-size="20" fill="#051A53">truyền stub</text>
+    <line x1="1418" y1="200" x2="1226" y2="200" stroke="#2F855A" stroke-width="2.5" marker-end="url(#tt-ok)"/>
+    <text x="1318" y="226" text-anchor="middle" font-size="20" fill="#22603F">lời gọi</text>
+    <text x="1310" y="370" text-anchor="middle" font-size="21" fill="#373D4E">lời gọi qua stub ở server</text>
+    <text x="1310" y="402" text-anchor="middle" font-size="21" fill="#373D4E">chạy trên đối tượng gốc ở client</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Truyền theo giá trị</b>: tham số Serializable thành bản sao độc lập. <b>Remote reference</b>: tham số Remote thành stub trỏ về đối tượng gốc.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Idempotency key cho phép gọi lại mà không áp dụng hai lần</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Trái: thao tác idempotent để lại cùng trạng thái dù thực hiện một hay nhiều lần: tra cứu và đặt value bằng một giá trị là idempotent; update tăng version thì gọi hai lần làm version tăng hai. Phải: client gửi update cho khóa dalat kèm idempotency key f3b9f374; server áp dụng, version thành 1, lưu key đã xử lý; kết quả chưa về kịp, client hết thời gian chờ và nhận RemoteException. Client gọi lại với cùng key; server thấy key đã có, không áp dụng lại, trả kết quả cũ version 1.">
+  <defs>
+    <marker id="ik-a" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="ik-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+    <marker id="ik-err" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#BC2626"/></marker>
+  </defs>
+
+  <!-- ① thao tác nào idempotent -->
+  <g data-s="1">
+    <text x="40" y="44" font-size="23" font-weight="500" fill="#051A53">gọi hai lần thay vì một lần</text>
+    <g stroke-width="2.5">
+      <rect x="40" y="70" width="560" height="96" rx="6" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="40" y="184" width="560" height="96" rx="6" fill="#EEF9F0" stroke="#2F855A"/>
+      <rect x="40" y="298" width="560" height="96" rx="6" fill="#FBEAEA" stroke="#BC2626"/>
+    </g>
+    <text x="64" y="108" font-size="21" fill="#22603F" font-family="Consolas, monospace">lookup("sapa")</text>
+    <text x="64" y="144" font-size="20" fill="#22603F">dữ liệu không đổi → idempotent</text>
+    <text x="64" y="222" font-size="21" fill="#22603F" font-family="Consolas, monospace">đặt value = "X"</text>
+    <text x="64" y="258" font-size="20" fill="#22603F">vẫn là value = "X" → idempotent</text>
+    <text x="64" y="336" font-size="21" fill="#9B1C1C" font-family="Consolas, monospace">update: version + 1</text>
+    <text x="64" y="372" font-size="20" fill="#9B1C1C">version tăng 2 → không idempotent</text>
+  </g>
+
+  <!-- ② lần gọi đầu: áp dụng, lưu key, kết quả không về kịp -->
+  <g data-s="2">
+    <rect x="700" y="60" width="140" height="48" rx="6" fill="#F4F5F8" stroke="#5B6478" stroke-width="2.5"/>
+    <text x="770" y="92" text-anchor="middle" font-size="21" fill="#373D4E">client</text>
+    <rect x="1220" y="60" width="140" height="48" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1290" y="92" text-anchor="middle" font-size="21" fill="#051A53">server</text>
+    <line x1="770" y1="108" x2="770" y2="480" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="6 5"/>
+    <line x1="1290" y1="108" x2="1290" y2="480" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="6 5"/>
+    <line x1="772" y1="160" x2="1284" y2="160" stroke="#051A53" stroke-width="2.5" marker-end="url(#ik-a)"/>
+    <text x="1028" y="148" text-anchor="middle" font-size="20" fill="#051A53" font-family="Consolas, monospace">update(dalat, key f3b9f374)</text>
+    <text x="1310" y="156" font-size="20" fill="#22603F">áp dụng: version 1</text>
+    <text x="1310" y="186" font-size="20" fill="#22603F">lưu f3b9f374 → 1</text>
+    <line x1="1288" y1="240" x2="776" y2="240" stroke="#BC2626" stroke-width="2.5" stroke-dasharray="8 6" marker-end="url(#ik-err)"/>
+    <text x="1028" y="228" text-anchor="middle" font-size="20" fill="#9B1C1C">kết quả chưa về kịp</text>
+    <text x="790" y="272" font-size="20" fill="#9B1C1C">hết 1 giây → RemoteException</text>
+  </g>
+
+  <!-- ③ gọi lại cùng key: trả kết quả cũ -->
+  <g data-s="3">
+    <line x1="772" y1="340" x2="1284" y2="340" stroke="#051A53" stroke-width="2.5" marker-end="url(#ik-a)"/>
+    <text x="1028" y="328" text-anchor="middle" font-size="20" fill="#051A53" font-family="Consolas, monospace">gọi lại: update(dalat, key f3b9f374)</text>
+    <text x="1310" y="336" font-size="20" fill="#6B4E06">key đã có:</text>
+    <text x="1310" y="366" font-size="20" fill="#6B4E06">không áp dụng lại</text>
+    <line x1="1288" y1="420" x2="776" y2="420" stroke="#2F855A" stroke-width="2.5" marker-end="url(#ik-ok)"/>
+    <text x="1028" y="408" text-anchor="middle" font-size="20" fill="#22603F">version 1 (kết quả cũ)</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Idempotency key</b>: một key cho mỗi thao tác, dùng lại khi gọi lại; server lưu key đã xử lý và trả kết quả cũ.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Sửa bản sao ở một đầu, đầu kia không thấy</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">Entry</span> entry = <span class="hl-k">new</span> <span class="hl-m">Entry</span>(<span class="hl-s">"</span><span class="hl-s">sapa</span><span class="hl-s">"</span>, <span class="hl-s">"</span><span class="hl-s">Thị trấn vùng cao</span><span class="hl-s">"</span>);
+<span class="hl-k">long</span> version = service.<span class="hl-m">update</span>(entry, <span class="hl-k">null</span>);  <span class="hl-c">// entry đi qua serialization: server nhận một bản sao</span>
+<span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">server returned version </span><span class="hl-s">"</span> + version + <span class="hl-s">"</span><span class="hl-s">; client entry.version = </span><span class="hl-s">"</span> + entry.version);
+entry.value = <span class="hl-s">"</span><span class="hl-s">sửa ở client</span><span class="hl-s">"</span>;  <span class="hl-c">// chỉ sửa bản của client</span>
+<span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">server entry: </span><span class="hl-s">"</span> + service.<span class="hl-m">lookup</span>(<span class="hl-s">"</span><span class="hl-s">sapa</span><span class="hl-s">"</span>));
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>server returned version 1; client entry.version = 0
+client entry: sapa = sửa ở client (version 0)
+server entry: sapa = Thị trấn vùng cao (version 1)</pre></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Không có key, cập nhật bị áp dụng hai lần; có key, chỉ một lần</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">long</span> version = requestId == <span class="hl-k">null</span>
+        ? <span class="hl-m">apply</span>(entry)  <span class="hl-c">// không có idempotency key: mỗi lời gọi là một lần cập nhật</span>
+        : processed.<span class="hl-m">computeIfAbsent</span>(requestId, id -&gt; <span class="hl-m">apply</span>(entry));  <span class="hl-c">// key đã xử lý: trả kết quả cũ</span>
+<span class="hl-k">if</span> (pause &amp;&amp; paused.<span class="hl-m">add</span>(entry.key)) {
+    <span class="hl-m">sleep</span>(<span class="hl-n">1_500</span>);  <span class="hl-c">// mô phỏng server chậm: đã cập nhật nhưng chưa trả kết quả</span>
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>no idempotency key:
+  attempt 1: UnmarshalException, cause java.net.SocketTimeoutException: Read timed out
+  attempt 2: version 2
+idempotency key f3b9f374:
+  attempt 1: UnmarshalException, cause java.net.SocketTimeoutException: Read timed out
+  attempt 2: version 1</pre></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>RMI có thể chạy các lời gọi đồng thời: remote object phải an toàn</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">Entry</span> old = unsafeData.<span class="hl-m">get</span>(entry.key);  <span class="hl-c">// đọc rồi ghi: hai thread có thể đọc cùng một version</span>
+unsafeData.<span class="hl-m">put</span>(entry.key, <span class="hl-k">new</span> <span class="hl-m">Entry</span>(entry.key, entry.value, old == <span class="hl-k">null</span> ? <span class="hl-n">1</span> : old.version + <span class="hl-n">1</span>));
+
+<span class="hl-t">Entry</span> stored = data.<span class="hl-m">compute</span>(entry.key,  <span class="hl-c">// đọc và ghi nguyên tử cho từng khóa</span>
+        (k, old) -&gt; <span class="hl-k">new</span> <span class="hl-m">Entry</span>(k, entry.value, old == <span class="hl-k">null</span> ? <span class="hl-n">1</span> : old.version + <span class="hl-n">1</span>));
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>UnsafeEntryService: 2000 updates -&gt; version 1938
+EntryService: 2000 updates -&gt; version 2000</pre></div><ul class="y-nho"><li data-s="2">RMI <b>không quy định</b> lời gọi chạy trên thread nào: hai lời gọi đến cùng lúc chạy trên hai thread</li><li data-s="3">HashMap đọc rồi ghi: mất 62 lần cập nhật; <b>ConcurrentHashMap</b>.compute: đọc và ghi nguyên tử cho từng khóa</li></ul></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Phương thức RMI ở server đặt entry.version = 1 trên tham số Entry (Serializable) mà nó nhận được. Sau lời gọi, Entry của client ra sao?</div></div><div class="lua-chon"><div class=""><span>A</span><div>version thành 1, vì RMI truyền tham chiếu tới đối tượng của client.</div></div><div class="dung"><span>B</span><div>version vẫn như cũ, vì server sửa trên bản sao của nó.</div></div><div class=""><span>C</span><div>version thành 1 ở lần client gọi lookup tiếp theo.</div></div><div class=""><span>D</span><div>Lời gọi ném RemoteException vì tham số bị sửa.</div></div></div><div class="giai-thich">Tham số Serializable được truyền theo giá trị: server deserialization thành bản sao riêng. Muốn client biết kết quả thì server trả qua giá trị trả về.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Phương thức RMI ở server đặt entry.version = 1 trên tham số Entry (Serializable) mà nó nhận được. Sau lời gọi, Entry của client ra sao?</div></div><div class="lua-chon"><div class=""><span>A</span><div>version thành 1, vì RMI truyền tham chiếu tới đối tượng của client.</div></div><div class="dung"><span>B</span><div>version vẫn như cũ, vì server sửa trên bản sao của nó.</div></div><div class=""><span>C</span><div>version thành 1 ở lần client gọi lookup tiếp theo.</div></div><div class=""><span>D</span><div>Lời gọi ném RemoteException vì tham số bị sửa.</div></div></div><div class="giai-thich">Tham số Serializable được truyền theo giá trị: server deserialization thành bản sao riêng. Muốn client biết kết quả thì server trả qua giá trị trả về.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Client gọi phương thức update (ghi value, tăng version), nhận RemoteException rồi gọi lại. Vì sao lần gọi lại phải mang cùng idempotency key với lần đầu?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Để server xác thực client trước khi cập nhật.</div></div><div class=""><span>B</span><div>Để RMI dùng lại kết nối TCP của lần đầu.</div></div><div class=""><span>C</span><div>Vì không có key thì lần gọi lại chắc chắn thất bại.</div></div><div class="dung"><span>D</span><div>Vì lần đầu có thể đã được áp dụng; cùng key giúp server nhận ra lần gọi lặp và trả kết quả cũ.</div></div></div><div class="giai-thich">RemoteException không cho biết server đã thực hiện hay chưa. Lần gọi lại mang cùng key để server nhận ra thao tác đã áp dụng và không áp dụng lần nữa; key mới sẽ bị coi là thao tác mới.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Client gọi phương thức update (ghi value, tăng version), nhận RemoteException rồi gọi lại. Vì sao lần gọi lại phải mang cùng idempotency key với lần đầu?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Để server xác thực client trước khi cập nhật.</div></div><div class=""><span>B</span><div>Để RMI dùng lại kết nối TCP của lần đầu.</div></div><div class=""><span>C</span><div>Vì không có key thì lần gọi lại chắc chắn thất bại.</div></div><div class="dung"><span>D</span><div>Vì lần đầu có thể đã được áp dụng; cùng key giúp server nhận ra lần gọi lặp và trả kết quả cũ.</div></div></div><div class="giai-thich">RemoteException không cho biết server đã thực hiện hay chưa. Lần gọi lại mang cùng key để server nhận ra thao tác đã áp dụng và không áp dụng lần nữa; key mới sẽ bị coi là thao tác mới.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div>Tham số Serializable: <b>truyền theo giá trị</b>, hai bản độc lập; tham số Remote: <b>remote reference</b>, server nhận stub</div></div><div class="the" data-s="2"><span class="so">2</span><div>Update không có <b>idempotency</b>: gọi lại cần <b>idempotency key</b>; server lưu key và trả kết quả cũ</div></div><div class="the" data-s="3"><span class="so">3</span><div>RMI có thể chạy các lời gọi đồng thời: remote object dùng <b>ConcurrentHashMap</b>, đọc và ghi nguyên tử</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>truyền theo giá trị</span><span>remote reference</span><span>idempotency</span><span>idempotency key</span><span>ConcurrentHashMap</span></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>Distributed garbage collection của RMI</li><li>Callback từ server về client bằng remote reference</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Viết test gọi update 100 lần đồng thời từ 10 client với cùng bộ idempotency key; kiểm tra mỗi key chỉ được áp dụng một lần.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Web service: SOAP, hợp đồng WSDL và message XML</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Phần trước dừng ở một lời gọi từ xa thất bại mà client không biết server đã chạy phương thức hay chưa. Với thao tác chỉ đọc, client gọi lại là xong. Với thao tác cập nhật, gọi lại có an toàn không, và còn những gì phải tính tới?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:16</span>
+      <h3>Slide 1. Thêm thao tác cập nhật: ba câu hỏi mới cho lời gọi từ xa</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Tham số `Entry` đi qua mạng: server nhận **chính đối tượng** của client hay một **bản sao**?</li><li>Gọi lại sau RemoteException: cập nhật có bị **áp dụng hai lần**?</li><li>Nhiều client cùng cập nhật một khóa: remote object có còn **đúng** khi các lời gọi chạy song song?</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** RMI truyền tham số thế nào, gọi lại sao cho an toàn, và remote object chịu truy cập đồng thời ra sao?</div></div>
+    <div class="kb-thoai"><p>Mình thêm vào dịch vụ tra cứu phương thức update: client gửi một đối tượng Entry gồm khóa và giá trị mới, server ghi giá trị và tăng version, tức số lần khóa đã được cập nhật, rồi trả về version mới. Thao tác này đặt ra ba câu hỏi. Thứ nhất, đối tượng Entry đi qua mạng thế nào: server nhận chính đối tượng của client hay một bản sao? Thứ hai, một lời gọi thất bại không cho biết server đã thực hiện hay chưa, vậy gọi lại có làm cập nhật bị áp dụng hai lần không? Thứ ba, ở phần trước, mỗi lời gọi chạy trên một thread do RMI runtime tạo; khi nhiều client cùng cập nhật một khóa, remote object có còn cho kết quả đúng? Ba câu hỏi này lần lượt được trả lời qua ba thí nghiệm.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Thứ nhất”; bước 2 khi đọc “Thứ hai”; bước 3 khi đọc “Thứ ba”; bước 4 khi đọc “Ba câu hỏi”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:59</span>
+      <h3>Slide 2. Tham số Serializable thành bản sao, tham số Remote thành stub</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Truyền theo giá trị**: tham số Serializable thành bản sao độc lập. **Remote reference**: tham số Remote thành stub trỏ về đối tượng gốc.</li></ul></div></div>
+    <div class="kb-thoai"><p>RMI truyền tham số theo hai cách, tùy kiểu của tham số. Bên trái là truyền theo giá trị, hay pass by value, áp dụng cho tham số Serializable như Entry: đối tượng được đổi thành byte bằng serialization, rồi server dựng lại một đối tượng mới bằng deserialization. Từ đó có hai đối tượng độc lập: khi server sửa version trên bản sao, còn client sửa value trên bản của mình, không bên nào thấy thay đổi của bên kia. Bên phải là remote reference, hay tham chiếu tới đối tượng từ xa, áp dụng cho tham số là đối tượng Remote đã export, ví dụ một listener ở client. Server không nhận bản sao mà nhận stub của listener; khi server gọi phương thức qua stub đó, lời gọi chạy trên đối tượng gốc ở client. Như vậy, chỉ đối tượng Remote mới được hai đầu dùng chung; mọi tham số khác là bản sao.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình truyen-tham-so: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Bên trái”; bước 2 khi đọc “Từ đó”; bước 3 khi đọc “Bên phải”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:51</span>
+      <h3>Slide 3. Idempotency key cho phép gọi lại mà không áp dụng hai lần</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Idempotency key**: một key cho mỗi thao tác, dùng lại khi gọi lại; server lưu key đã xử lý và trả kết quả cũ.</li></ul></div></div>
+    <div class="kb-thoai"><p>Câu hỏi về gọi lại xoay quanh idempotency, hay tính lũy đẳng: thực hiện nhiều lần để lại cùng trạng thái như thực hiện một lần. Tra cứu có idempotency, đặt value bằng một giá trị cố định cũng vậy; còn update tăng version thì không, vì gọi hai lần làm version tăng hai. Với thao tác như update, client gắn thêm một idempotency key, giá trị duy nhất cho mỗi thao tác. Mình lấy khóa dalat làm ví dụ. Client gửi update kèm một idempotency key, server áp dụng cập nhật, version thành 1, và ghi nhớ rằng idempotency key này cho kết quả 1. Kết quả chưa về kịp thì client đã hết thời gian chờ và nhận RemoteException. Client gọi lại với đúng idempotency key cũ, nên server nhận ra thao tác đã áp dụng và trả kết quả đã lưu thay vì áp dụng lần nữa. Như vậy, client tạo idempotency key một lần cho mỗi thao tác và dùng lại khi gọi lại, còn server lưu các idempotency key đã xử lý.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình idempotency-key: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Tra cứu có idempotency”; bước 2 khi đọc “Mình lấy khóa”; bước 3 khi đọc “Client gọi lại”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:51</span>
+      <h3>Slide 4. Sửa bản sao ở một đầu, đầu kia không thấy</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/update/ParamDemo.java</span><pre><code>Entry entry = new Entry(&quot;sapa&quot;, &quot;Thị trấn vùng cao&quot;);
+long version = service.update(entry, null);  // entry đi qua serialization: server nhận một bản sao
+System.out.println(&quot;server returned version &quot; + version + &quot;; client entry.version = &quot; + entry.version);
+entry.value = &quot;sửa ở client&quot;;  // chỉ sửa bản của client
+System.out.println(&quot;server entry: &quot; + service.lookup(&quot;sapa&quot;));</code></pre></div></div>
+    <div class="kb-thoai"><p>Giờ mình kiểm chứng từng cơ chế bằng mã, bắt đầu với truyền theo giá trị trong chương trình ParamDemo. Mỗi thí nghiệm dùng một khóa riêng để kết quả không lẫn nhau. Client tạo Entry cho khóa sapa rồi gọi phương thức update; tham số thứ hai dành cho idempotency key, tạm để null. Ở server, phương thức update ghi version mới vào chính tham số nó nhận được. Sau lời gọi, client sửa value của Entry, rồi tra cứu lại khóa sapa. Các bạn thử đoán: Entry của client có version mấy, và server giữ value nào? Kết quả: server trả version 1 nhưng Entry của client vẫn có version 0; ngược lại, value đã sửa ở client không có ở server. Hai đầu giữ hai bản riêng, nên kết quả của lời gọi phải đi qua giá trị trả về, không qua tham số.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới. Sau câu &quot;server giữ value nào&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện.
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:50</span>
+      <h3>Slide 5. Không có key, cập nhật bị áp dụng hai lần; có key, chỉ một lần</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/update/EntryServer.java</span><pre><code>long version = requestId == null
+        ? apply(entry)  // không có idempotency key: mỗi lời gọi là một lần cập nhật
+        : processed.computeIfAbsent(requestId, id -&gt; apply(entry));  // key đã xử lý: trả kết quả cũ
+if (pause &amp;&amp; paused.add(entry.key)) {
+    sleep(1_500);  // mô phỏng server chậm: đã cập nhật nhưng chưa trả kết quả
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Phía server, map processed lưu các idempotency key đã xử lý cùng version kết quả. Phương thức computeIfAbsent của ConcurrentHashMap chỉ gọi phương thức apply khi idempotency key chưa có, và đây là một thao tác nguyên tử, nên hai lời gọi cùng idempotency key không thể cùng áp dụng. Để tạo tình huống gọi lại, server mô phỏng một lần chậm: sau khi cập nhật, server dừng 1,5 giây mới trả kết quả, còn client đặt thời gian chờ kết quả của RMI là 1 giây, qua một thuộc tính hệ thống. Chương trình RetryDemo gọi phương thức update, gặp RemoteException thì gọi lại một lần: trước với khóa sapa, không có idempotency key; sau với khóa dalat, có idempotency key. Các bạn đoán thử lần gọi lại trả version mấy? Kết quả: cả hai lần gọi đầu đều hết thời gian chờ. Với khóa sapa, lần gọi lại trả version 2, tức cập nhật đã bị áp dụng hai lần; với khóa dalat, lần gọi lại trả version 1, đúng kết quả của lần đầu.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới. Highlight dòng computeIfAbsent theo lời đọc. Sau câu &quot;trả version mấy&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện; trong kết quả, highlight hai dòng attempt 2.
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:59</span>
+      <h3>Slide 6. RMI có thể chạy các lời gọi đồng thời: remote object phải an toàn</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>RMI **không quy định** lời gọi chạy trên thread nào: hai lời gọi đến cùng lúc chạy trên hai thread</li><li>HashMap đọc rồi ghi: mất 62 lần cập nhật; **ConcurrentHashMap**.compute: đọc và ghi nguyên tử cho từng khóa</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/netlab/update/EntryServer.java</span><pre><code>Entry old = unsafeData.get(entry.key);  // đọc rồi ghi: hai thread có thể đọc cùng một version
+unsafeData.put(entry.key, new Entry(entry.key, entry.value, old == null ? 1 : old.version + 1));
+
+Entry stored = data.compute(entry.key,  // đọc và ghi nguyên tử cho từng khóa
+        (k, old) -&gt; new Entry(k, entry.value, old == null ? 1 : old.version + 1));</code></pre></div></div>
+    <div class="kb-thoai"><p>Hai thí nghiệm trên chỉ có một client. Khi nhiều client cùng cập nhật, mình cần một phép so sánh: server export thêm đối tượng UnsafeEntryService trên cùng port, chỉ khác bản an toàn ở cách cập nhật, là đọc từ một HashMap rồi ghi lại. Chương trình ConcurrentDemo cho hai thread, đóng vai hai client, cùng cập nhật khóa hue, mỗi thread một nghìn lần. Kết quả: bản dùng HashMap dừng ở version 1938, mất 62 lần cập nhật, còn bản dùng ConcurrentHashMap đạt đúng 2000. RMI runtime không cam kết lời gọi chạy trên thread nào; thực tế, hai lời gọi đến cùng lúc chạy trên hai thread khác nhau. Lỗi nằm ở race condition các bạn đã gặp ở Chương 2: hai thread cùng đọc một version rồi cùng ghi version kế tiếp. Phương thức compute của ConcurrentHashMap gộp việc đọc và ghi thành một thao tác nguyên tử cho từng khóa, nên remote object an toàn khi bị gọi đồng thời.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hai dòng đầu của mã là bản HashMap, hai dòng sau là bản ConcurrentHashMap; kết quả phía dưới, hai ý hiện sau kết quả.
+Hiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “RMI runtime không cam kết”; bước 3 khi đọc “Lỗi nằm ở”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:03</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu hỏi đầu tiên dựa trên thí nghiệm ParamDemo.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Phương thức RMI ở server đặt entry.version = 1 trên tham số Entry (Serializable) mà nó nhận được. Sau lời gọi, Entry của client ra sao?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> version thành 1, vì RMI truyền tham chiếu tới đối tượng của client.</li>
+      <li><b>B.</b> version vẫn như cũ, vì server sửa trên bản sao của nó.</li>
+      <li><b>C.</b> version thành 1 ở lần client gọi lookup tiếp theo.</li>
+      <li><b>D.</b> Lời gọi ném RemoteException vì tham số bị sửa.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: B</b> — <span>Tham số Serializable được truyền theo giá trị: server deserialization thành bản sao riêng. Muốn client biết kết quả thì server trả qua giá trị trả về.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là B. Phương án A chỉ đúng với tham số là đối tượng Remote, được truyền dưới dạng stub. Entry chỉ là Serializable nên server sửa trên bản sao của nó; muốn client biết version mới, server phải trả version qua giá trị trả về, như phương thức update đã làm.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án B được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:30</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu tiếp theo đặt ra tình huống gọi lại.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Client gọi phương thức update (ghi value, tăng version), nhận RemoteException rồi gọi lại. Vì sao lần gọi lại phải mang cùng idempotency key với lần đầu?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Để server xác thực client trước khi cập nhật.</li>
+      <li><b>B.</b> Để RMI dùng lại kết nối TCP của lần đầu.</li>
+      <li><b>C.</b> Vì không có key thì lần gọi lại chắc chắn thất bại.</li>
+      <li><b>D.</b> Vì lần đầu có thể đã được áp dụng; cùng key giúp server nhận ra lần gọi lặp và trả kết quả cũ.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: D</b> — <span>RemoteException không cho biết server đã thực hiện hay chưa. Lần gọi lại mang cùng key để server nhận ra thao tác đã áp dụng và không áp dụng lần nữa; key mới sẽ bị coi là thao tác mới.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là D. Một hiểu nhầm hay gặp là tạo key mới cho mỗi lần gọi lại: khi đó server coi lần gọi lại là một thao tác mới và áp dụng thêm lần nữa, đúng như trường hợp không có key trong RetryDemo.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án D.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:51</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Tham số Serializable: **truyền theo giá trị**, hai bản độc lập; tham số Remote: **remote reference**, server nhận stub</li><li>Update không có **idempotency**: gọi lại cần **idempotency key**; server lưu key và trả kết quả cũ</li><li>RMI có thể chạy các lời gọi đồng thời: remote object dùng **ConcurrentHashMap**, đọc và ghi nguyên tử</li></ul></div>
+    <div class="kb-thoai"><p>Khi truyền tham số, RMI sao chép đối tượng Serializable, nên hai đầu giữ hai bản độc lập; chỉ đối tượng Remote được truyền dưới dạng stub trỏ về đối tượng gốc. Vì lời gọi thất bại không cho biết server đã thực hiện hay chưa, thao tác không có idempotency cần idempotency key để gọi lại an toàn. Cuối cùng, RMI có thể chạy nhiều lời gọi cùng lúc trên nhiều thread, nên remote object phải an toàn khi truy cập đồng thời, ví dụ bằng ConcurrentHashMap. Năm từ khóa cần nhớ là truyền theo giá trị, remote reference, idempotency, idempotency key và ConcurrentHashMap.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “Khi truyền tham số”; bước 2 khi đọc “Vì lời gọi thất bại”; bước 3 khi đọc “Cuối cùng”; bước 4 khi đọc “Năm từ khóa cần nhớ”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:27</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Remote reference còn hai chủ đề đáng đọc thêm: distributed garbage collection, cách RMI biết một đối tượng đã export không còn client nào giữ stub; và callback, khi server gọi ngược về client qua stub của một listener như ở hình truyền tham số. Bài tập mở rộng là viết test gọi phương thức update 100 lần đồng thời từ 10 client với cùng bộ idempotency key, rồi kiểm tra mỗi idempotency key chỉ được áp dụng một lần.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Remote reference còn”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:52</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Cả hai phần của nhóm RPC dùng Java RMI, nên chỉ chương trình Java gọi được dịch vụ. Phần tiếp theo đưa dịch vụ tra cứu ra ngoài Java, với SOAP, hợp đồng WSDL và message XML.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V23", "tieu_de": "RPC: truyền tham số, idempotency và truy cập đồng thời trong RMI", "giong": "vi-VN-NamMinhNeural", "tong": 487.05, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/6c66fbfb9242b6a7.mp3", "dur": 16.34, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Phần", 1], [2.163, "trước", 1], [2.337, "dừng", 1], [2.587, "ở", 1], [2.663, "một", 1], [2.85, "lời", 1], [3.05, "gọi", 1], [3.3, "từ", 1], [3.462, "xa", 1], [3.675, "thất", 1], [3.837, "bại", 1], [4.088, "mà", 1], [4.237, "client", 1], [4.638, "không", 1], [4.838, "biết", 1], [4.987, "server", 1], [5.4, "đã", 1], [5.537, "chạy", 1], [5.75, "phương", 1], [5.975, "thức", 1], [6.138, "hay", 1], [6.3, "chưa.", 1], [7.475, "Với", 2], [7.75, "thao", 2], [7.925, "tác", 2], [8.162, "chỉ", 2], [8.338, "đọc,", 2], [8.825, "client", 2], [9.275, "gọi", 2], [9.525, "lại", 2], [9.775, "là", 2], [9.9, "xong.", 2], [11.1, "Với", 3], [11.375, "thao", 3], [11.55, "tác", 3], [11.787, "cập", 3], [11.95, "nhật,", 3], [12.412, "gọi", 3], [12.688, "lại", 3], [12.925, "có", 3], [13.075, "an", 3], [13.262, "toàn", 3], [13.5, "không,", 3], [13.988, "và", 3], [14.188, "còn", 3], [14.387, "những", 3], [14.613, "gì", 3], [14.775, "phải", 3], [14.925, "tính", 3], [15.137, "tới?", 3]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Thêm thao tác cập nhật: ba câu hỏi mới cho lời gọi từ xa", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Thứ nhất”; bước 2 khi đọc “Thứ hai”; bước 3 khi đọc “Thứ ba”; bước 4 khi đọc “Ba câu hỏi”.", "start": 16.94, "audio": "audio/8e0a7ed3e4508e35.mp3", "dur": 42.43, "words": [[0.1, "Mình", 0], [0.475, "thêm", 0], [0.738, "vào", 0], [0.85, "dịch", 0], [1.038, "vụ", 0], [1.25, "tra", 0], [1.438, "cứu", 0], [1.7, "phương", 0], [1.913, "thức", 0], [2.138, "update:", 0], [2.788, "client", 0], [3.25, "gửi", 0], [3.4, "một", 0], [3.6, "đối", 0], [3.763, "tượng", 0], [4.05, "Entry", 0], [4.487, "gồm", 0], [4.775, "khóa", 0], [5.062, "và", 0], [5.188, "giá", 0], [5.375, "trị", 0], [5.562, "mới,", 0], [6.125, "server", 0], [6.575, "ghi", 0], [6.737, "giá", 0], [6.925, "trị", 0], [7.2, "và", 0], [7.338, "tăng", 0], [7.562, "version,", 0], [8.287, "tức", 0], [8.45, "số", 0], [8.675, "lần", 0], [8.875, "khóa", 0], [9.137, "đã", 0], [9.238, "được", 0], [9.4, "cập", 0], [9.588, "nhật,", 0], [10.012, "rồi", 0], [10.262, "trả", 0], [10.525, "về", 0], [10.688, "version", 0], [11.175, "mới.", 0], [12.387, "Thao", 1], [12.637, "tác", 1], [12.863, "này", 1], [13.088, "đặt", 1], [13.275, "ra", 1], [13.488, "ba", 1], [13.7, "câu", 1], [13.912, "hỏi.", 1], [15.15, "Thứ", 2], [15.363, "nhất,", 2], [15.8, "đối", 2], [16.012, "tượng", 2], [16.325, "Entry", 2], [16.738, "đi", 2], [16.863, "qua", 2], [17.05, "mạng", 2], [17.275, "thế", 2], [17.4, "nào:", 2], [17.875, "server", 2], [18.312, "nhận", 2], [18.575, "chính", 2], [18.775, "đối", 2], [18.913, "tượng", 2], [19.175, "của", 2], [19.35, "client", 2], [19.788, "hay", 2], [19.938, "một", 2], [20.1, "bản", 2], [20.3, "sao?", 2], [21.488, "Thứ", 3], [21.7, "hai,", 3], [22.2, "một", 3], [22.4, "lời", 3], [22.613, "gọi", 3], [22.8, "thất", 3], [22.975, "bại", 3], [23.2, "không", 3], [23.425, "cho", 3], [23.525, "biết", 3], [23.712, "server", 3], [24.163, "đã", 3], [24.275, "thực", 3], [24.45, "hiện", 3], [24.675, "hay", 3], [24.8, "chưa,", 3], [25.375, "vậy", 3], [25.613, "gọi", 3], [25.85, "lại", 3], [26.062, "có", 3], [26.188, "làm", 3], [26.363, "cập", 3], [26.55, "nhật", 3], [26.75, "bị", 3], [26.925, "áp", 3], [27.1, "dụng", 3], [27.375, "hai", 3], [27.55, "lần", 3], [27.725, "không?", 3], [28.863, "Thứ", 4], [29.062, "ba,", 4], [29.538, "ở", 4], [29.712, "phần", 4], [29.938, "trước,", 4], [30.413, "mỗi", 4], [30.587, "lời", 4], [30.775, "gọi", 4], [30.962, "chạy", 4], [31.2, "trên", 4], [31.363, "một", 4], [31.512, "thread", 4], [31.788, "do", 4], [32.25, "RMI", 4], [32.712, "runtime", 4], [33.138, "tạo;", 4], [33.7, "khi", 4], [33.913, "nhiều", 4], [34.125, "client", 4], [34.525, "cùng", 4], [34.737, "cập", 4], [34.913, "nhật", 4], [35.112, "một", 4], [35.275, "khóa,", 4], [35.862, "remote", 4], [36.337, "object", 4], [36.688, "có", 4], [36.825, "còn", 4], [37.062, "cho", 4], [37.175, "kết", 4], [37.375, "quả", 4], [37.575, "đúng?", 4], [38.725, "Ba", 5], [38.95, "câu", 5], [39.112, "hỏi", 5], [39.3, "này", 5], [39.612, "lần", 5], [39.837, "lượt", 5], [40.025, "được", 5], [40.212, "trả", 5], [40.388, "lời", 5], [40.612, "qua", 5], [40.825, "ba", 5], [41.025, "thí", 5], [41.2, "nghiệm.", 5]], "cues": [15.15, 21.488, 28.863, 38.725], "lang": 0.6}, {"ten": "Slide 2. Tham số Serializable thành bản sao, tham số Remote thành stub", "loai": "slide", "slide": "S02", "dung": "Hình truyen-tham-so: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Bên trái”; bước 2 khi đọc “Từ đó”; bước 3 khi đọc “Bên phải”; bước 4 khi đọc “Như vậy”.", "start": 59.97, "audio": "audio/3ce67132dae3ed03.mp3", "dur": 48.65, "words": [[0.9, "RMI", 0], [0.9, "truyền", 0], [1.137, "tham", 0], [1.35, "số", 0], [1.6, "theo", 0], [1.775, "hai", 0], [1.95, "cách,", 0], [2.413, "tùy", 0], [2.638, "kiểu", 0], [2.938, "của", 0], [3.087, "tham", 0], [3.275, "số.", 0], [4.5, "Bên", 1], [4.825, "trái", 1], [5.05, "là", 1], [5.162, "truyền", 1], [5.375, "theo", 1], [5.525, "giá", 1], [5.725, "trị,", 1], [6.263, "hay", 1], [6.463, "pass", 1], [6.725, "by", 1], [6.85, "value,", 1], [7.525, "áp", 1], [7.737, "dụng", 1], [8.0, "cho", 1], [8.125, "tham", 1], [8.312, "số", 1], [8.537, "Serializable", 1], [9.35, "như", 1], [9.588, "Entry:", 1], [10.338, "đối", 1], [10.525, "tượng", 1], [10.775, "được", 1], [10.9, "đổi", 1], [11.05, "thành", 1], [11.275, "byte", 1], [11.475, "bằng", 1], [11.7, "serialization,", 1], [12.75, "rồi", 1], [13.0, "server", 1], [13.375, "dựng", 1], [13.675, "lại", 1], [13.825, "một", 1], [14.012, "đối", 1], [14.175, "tượng", 1], [14.412, "mới", 1], [14.588, "bằng", 1], [14.825, "deserialization.", 1], [16.55, "Từ", 2], [16.825, "đó", 2], [17.038, "có", 2], [17.163, "hai", 2], [17.35, "đối", 2], [17.512, "tượng", 2], [17.762, "độc", 2], [17.925, "lập:", 2], [18.375, "khi", 2], [18.637, "server", 2], [19.025, "sửa", 2], [19.288, "version", 2], [19.8, "trên", 2], [20.012, "bản", 2], [20.2, "sao,", 2], [20.762, "còn", 2], [21.012, "client", 2], [21.363, "sửa", 2], [21.625, "value", 2], [22.012, "trên", 2], [22.225, "bản", 2], [22.462, "của", 2], [22.575, "mình,", 2], [23.05, "không", 2], [23.275, "bên", 2], [23.413, "nào", 2], [23.562, "thấy", 2], [23.775, "thay", 2], [23.938, "đổi", 2], [24.163, "của", 2], [24.3, "bên", 2], [24.5, "kia.", 2], [25.663, "Bên", 3], [25.962, "phải", 3], [26.175, "là", 3], [26.288, "remote", 3], [26.675, "reference,", 3], [27.525, "hay", 3], [27.712, "tham", 3], [27.925, "chiếu", 3], [28.2, "tới", 3], [28.387, "đối", 3], [28.512, "tượng", 3], [28.775, "từ", 3], [28.938, "xa,", 3], [29.512, "áp", 3], [29.7, "dụng", 3], [29.962, "cho", 3], [30.075, "tham", 3], [30.262, "số", 3], [30.525, "là", 3], [30.663, "đối", 3], [30.812, "tượng", 3], [31.062, "Remote", 3], [31.45, "đã", 3], [31.675, "export,", 3], [32.3, "ví", 3], [32.538, "dụ", 3], [32.725, "một", 3], [32.938, "listener", 3], [33.525, "ở", 3], [33.587, "client.", 3], [34.9, "Server", 4], [35.388, "không", 4], [35.587, "nhận", 4], [35.8, "bản", 4], [35.987, "sao", 4], [36.263, "mà", 4], [36.388, "nhận", 4], [36.612, "stub", 4], [36.9, "của", 4], [37.087, "listener;", 4], [37.812, "khi", 4], [38.05, "server", 4], [38.45, "gọi", 4], [38.663, "phương", 4], [38.875, "thức", 4], [39.05, "qua", 4], [39.225, "stub", 4], [39.5, "đó,", 4], [40.013, "lời", 4], [40.25, "gọi", 4], [40.425, "chạy", 4], [40.65, "trên", 4], [40.837, "đối", 4], [40.975, "tượng", 4], [41.237, "gốc", 4], [41.487, "ở", 4], [41.6, "client.", 4], [42.888, "Như", 5], [43.125, "vậy,", 5], [43.525, "chỉ", 5], [43.725, "đối", 5], [43.888, "tượng", 5], [44.163, "Remote", 5], [44.625, "mới", 5], [44.85, "được", 5], [45.025, "hai", 5], [45.225, "đầu", 5], [45.388, "dùng", 5], [45.6, "chung;", 5], [46.15, "mọi", 5], [46.4, "tham", 5], [46.612, "số", 5], [46.837, "khác", 5], [47.112, "là", 5], [47.25, "bản", 5], [47.462, "sao.", 5]], "cues": [4.5, 16.55, 25.663, 42.888], "lang": 2.6}, {"ten": "Slide 3. Idempotency key cho phép gọi lại mà không áp dụng hai lần", "loai": "slide", "slide": "S03", "dung": "Hình idempotency-key: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Tra cứu có idempotency”; bước 2 khi đọc “Mình lấy khóa”; bước 3 khi đọc “Client gọi lại”; bước 4 khi đọc “Như vậy”.", "start": 111.22, "audio": "audio/bb996963afc4b170.mp3", "dur": 57.55, "words": [[0.1, "Câu", 0], [0.3, "hỏi", 0], [0.55, "về", 0], [0.675, "gọi", 0], [0.9, "lại", 0], [1.113, "xoay", 0], [1.312, "quanh", 0], [1.637, "idempotency,", 0], [2.663, "hay", 0], [2.862, "tính", 0], [3.1, "lũy", 0], [3.263, "đẳng:", 0], [3.825, "thực", 0], [4.0, "hiện", 0], [4.213, "nhiều", 0], [4.45, "lần", 0], [4.7, "để", 0], [4.8, "lại", 0], [4.963, "cùng", 0], [5.188, "trạng", 0], [5.412, "thái", 0], [5.65, "như", 0], [5.812, "thực", 0], [5.963, "hiện", 0], [6.188, "một", 0], [6.375, "lần.", 0], [7.487, "Tra", 1], [7.825, "cứu", 1], [8.113, "có", 1], [8.325, "idempotency,", 1], [9.412, "đặt", 1], [9.65, "value", 1], [10.05, "bằng", 1], [10.238, "một", 1], [10.387, "giá", 1], [10.575, "trị", 1], [10.75, "cố", 1], [10.975, "định", 1], [11.2, "cũng", 1], [11.4, "vậy;", 1], [11.938, "còn", 1], [12.188, "update", 1], [12.562, "tăng", 1], [12.812, "version", 1], [13.25, "thì", 1], [13.4, "không,", 1], [13.9, "vì", 1], [14.125, "gọi", 1], [14.325, "hai", 1], [14.488, "lần", 1], [14.688, "làm", 1], [14.925, "version", 1], [15.375, "tăng", 1], [15.613, "hai.", 1], [16.75, "Với", 2], [17.025, "thao", 2], [17.2, "tác", 2], [17.488, "như", 2], [17.725, "update,", 2], [18.4, "client", 2], [18.837, "gắn", 2], [19.075, "thêm", 2], [19.288, "một", 2], [19.575, "idempotency", 2], [20.275, "key,", 2], [20.812, "giá", 2], [21.038, "trị", 2], [21.25, "duy", 2], [21.413, "nhất", 2], [21.663, "cho", 2], [21.825, "mỗi", 2], [22.05, "thao", 2], [22.225, "tác.", 2], [23.35, "Mình", 3], [23.75, "lấy", 3], [23.962, "khóa", 3], [24.275, "dalat", 3], [24.7, "làm", 3], [25.0, "ví", 3], [25.188, "dụ.", 3], [26.363, "Client", 4], [26.85, "gửi", 4], [27.1, "update", 4], [27.562, "kèm", 4], [27.8, "một", 4], [28.1, "idempotency", 4], [28.738, "key,", 4], [29.275, "server", 4], [29.712, "áp", 4], [29.988, "dụng", 4], [30.275, "cập", 4], [30.475, "nhật,", 4], [30.925, "version", 4], [31.45, "thành", 4], [31.65, "1,", 4], [32.075, "và", 4], [32.288, "ghi", 4], [32.475, "nhớ", 4], [32.725, "rằng", 4], [33.013, "idempotency", 4], [33.688, "key", 4], [33.862, "này", 4], [34.087, "cho", 4], [34.237, "kết", 4], [34.45, "quả", 4], [34.65, "1.", 4], [35.775, "Kết", 5], [36.013, "quả", 5], [36.263, "chưa", 5], [36.475, "về", 5], [36.6, "kịp", 5], [36.925, "thì", 5], [37.087, "client", 5], [37.562, "đã", 5], [37.712, "hết", 5], [37.875, "thời", 5], [38.025, "gian", 5], [38.263, "chờ", 5], [38.513, "và", 5], [38.625, "nhận", 5], [38.862, "RemoteException.", 5], [40.812, "Client", 6], [41.275, "gọi", 6], [41.475, "lại", 6], [41.688, "với", 6], [41.812, "đúng", 6], [42.1, "idempotency", 6], [42.812, "key", 6], [43.013, "cũ,", 6], [43.612, "nên", 6], [43.9, "server", 6], [44.312, "nhận", 6], [44.638, "ra", 6], [44.763, "thao", 6], [44.925, "tác", 6], [45.188, "đã", 6], [45.325, "áp", 6], [45.513, "dụng", 6], [45.812, "và", 6], [45.938, "trả", 6], [46.138, "kết", 6], [46.337, "quả", 6], [46.6, "đã", 6], [46.725, "lưu", 6], [46.9, "thay", 6], [47.138, "vì", 6], [47.312, "áp", 6], [47.487, "dụng", 6], [47.75, "lần", 6], [47.95, "nữa.", 6], [49.15, "Như", 7], [49.388, "vậy,", 7], [49.85, "client", 7], [50.2, "tạo", 7], [50.475, "idempotency", 7], [51.2, "key", 7], [51.413, "một", 7], [51.587, "lần", 7], [51.812, "cho", 7], [51.95, "mỗi", 7], [52.15, "thao", 7], [52.325, "tác", 7], [52.6, "và", 7], [52.75, "dùng", 7], [52.95, "lại", 7], [53.15, "khi", 7], [53.3, "gọi", 7], [53.475, "lại,", 7], [53.987, "còn", 7], [54.25, "server", 7], [54.612, "lưu", 7], [54.825, "các", 7], [55.125, "idempotency", 7], [55.8, "key", 7], [56.05, "đã", 7], [56.175, "xử", 7], [56.35, "lý.", 7]], "cues": [7.487, 23.35, 40.812, 49.15], "lang": 2.6}, {"ten": "Slide 4. Sửa bản sao ở một đầu, đầu kia không thấy", "loai": "slide", "slide": "S04", "dung": "Mã phía trên, kết quả phía dưới. Sau câu \"server giữ value nào\", dừng khoảng 2 giây trước khi khung kết quả hiện.\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 171.37, "audio": "audio/b2c1f44770d3681f.mp3", "dur": 49.13, "words": [[0.1, "Giờ", 0], [0.375, "mình", 0], [0.588, "kiểm", 0], [0.838, "chứng", 0], [1.062, "từng", 0], [1.275, "cơ", 0], [1.462, "chế", 0], [1.712, "bằng", 0], [1.938, "mã,", 0], [2.487, "bắt", 0], [2.7, "đầu", 0], [2.913, "với", 0], [3.038, "truyền", 0], [3.263, "theo", 0], [3.425, "giá", 0], [3.625, "trị", 0], [3.875, "trong", 0], [4.075, "chương", 0], [4.3, "trình", 0], [4.525, "ParamDemo.", 0], [6.213, "Mỗi", 1], [6.588, "thí", 1], [6.763, "nghiệm", 1], [7.05, "dùng", 1], [7.263, "một", 1], [7.412, "khóa", 1], [7.612, "riêng", 1], [7.925, "để", 1], [8.075, "kết", 1], [8.287, "quả", 1], [8.525, "không", 1], [8.775, "lẫn", 1], [8.963, "nhau.", 1], [10.125, "Client", 2], [10.55, "tạo", 2], [10.812, "Entry", 2], [11.213, "cho", 2], [11.4, "khóa", 2], [11.662, "sapa", 2], [12.113, "rồi", 2], [12.3, "gọi", 2], [12.5, "phương", 2], [12.725, "thức", 2], [12.963, "update;", 2], [13.625, "tham", 2], [13.85, "số", 2], [14.062, "thứ", 2], [14.238, "hai", 2], [14.425, "dành", 2], [14.662, "cho", 2], [14.863, "idempotency", 2], [15.625, "key,", 2], [16.15, "tạm", 2], [16.45, "để", 2], [16.587, "null.", 2], [17.762, "Ở", 3], [18.0, "server,", 3], [18.663, "phương", 3], [18.938, "thức", 3], [19.212, "update", 3], [19.675, "ghi", 3], [19.85, "version", 3], [20.363, "mới", 3], [20.675, "vào", 3], [20.837, "chính", 3], [21.087, "tham", 3], [21.3, "số", 3], [21.525, "nó", 3], [21.7, "nhận", 3], [21.925, "được.", 3], [22.975, "Sau", 4], [23.262, "lời", 4], [23.413, "gọi,", 4], [23.925, "client", 4], [24.288, "sửa", 4], [24.562, "value", 4], [24.9, "của", 4], [25.2, "Entry,", 4], [26.012, "rồi", 4], [26.3, "tra", 4], [26.512, "cứu", 4], [26.775, "lại", 4], [26.962, "khóa", 4], [27.238, "sapa.", 4], [28.6, "Các", 5], [28.8, "bạn", 5], [29.0, "thử", 5], [29.163, "đoán:", 5], [29.688, "Entry", 5], [30.15, "của", 5], [30.363, "client", 5], [30.75, "có", 5], [30.887, "version", 5], [31.363, "mấy,", 5], [31.887, "và", 5], [32.125, "server", 5], [32.5, "giữ", 5], [32.775, "value", 5], [33.163, "nào?", 5], [34.3, "Kết", 6], [34.5, "quả:", 6], [35.025, "server", 6], [35.4, "trả", 6], [35.663, "version", 6], [36.125, "1", 6], [36.325, "nhưng", 6], [36.625, "Entry", 6], [36.987, "của", 6], [37.188, "client", 6], [37.575, "vẫn", 6], [37.775, "có", 6], [37.925, "version", 6], [38.35, "0;", 6], [38.9, "ngược", 6], [39.125, "lại,", 6], [39.65, "value", 6], [40.1, "đã", 6], [40.225, "sửa", 6], [40.487, "ở", 6], [40.612, "client", 6], [41.0, "không", 6], [41.225, "có", 6], [41.362, "ở", 6], [41.487, "server.", 6], [42.788, "Hai", 7], [43.025, "đầu", 7], [43.225, "giữ", 7], [43.462, "hai", 7], [43.638, "bản", 7], [43.862, "riêng,", 7], [44.35, "nên", 7], [44.638, "kết", 7], [44.825, "quả", 7], [45.038, "của", 7], [45.15, "lời", 7], [45.35, "gọi", 7], [45.6, "phải", 7], [45.763, "đi", 7], [45.9, "qua", 7], [46.1, "giá", 7], [46.3, "trị", 7], [46.513, "trả", 7], [46.737, "về,", 7], [47.225, "không", 7], [47.513, "qua", 7], [47.7, "tham", 7], [47.888, "số.", 7]], "cues": [8.075], "lang": 9.6}, {"ten": "Slide 5. Không có key, cập nhật bị áp dụng hai lần; có key, chỉ một lần", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, kết quả phía dưới. Highlight dòng computeIfAbsent theo lời đọc. Sau câu \"trả version mấy\", dừng khoảng 2 giây trước khi khung kết quả hiện; trong kết quả, highlight hai dòng attempt 2.\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 230.1, "audio": "audio/d269cffe0022db9a.mp3", "dur": 59.3, "words": [[0.1, "Phía", 0], [0.425, "server,", 0], [1.113, "map", 0], [1.387, "processed", 0], [2.112, "lưu", 0], [2.275, "các", 0], [2.575, "idempotency", 0], [3.263, "key", 0], [3.538, "đã", 0], [3.675, "xử", 0], [3.85, "lý", 0], [4.075, "cùng", 0], [4.338, "version", 0], [4.763, "kết", 0], [4.975, "quả.", 0], [6.25, "Phương", 1], [6.537, "thức", 1], [6.725, "computeIfAbsent", 1], [7.85, "của", 1], [8.037, "ConcurrentHashMap", 1], [9.162, "chỉ", 1], [9.35, "gọi", 1], [9.588, "phương", 1], [9.8, "thức", 1], [10.05, "apply", 1], [10.425, "khi", 1], [10.675, "idempotency", 1], [11.4, "key", 1], [11.613, "chưa", 1], [11.8, "có,", 1], [12.35, "và", 1], [12.55, "đây", 1], [12.738, "là", 1], [12.812, "một", 1], [13.0, "thao", 1], [13.162, "tác", 1], [13.375, "nguyên", 1], [13.562, "tử,", 1], [14.15, "nên", 1], [14.438, "hai", 1], [14.637, "lời", 1], [14.775, "gọi", 1], [14.938, "cùng", 1], [15.213, "idempotency", 1], [15.9, "key", 1], [16.113, "không", 1], [16.337, "thể", 1], [16.512, "cùng", 1], [16.75, "áp", 1], [16.9, "dụng.", 1], [18.062, "Để", 2], [18.288, "tạo", 2], [18.5, "tình", 2], [18.712, "huống", 2], [18.938, "gọi", 2], [19.113, "lại,", 2], [19.6, "server", 2], [19.962, "mô", 2], [20.175, "phỏng", 2], [20.438, "một", 2], [20.587, "lần", 2], [20.8, "chậm:", 2], [21.312, "sau", 2], [21.525, "khi", 2], [21.663, "cập", 2], [21.863, "nhật,", 2], [22.3, "server", 2], [22.725, "dừng", 2], [22.913, "1,5", 2], [23.425, "giây", 2], [23.625, "mới", 2], [23.825, "trả", 2], [24.012, "kết", 2], [24.225, "quả,", 2], [24.837, "còn", 2], [25.087, "client", 2], [25.512, "đặt", 2], [25.675, "thời", 2], [25.8, "gian", 2], [26.038, "chờ", 2], [26.25, "kết", 2], [26.45, "quả", 2], [26.675, "của", 2], [27.087, "RMI", 2], [27.5, "là", 2], [27.587, "1", 2], [27.775, "giây,", 2], [28.275, "qua", 2], [28.462, "một", 2], [28.65, "thuộc", 2], [28.812, "tính", 2], [29.012, "hệ", 2], [29.175, "thống.", 2], [30.363, "Chương", 3], [30.688, "trình", 3], [30.925, "RetryDemo", 3], [31.663, "gọi", 3], [31.887, "phương", 3], [32.125, "thức", 3], [32.362, "update,", 3], [33.025, "gặp", 3], [33.25, "RemoteException", 3], [34.337, "thì", 3], [34.55, "gọi", 3], [34.763, "lại", 3], [34.938, "một", 3], [35.125, "lần:", 3], [35.6, "trước", 3], [35.85, "với", 3], [35.962, "khóa", 3], [36.212, "sapa,", 3], [36.925, "không", 3], [37.163, "có", 3], [37.312, "idempotency", 3], [38.038, "key;", 3], [38.562, "sau", 3], [38.825, "với", 3], [38.938, "khóa", 3], [39.188, "dalat,", 3], [39.775, "có", 3], [40.0, "idempotency", 3], [40.775, "key.", 3], [41.913, "Các", 4], [42.1, "bạn", 4], [42.312, "đoán", 4], [42.513, "thử", 4], [42.725, "lần", 4], [42.987, "gọi", 4], [43.212, "lại", 4], [43.4, "trả", 4], [43.688, "version", 4], [44.188, "mấy?", 4], [45.35, "Kết", 5], [45.562, "quả:", 5], [46.175, "cả", 5], [46.337, "hai", 5], [46.55, "lần", 5], [46.763, "gọi", 5], [46.962, "đầu", 5], [47.225, "đều", 5], [47.413, "hết", 5], [47.587, "thời", 5], [47.75, "gian", 5], [47.987, "chờ.", 5], [49.138, "Với", 6], [49.413, "khóa", 6], [49.7, "sapa,", 6], [50.388, "lần", 6], [50.65, "gọi", 6], [50.862, "lại", 6], [51.025, "trả", 6], [51.263, "version", 6], [51.712, "2,", 6], [52.25, "tức", 6], [52.425, "cập", 6], [52.612, "nhật", 6], [52.85, "đã", 6], [53.0, "bị", 6], [53.175, "áp", 6], [53.362, "dụng", 6], [53.625, "hai", 6], [53.825, "lần;", 6], [54.325, "với", 6], [54.525, "khóa", 6], [54.8, "dalat,", 6], [55.45, "lần", 6], [55.7, "gọi", 6], [55.913, "lại", 6], [56.062, "trả", 6], [56.3, "version", 6], [56.737, "1,", 6], [57.2, "đúng", 6], [57.438, "kết", 6], [57.638, "quả", 6], [57.888, "của", 6], [58.013, "lần", 6], [58.2, "đầu.", 6]], "cues": [4.763], "lang": 9.6}, {"ten": "Slide 6. RMI có thể chạy các lời gọi đồng thời: remote object phải an toàn", "loai": "slide", "slide": "S06", "dung": "Hai dòng đầu của mã là bản HashMap, hai dòng sau là bản ConcurrentHashMap; kết quả phía dưới, hai ý hiện sau kết quả.\nHiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “RMI runtime không cam kết”; bước 3 khi đọc “Lỗi nằm ở”.", "start": 299.0, "audio": "audio/7c4063eff800566e.mp3", "dur": 54.72, "words": [[0.1, "Hai", 0], [0.35, "thí", 0], [0.537, "nghiệm", 0], [0.85, "trên", 0], [1.075, "chỉ", 0], [1.3, "có", 0], [1.413, "một", 0], [1.613, "client.", 0], [2.862, "Khi", 1], [3.138, "nhiều", 1], [3.362, "client", 1], [3.725, "cùng", 1], [3.938, "cập", 1], [4.138, "nhật,", 1], [4.6, "mình", 1], [4.825, "cần", 1], [4.987, "một", 1], [5.125, "phép", 1], [5.3, "so", 1], [5.475, "sánh:", 1], [6.013, "server", 1], [6.438, "export", 1], [6.85, "thêm", 1], [7.1, "đối", 1], [7.25, "tượng", 1], [7.513, "UnsafeEntryService", 1], [8.75, "trên", 1], [9.075, "cùng", 1], [9.275, "port,", 1], [9.775, "chỉ", 1], [9.963, "khác", 1], [10.175, "bản", 1], [10.4, "an", 1], [10.6, "toàn", 1], [10.938, "ở", 1], [10.988, "cách", 1], [11.188, "cập", 1], [11.363, "nhật,", 1], [11.8, "là", 1], [11.988, "đọc", 1], [12.188, "từ", 1], [12.312, "một", 1], [12.5, "HashMap", 1], [12.975, "rồi", 1], [13.188, "ghi", 1], [13.375, "lại.", 1], [14.562, "Chương", 2], [14.887, "trình", 2], [15.113, "ConcurrentDemo", 2], [16.113, "cho", 2], [16.288, "hai", 2], [16.45, "thread,", 2], [17.038, "đóng", 2], [17.312, "vai", 2], [17.512, "hai", 2], [17.688, "client,", 2], [18.288, "cùng", 2], [18.575, "cập", 2], [18.775, "nhật", 2], [18.962, "khóa", 2], [19.188, "hue,", 2], [19.7, "mỗi", 2], [19.913, "thread", 2], [20.225, "một", 2], [20.4, "nghìn", 2], [20.613, "lần.", 2], [21.712, "Kết", 3], [21.913, "quả:", 3], [22.462, "bản", 3], [22.725, "dùng", 3], [22.913, "HashMap", 3], [23.525, "dừng", 3], [23.837, "ở", 3], [23.938, "version", 3], [24.387, "1938,", 3], [26.125, "mất", 3], [26.325, "62", 3], [26.887, "lần", 3], [27.087, "cập", 3], [27.275, "nhật,", 3], [27.725, "còn", 3], [27.962, "bản", 3], [28.188, "dùng", 3], [28.375, "ConcurrentHashMap", 3], [29.488, "đạt", 3], [29.7, "đúng", 3], [29.938, "2000.", 3], [30.981, "RMI", 4], [32.025, "runtime", 4], [32.513, "không", 4], [32.75, "cam", 4], [32.95, "kết", 4], [33.15, "lời", 4], [33.337, "gọi", 4], [33.525, "chạy", 4], [33.737, "trên", 4], [33.925, "thread", 4], [34.15, "nào;", 4], [34.638, "thực", 4], [34.825, "tế,", 4], [35.35, "hai", 4], [35.55, "lời", 4], [35.7, "gọi", 4], [35.938, "đến", 4], [36.125, "cùng", 4], [36.325, "lúc", 4], [36.513, "chạy", 4], [36.712, "trên", 4], [36.9, "hai", 4], [37.075, "thread", 4], [37.3, "khác", 4], [37.513, "nhau.", 4], [38.638, "Lỗi", 5], [38.95, "nằm", 5], [39.25, "ở", 5], [39.375, "race", 5], [39.725, "condition", 5], [40.4, "các", 5], [40.612, "bạn", 5], [40.837, "đã", 5], [40.95, "gặp", 5], [41.2, "ở", 5], [41.3, "Chương", 5], [41.538, "2:", 5], [42.087, "hai", 5], [42.3, "thread", 5], [42.562, "cùng", 5], [42.75, "đọc", 5], [42.9, "một", 5], [43.087, "version", 5], [43.612, "rồi", 5], [43.788, "cùng", 5], [44.038, "ghi", 5], [44.225, "version", 5], [44.688, "kế", 5], [44.875, "tiếp.", 5], [45.987, "Phương", 6], [46.288, "thức", 6], [46.475, "compute", 6], [46.888, "của", 6], [47.163, "ConcurrentHashMap", 6], [48.25, "gộp", 6], [48.487, "việc", 6], [48.663, "đọc", 6], [48.875, "và", 6], [49.038, "ghi", 6], [49.225, "thành", 6], [49.4, "một", 6], [49.562, "thao", 6], [49.725, "tác", 6], [49.95, "nguyên", 6], [50.15, "tử", 6], [50.388, "cho", 6], [50.525, "từng", 6], [50.737, "khóa,", 6], [51.337, "nên", 6], [51.6, "remote", 6], [52.075, "object", 6], [52.45, "an", 6], [52.625, "toàn", 6], [52.9, "khi", 6], [53.05, "bị", 6], [53.2, "gọi", 6], [53.4, "đồng", 6], [53.587, "thời.", 6]], "cues": [21.712, 30.981, 38.638], "lang": 9.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án B được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 363.32, "audio": "audio/f7087761211dffc5.mp3", "dur": 3.6, "words": [[0.1, "Câu", 0], [0.3, "hỏi", 0], [0.525, "đầu", 0], [0.7, "tiên", 0], [0.963, "dựa", 0], [1.175, "trên", 0], [1.375, "thí", 0], [1.55, "nghiệm", 0], [1.837, "ParamDemo.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/1199f7e4330f5179.mp3", "dur2": 16.97, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.675, "là", 0], [0.775, "B.", 0], [1.137, "Phương", 1], [1.5, "án", 1], [1.712, "A", 1], [1.887, "chỉ", 1], [2.062, "đúng", 1], [2.275, "với", 1], [2.375, "tham", 1], [2.6, "số", 1], [2.9, "là", 1], [3.05, "đối", 1], [3.212, "tượng", 1], [3.475, "Remote,", 1], [4.112, "được", 1], [4.325, "truyền", 1], [4.588, "dưới", 1], [4.787, "dạng", 1], [5.037, "stub.", 1], [6.188, "Entry", 2], [6.688, "chỉ", 2], [6.875, "là", 2], [7.037, "Serializable", 2], [7.862, "nên", 2], [8.1, "server", 2], [8.525, "sửa", 2], [8.8, "trên", 2], [9.0, "bản", 2], [9.213, "sao", 2], [9.425, "của", 2], [9.575, "nó;", 2], [10.162, "muốn", 2], [10.425, "client", 2], [10.725, "biết", 2], [10.925, "version", 2], [11.363, "mới,", 2], [11.887, "server", 2], [12.3, "phải", 2], [12.5, "trả", 2], [12.725, "version", 2], [13.25, "qua", 2], [13.45, "giá", 2], [13.637, "trị", 2], [13.825, "trả", 2], [14.05, "về,", 2], [14.525, "như", 2], [14.787, "phương", 2], [15.012, "thức", 2], [15.25, "update", 2], [15.637, "đã", 2], [15.8, "làm.", 2]], "dap_an": "B", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án D.", "start": 390.49, "audio": "audio/b6a3677b2fb114da.mp3", "dur": 3.1, "words": [[0.1, "Câu", 0], [0.362, "tiếp", 0], [0.637, "theo", 0], [0.812, "đặt", 0], [1.0, "ra", 0], [1.2, "tình", 0], [1.462, "huống", 0], [1.7, "gọi", 0], [1.9, "lại.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/7ff70516d3481eac.mp3", "dur2": 11.5, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.65, "là", 0], [0.762, "D.", 0], [1.137, "Một", 1], [1.35, "hiểu", 1], [1.5, "nhầm", 1], [1.775, "hay", 1], [1.938, "gặp", 1], [2.138, "là", 1], [2.288, "tạo", 1], [2.513, "key", 1], [2.688, "mới", 1], [2.925, "cho", 1], [3.075, "mỗi", 1], [3.237, "lần", 1], [3.438, "gọi", 1], [3.612, "lại:", 1], [4.1, "khi", 1], [4.287, "đó", 1], [4.463, "server", 1], [4.862, "coi", 1], [5.075, "lần", 1], [5.3, "gọi", 1], [5.487, "lại", 1], [5.737, "là", 1], [5.838, "một", 1], [6.037, "thao", 1], [6.188, "tác", 1], [6.412, "mới", 1], [6.662, "và", 1], [6.85, "áp", 1], [7.013, "dụng", 1], [7.275, "thêm", 1], [7.487, "lần", 1], [7.65, "nữa,", 1], [8.2, "đúng", 1], [8.425, "như", 1], [8.6, "trường", 1], [8.825, "hợp", 1], [9.012, "không", 1], [9.225, "có", 1], [9.338, "key", 1], [9.562, "trong", 1], [9.812, "RetryDemo.", 1]], "dap_an": "D", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “Khi truyền tham số”; bước 2 khi đọc “Vì lời gọi thất bại”; bước 3 khi đọc “Cuối cùng”; bước 4 khi đọc “Năm từ khóa cần nhớ”.", "start": 411.69, "audio": "audio/bffe9f326855791d.mp3", "dur": 35.3, "words": [[0.1, "Khi", 0], [0.375, "truyền", 0], [0.6, "tham", 0], [0.8, "số,", 0], [1.388, "RMI", 0], [1.975, "sao", 0], [2.163, "chép", 0], [2.413, "đối", 0], [2.587, "tượng", 0], [2.862, "Serializable,", 0], [3.975, "nên", 0], [4.287, "hai", 0], [4.5, "đầu", 0], [4.688, "giữ", 0], [4.912, "hai", 0], [5.088, "bản", 0], [5.312, "độc", 0], [5.475, "lập;", 0], [5.925, "chỉ", 0], [6.112, "đối", 0], [6.237, "tượng", 0], [6.487, "Remote", 0], [6.888, "được", 0], [7.062, "truyền", 0], [7.312, "dưới", 0], [7.5, "dạng", 0], [7.75, "stub", 0], [8.037, "trỏ", 0], [8.35, "về", 0], [8.512, "đối", 0], [8.688, "tượng", 0], [8.925, "gốc.", 0], [9.975, "Vì", 1], [10.213, "lời", 1], [10.387, "gọi", 1], [10.588, "thất", 1], [10.775, "bại", 1], [10.988, "không", 1], [11.213, "cho", 1], [11.3, "biết", 1], [11.488, "server", 1], [11.925, "đã", 1], [12.037, "thực", 1], [12.2, "hiện", 1], [12.425, "hay", 1], [12.55, "chưa,", 1], [13.113, "thao", 1], [13.312, "tác", 1], [13.537, "không", 1], [13.738, "có", 1], [13.9, "idempotency", 1], [14.65, "cần", 1], [14.938, "idempotency", 1], [15.613, "key", 1], [15.887, "để", 1], [16.038, "gọi", 1], [16.262, "lại", 1], [16.512, "an", 1], [16.712, "toàn.", 1], [17.875, "Cuối", 2], [18.1, "cùng,", 2], [18.694, "RMI", 2], [19.288, "có", 2], [19.4, "thể", 2], [19.55, "chạy", 2], [19.762, "nhiều", 2], [20.012, "lời", 2], [20.2, "gọi", 2], [20.4, "cùng", 2], [20.637, "lúc", 2], [20.825, "trên", 2], [21.0, "nhiều", 2], [21.188, "thread,", 2], [21.738, "nên", 2], [22.025, "remote", 2], [22.45, "object", 2], [22.8, "phải", 2], [23.0, "an", 2], [23.225, "toàn", 2], [23.5, "khi", 2], [23.675, "truy", 2], [23.825, "cập", 2], [24.012, "đồng", 2], [24.2, "thời,", 2], [24.7, "ví", 2], [24.913, "dụ", 2], [25.113, "bằng", 2], [25.325, "ConcurrentHashMap.", 2], [27.312, "Năm", 3], [27.712, "từ", 3], [27.9, "khóa", 3], [28.1, "cần", 3], [28.325, "nhớ", 3], [28.575, "là", 3], [28.688, "truyền", 3], [28.9, "theo", 3], [29.062, "giá", 3], [29.288, "trị,", 3], [29.825, "remote", 3], [30.25, "reference,", 3], [31.137, "idempotency,", 3], [32.2, "idempotency", 3], [32.975, "key", 3], [33.2, "và", 3], [33.325, "ConcurrentHashMap.", 3]], "cues": [0.1, 9.975, 17.875, 27.312], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Remote reference còn”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 447.59, "audio": "audio/15712ff113872a2b.mp3", "dur": 24.53, "words": [[0.1, "Remote", 0], [0.588, "reference", 0], [1.288, "còn", 0], [1.488, "hai", 0], [1.663, "chủ", 0], [1.863, "đề", 0], [1.975, "đáng", 0], [2.163, "đọc", 0], [2.325, "thêm:", 0], [2.837, "distributed", 0], [3.362, "garbage", 0], [3.712, "collection,", 0], [4.537, "cách", 0], [4.925, "RMI", 0], [5.312, "biết", 0], [5.562, "một", 0], [5.725, "đối", 0], [5.888, "tượng", 0], [6.15, "đã", 0], [6.275, "export", 0], [6.675, "không", 0], [6.938, "còn", 0], [7.15, "client", 0], [7.425, "nào", 0], [7.6, "giữ", 0], [7.775, "stub;", 0], [8.375, "và", 0], [8.613, "callback,", 0], [9.25, "khi", 0], [9.512, "server", 0], [9.925, "gọi", 0], [10.113, "ngược", 0], [10.338, "về", 0], [10.463, "client", 0], [10.825, "qua", 0], [10.988, "stub", 0], [11.262, "của", 0], [11.387, "một", 0], [11.588, "listener", 0], [12.15, "như", 0], [12.412, "ở", 0], [12.5, "hình", 0], [12.725, "truyền", 0], [12.95, "tham", 0], [13.125, "số.", 0], [14.35, "Bài", 1], [14.588, "tập", 1], [14.8, "mở", 1], [14.975, "rộng", 1], [15.25, "là", 1], [15.375, "viết", 1], [15.562, "test", 1], [15.8, "gọi", 1], [16.0, "phương", 1], [16.225, "thức", 1], [16.462, "update", 1], [16.925, "100", 1], [17.35, "lần", 1], [17.525, "đồng", 1], [17.712, "thời", 1], [17.9, "từ", 1], [18.062, "10", 1], [18.262, "client", 1], [18.675, "với", 1], [18.788, "cùng", 1], [19.0, "bộ", 1], [19.2, "idempotency", 1], [19.938, "key,", 1], [20.475, "rồi", 1], [20.712, "kiểm", 1], [20.938, "tra", 1], [21.087, "mỗi", 1], [21.337, "idempotency", 1], [22.1, "key", 1], [22.363, "chỉ", 1], [22.55, "được", 1], [22.825, "áp", 1], [22.975, "dụng", 1], [23.225, "một", 1], [23.4, "lần.", 1]], "cues": [0.1, 14.35], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 472.72, "audio": "audio/e1842c6993d114d0.mp3", "dur": 13.73, "words": [[0.1, "Cả", 0], [0.287, "hai", 0], [0.463, "phần", 0], [0.725, "của", 0], [0.85, "nhóm", 0], [1.288, "RPC", 0], [1.725, "dùng", 0], [2.0, "Java", 0], [2.769, "RMI,", 0], [3.538, "nên", 0], [3.825, "chỉ", 0], [4.013, "chương", 0], [4.213, "trình", 0], [4.438, "Java", 0], [4.8, "gọi", 0], [4.987, "được", 0], [5.15, "dịch", 0], [5.338, "vụ.", 0], [6.513, "Phần", 1], [6.775, "tiếp", 1], [7.013, "theo", 1], [7.175, "đưa", 1], [7.312, "dịch", 1], [7.5, "vụ", 1], [7.7, "tra", 1], [7.9, "cứu", 1], [8.162, "ra", 1], [8.312, "ngoài", 1], [8.55, "Java,", 1], [9.238, "với", 1], [9.607, "SOAP,", 1], [9.975, "hợp", 1], [10.188, "đồng", 1], [10.188, "WSDL", 1], [10.188, "và", 1], [10.188, "message", 1], [10.188, "XML.", 1]], "cues": [], "lang": 0.6}], "video_sau": "Web service: SOAP, hợp đồng WSDL và message XML"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

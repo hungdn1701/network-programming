@@ -1,0 +1,483 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V26 — gRPC: Protocol Buffers và lời gọi unary · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-4/05-grpc">Mã</a>
+<h1>V26 · gRPC: Protocol Buffers và lời gọi unary</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 4</div><div class="ten">gRPC: Protocol Buffers và lời gọi unary</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>gRPC: quay lại RPC với hợp đồng chặt và message nhị phân</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">REST + JSON: hợp đồng <b>không bắt buộc</b>; gõ sai tên trường chỉ lộ ra lúc chạy</li><li data-s="2">JSON là văn bản, mỗi message mang cả <b>tên trường</b></li><li data-s="3"><b>gRPC</b>: hợp đồng bằng <b>Protocol Buffers</b>, message nhị phân, chạy trên <b>HTTP/2</b></li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> định nghĩa dịch vụ bằng file .proto, sinh mã và gọi một RPC thế nào?</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Từ file .proto đến lời gọi: protoc sinh lớp message và stub</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="File lookup.proto khai báo dịch vụ Lookup với RPC Lookup nhận LookupRequest, trả LookupReply, và message LookupRequest có trường key số 1. Lúc build, protoc cùng plugin grpc-java sinh lớp message LookupRequest, LookupReply để mã hóa và giải mã, và lớp LookupGrpc chứa blocking stub cho client và lớp cơ sở LookupImplBase cho server. Lúc chạy, client gọi lookup trên stub; lời gọi đi qua một kết nối HTTP/2 tới server, nơi lớp LookupService kế thừa LookupImplBase xử lý và trả kết quả.">
+  <defs>
+    <marker id="pl-a" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="pl-g" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#8A6508"/></marker>
+    <marker id="pl-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- ① hợp đồng .proto -->
+  <g data-s="1">
+    <rect x="40" y="24" width="540" height="276" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="64" y="58" font-size="22" font-weight="500" fill="#6B4E06">lookup.proto · hợp đồng</text>
+    <g font-size="20" fill="#373D4E" font-family="Consolas, monospace">
+      <text x="64" y="94">service Lookup {</text>
+      <text x="88" y="122">rpc Lookup (LookupRequest)</text>
+      <text x="160" y="150">returns (LookupReply);</text>
+      <text x="64" y="178">}</text>
+      <text x="64" y="218">message LookupRequest {</text>
+      <text x="88" y="246">string key = 1;</text>
+      <text x="64" y="274">}</text>
+    </g>
+  </g>
+
+  <!-- ② protoc sinh mã lúc build -->
+  <g data-s="2">
+    <line x1="582" y1="150" x2="654" y2="150" stroke="#8A6508" stroke-width="2.5" marker-end="url(#pl-g)"/>
+    <rect x="660" y="100" width="280" height="100" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="800" y="140" text-anchor="middle" font-size="21" font-weight="500" fill="#051A53">protoc + grpc-java</text>
+    <text x="800" y="174" text-anchor="middle" font-size="20" fill="#373D4E">sinh mã lúc build</text>
+    <line x1="942" y1="130" x2="1014" y2="90" stroke="#051A53" stroke-width="2.5" marker-end="url(#pl-a)"/>
+    <line x1="942" y1="170" x2="1014" y2="210" stroke="#051A53" stroke-width="2.5" marker-end="url(#pl-a)"/>
+    <rect x="1020" y="40" width="700" height="96" rx="6" fill="#F4F5F8" stroke="#5B6478" stroke-width="2"/>
+    <text x="1044" y="76" font-size="21" font-weight="500" fill="#373D4E">lớp message</text>
+    <text x="1044" y="110" font-size="20" fill="#373D4E">LookupRequest, LookupReply: mã hóa, giải mã</text>
+    <rect x="1020" y="164" width="700" height="96" rx="6" fill="#F4F5F8" stroke="#5B6478" stroke-width="2"/>
+    <text x="1044" y="200" font-size="21" font-weight="500" fill="#373D4E">LookupGrpc</text>
+    <text x="1044" y="234" font-size="20" fill="#373D4E">blocking stub cho client · LookupImplBase cho server</text>
+  </g>
+
+  <!-- ③ lời gọi lúc chạy qua HTTP/2 -->
+  <g data-s="3">
+    <rect x="40" y="330" width="440" height="120" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="260" y="378" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">client</text>
+    <text x="260" y="414" text-anchor="middle" font-size="20" fill="#373D4E" font-family="Consolas, monospace">stub.lookup(request)</text>
+    <rect x="1280" y="330" width="440" height="120" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1500" y="368" text-anchor="middle" font-size="22" font-weight="500" fill="#22603F">server</text>
+    <text x="1500" y="402" text-anchor="middle" font-size="20" fill="#22603F" font-family="Consolas, monospace">LookupService</text>
+    <text x="1500" y="430" text-anchor="middle" font-size="20" fill="#22603F" font-family="Consolas, monospace">extends LookupImplBase</text>
+    <rect x="480" y="356" width="800" height="68" fill="#F4F5F8" stroke="#9AA3B8" stroke-width="2"/>
+    <line x1="490" y1="378" x2="1272" y2="378" stroke="#051A53" stroke-width="2.5" marker-end="url(#pl-a)"/>
+    <line x1="1270" y1="404" x2="488" y2="404" stroke="#2F855A" stroke-width="2.5" marker-end="url(#pl-ok)"/>
+    <text x="880" y="482" text-anchor="middle" font-size="20" fill="#5B6478">một kết nối HTTP/2, nhiều lời gọi song song (multiplexing)</text>
+    <path d="M1200,262 L360,326" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#pl-a)"/>
+    <path d="M1540,262 L1540,326" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#pl-a)"/>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Sinh mã</b>: từ <b>file .proto</b>, protoc tạo lớp message và stub; client và server dùng chung một hợp đồng.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Protocol Buffers mã hóa bằng số trường: 7 byte so với 15 byte JSON</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Mã hóa Protocol Buffers của LookupRequest với key hanoi: 7 byte, gồm byte tag 0a cho trường số 1 kiểu chuỗi, byte độ dài 05 và 5 byte UTF-8 của hanoi; JSON cùng nội dung 15 byte vì mang cả tên trường key. Kích thước đo được: request 7 so với 15 byte, response 31 so với 52 byte. So sánh khác: REST với JSON có hợp đồng không bắt buộc, chạy trên HTTP/1.1 hoặc HTTP/2, trình duyệt gọi trực tiếp được; gRPC bắt buộc file .proto và sinh mã, chạy trên HTTP/2, trình duyệt cần gRPC-Web.">
+
+  <!-- ① mã hóa: tag, độ dài, dữ liệu -->
+  <g data-s="1">
+    <text x="40" y="44" font-size="21" fill="#5B6478">LookupRequest { key: "hanoi" }</text>
+    <g stroke-width="2.5" font-family="Consolas, monospace" font-size="26" text-anchor="middle">
+      <rect x="40" y="62" width="90" height="64" rx="4" fill="#FFF6DD" stroke="#8A6508"/>
+      <text x="85" y="104" fill="#6B4E06">0a</text>
+      <rect x="140" y="62" width="90" height="64" rx="4" fill="#EEF2FB" stroke="#051A53"/>
+      <text x="185" y="104" fill="#051A53">05</text>
+      <rect x="240" y="62" width="360" height="64" rx="4" fill="#EEF9F0" stroke="#2F855A"/>
+      <text x="420" y="104" fill="#22603F">68 61 6e 6f 69</text>
+    </g>
+    <g font-size="20">
+      <text x="40" y="156" fill="#6B4E06">tag</text>
+      <text x="140" y="156" fill="#051A53">độ dài 5</text>
+      <text x="40" y="190" fill="#6B4E06">0a: trường số 1, kiểu chuỗi</text>
+      <text x="420" y="156" text-anchor="middle" fill="#22603F">"hanoi" (UTF-8)</text>
+    </g>
+    <text x="660" y="104" font-size="22" font-weight="500" fill="#051A53">Protocol Buffers: 7 byte</text>
+    <text x="1040" y="44" font-size="21" fill="#5B6478">JSON cùng nội dung</text>
+    <rect x="1040" y="62" width="320" height="64" rx="4" fill="#F4F5F8" stroke="#9AA3B8" stroke-width="2.5"/>
+    <text x="1200" y="104" text-anchor="middle" font-size="24" fill="#373D4E" font-family="Consolas, monospace">{"key":"hanoi"}</text>
+    <text x="1380" y="104" font-size="22" font-weight="500" fill="#373D4E">15 byte</text>
+    <text x="1040" y="156" font-size="20" fill="#5B6478">tên trường "key" đi trên mạng</text>
+  </g>
+
+  <!-- ② kích thước đo được -->
+  <g data-s="2">
+    <g font-size="21">
+      <text x="40" y="244" fill="#5B6478">kích thước đo được</text>
+      <text x="420" y="244" fill="#22603F">Protocol Buffers</text>
+      <text x="720" y="244" fill="#373D4E">JSON</text>
+      <text x="40" y="284" fill="#373D4E">request</text>
+      <text x="420" y="284" fill="#22603F" font-weight="500">7 byte</text>
+      <text x="720" y="284" fill="#373D4E">15 byte</text>
+      <text x="40" y="320" fill="#373D4E">response</text>
+      <text x="420" y="320" fill="#22603F" font-weight="500">31 byte</text>
+      <text x="720" y="320" fill="#373D4E">52 byte</text>
+    </g>
+    <path d="M40,258 L860,258" stroke="#9AA3B8" stroke-width="1.5"/>
+  </g>
+
+  <!-- ③ hợp đồng, giao thức, trình duyệt -->
+  <g data-s="3">
+    <g font-size="21">
+      <text x="40" y="384" fill="#5B6478">so sánh</text>
+      <text x="420" y="384" fill="#373D4E">REST + JSON</text>
+      <text x="1100" y="384" fill="#22603F">gRPC + Protocol Buffers</text>
+      <text x="40" y="424" fill="#373D4E">hợp đồng</text>
+      <text x="420" y="424" fill="#373D4E">không bắt buộc (OpenAPI)</text>
+      <text x="1100" y="424" fill="#22603F">bắt buộc: file .proto, sinh mã</text>
+      <text x="40" y="460" fill="#373D4E">giao thức</text>
+      <text x="420" y="460" fill="#373D4E">HTTP/1.1 hoặc HTTP/2</text>
+      <text x="1100" y="460" fill="#22603F">HTTP/2</text>
+      <text x="40" y="496" fill="#373D4E">trình duyệt</text>
+      <text x="420" y="496" fill="#373D4E">gọi trực tiếp</text>
+      <text x="1100" y="496" fill="#22603F">cần gRPC-Web</text>
+    </g>
+    <path d="M40,398 L1720,398" stroke="#9AA3B8" stroke-width="1.5"/>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>Protocol Buffers</b>: mỗi trường gồm tag (số trường, kiểu), độ dài, dữ liệu; tên trường không đi trên mạng.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>File .proto: dịch vụ, RPC unary và message có số trường</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Protobuf</span><span class="hl-k">service</span> <span class="hl-t">Lookup</span> {
+  <span class="hl-k">rpc</span> <span class="hl-m">Lookup</span> (<span class="hl-t">LookupRequest</span>) <span class="hl-k">returns</span> (<span class="hl-t">LookupReply</span>);  <span class="hl-c">// unary: một request, một response
+</span>}
+
+<span class="hl-k">message</span> <span class="hl-t">LookupRequest</span> {
+  <span class="hl-k">string</span> key = <span class="hl-n">1</span>;  <span class="hl-c">// số trường 1: định danh trường khi mã hóa, không được đổi
+</span>}
+
+<span class="hl-k">message</span> <span class="hl-t">LookupReply</span> {
+  <span class="hl-k">bool</span> found = <span class="hl-n">1</span>;
+  <span class="hl-k">string</span> value = <span class="hl-n">2</span>;
+}
+</pre></div><ul class="y-nho"><li data-s="1"><code>service</code>, <code>rpc</code>: dịch vụ và lời gọi <b>unary</b></li><li data-s="2"><code>message</code>: mỗi trường có kiểu, tên và <b>số trường</b></li><li data-s="3">Không có khóa: <code>found</code> bằng false; trường không gán mang giá trị mặc định</li></ul></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Server: kế thừa lớp cơ sở sinh ra, trả kết quả qua StreamObserver</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">static</span> <span class="hl-k">final</span> <span class="hl-k">class</span> <span class="hl-t">LookupService</span> <span class="hl-k">extends</span> <span class="hl-t">LookupGrpc</span>.<span class="hl-t">LookupImplBase</span> {
+    <span class="hl-a">@Override</span>
+    <span class="hl-k">public</span> <span class="hl-k">void</span> <span class="hl-m">lookup</span>(<span class="hl-t">LookupRequest</span> request, <span class="hl-t">StreamObserver</span>&lt;<span class="hl-t">LookupReply</span>&gt; responseObserver) {
+        <span class="hl-t">String</span> value = <span class="hl-t">DATA</span>.<span class="hl-m">get</span>(request.<span class="hl-m">getKey</span>());
+        <span class="hl-t">LookupReply</span> reply = <span class="hl-t">LookupReply</span>.<span class="hl-m">newBuilder</span>()
+                .<span class="hl-m">setFound</span>(value != <span class="hl-k">null</span>)
+                .<span class="hl-m">setValue</span>(value != <span class="hl-k">null</span> ? value : <span class="hl-s">"</span><span class="hl-s">"</span>)
+                .<span class="hl-m">build</span>();
+        responseObserver.<span class="hl-m">onNext</span>(reply);  <span class="hl-c">// unary: gửi đúng một response</span>
+        responseObserver.<span class="hl-m">onCompleted</span>();  <span class="hl-c">// rồi kết thúc lời gọi</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>gRPC server on port 9199
+Lookup(key="hanoi") on grpc-default-executor-0
+Lookup(key="atlantis") on grpc-default-executor-0</pre></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>Client: ManagedChannel và blocking stub cho lời gọi unary</h1></header><main class="bo-cuc-ma"><div class="ma-hang"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">ManagedChannel</span> channel = <span class="hl-t">ManagedChannelBuilder</span>.<span class="hl-m">forAddress</span>(<span class="hl-s">"</span><span class="hl-s">127.0.0.1</span><span class="hl-s">"</span>, <span class="hl-n">9199</span>)
+        .<span class="hl-m">usePlaintext</span>()  <span class="hl-c">// HTTP/2 không mã hóa (h2c), chỉ để chạy cục bộ</span>
+        .<span class="hl-m">build</span>();
+<span class="hl-t">LookupGrpc</span>.<span class="hl-t">LookupBlockingStub</span> stub = <span class="hl-t">LookupGrpc</span>.<span class="hl-m">newBlockingStub</span>(channel);
+<span class="hl-t">LookupRequest</span> request = <span class="hl-t">LookupRequest</span>.<span class="hl-m">newBuilder</span>().<span class="hl-m">setKey</span>(key).<span class="hl-m">build</span>();
+<span class="hl-t">LookupReply</span> reply = stub.<span class="hl-m">lookup</span>(request);  <span class="hl-c">// lời gọi unary qua blocking stub</span>
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>hanoi -&gt; found=true, value="Thủ đô của Việt Nam"
+atlantis -&gt; found=false, value=""</pre></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S07"><header><h1>Đổi số trường làm client cũ đọc sai; chỉ thêm trường với số mới</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-k">byte</span>[] renumbered = <span class="hl-t">LookupReplyRenumbered</span>.<span class="hl-m">newBuilder</span>()
+        .<span class="hl-m">setFound</span>(<span class="hl-k">true</span>).<span class="hl-m">setValue</span>(<span class="hl-s">"</span><span class="hl-s">Thủ đô của Việt Nam</span><span class="hl-s">"</span>).<span class="hl-m">build</span>().<span class="hl-m">toByteArray</span>();
+<span class="hl-m">print</span>(<span class="hl-s">"</span><span class="hl-s">server đổi số trường</span><span class="hl-s">"</span>, <span class="hl-t">LookupReply</span>.<span class="hl-m">parseFrom</span>(renumbered));  <span class="hl-c">// client cũ đọc theo số trường cũ</span>
+<span class="hl-k">byte</span>[] extended = <span class="hl-t">LookupReplyExtended</span>.<span class="hl-m">newBuilder</span>()
+        .<span class="hl-m">setFound</span>(<span class="hl-k">true</span>).<span class="hl-m">setValue</span>(<span class="hl-s">"</span><span class="hl-s">Thủ đô của Việt Nam</span><span class="hl-s">"</span>).<span class="hl-m">setVersion</span>(<span class="hl-n">7</span>).<span class="hl-m">build</span>().<span class="hl-m">toByteArray</span>();
+<span class="hl-m">print</span>(<span class="hl-s">"</span><span class="hl-s">server thêm trường 3</span><span class="hl-s">"</span>, <span class="hl-t">LookupReply</span>.<span class="hl-m">parseFrom</span>(extended));
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>server đổi số trường: found=false, value="", 2 unknown field(s)
+server thêm trường 3: found=true, value="Thủ đô của Việt Nam", 1 unknown field(s)</pre></div><ul class="y-nho"><li data-s="2">Đổi số trường: client cũ đọc <b>sai</b>, <code>found=false</code>, không có ngoại lệ</li><li data-s="3">Thêm trường với <b>số mới</b>: client cũ đọc đúng các trường cũ, bỏ qua trường lạ</li></ul></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Trong file .proto, khai báo string key = 1; Số 1 dùng để làm gì?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Quy định thứ tự in các trường khi in message ra màn hình.</div></div><div class=""><span>B</span><div>Giới hạn trường key dài tối đa 1 byte.</div></div><div class="dung"><span>C</span><div>Định danh trường trong dữ liệu mã hóa; tên key không đi trên mạng.</div></div><div class=""><span>D</span><div>Số phiên bản của message LookupRequest.</div></div></div><div class="giai-thich">Số trường được ghi vào tag của trường trong byte mã hóa; bên nhận dựa vào số này, không dựa vào tên, để biết byte thuộc trường nào.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Trong file .proto, khai báo string key = 1; Số 1 dùng để làm gì?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Quy định thứ tự in các trường khi in message ra màn hình.</div></div><div class=""><span>B</span><div>Giới hạn trường key dài tối đa 1 byte.</div></div><div class="dung"><span>C</span><div>Định danh trường trong dữ liệu mã hóa; tên key không đi trên mạng.</div></div><div class=""><span>D</span><div>Số phiên bản của message LookupRequest.</div></div></div><div class="giai-thich">Số trường được ghi vào tag của trường trong byte mã hóa; bên nhận dựa vào số này, không dựa vào tên, để biết byte thuộc trường nào.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">gRPC chạy trên phiên bản HTTP nào, và điều đó mang lại gì cho nhiều lời gọi tới cùng một server?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>HTTP/2: nhiều lời gọi chạy song song trên một kết nối nhờ multiplexing.</div></div><div class=""><span>B</span><div>HTTP/1.1: mỗi lời gọi một kết nối riêng nên không phải chờ nhau.</div></div><div class=""><span>C</span><div>HTTP/3: không bao giờ bị <span style="white-space:nowrap">head-of-line</span> blocking.</div></div><div class=""><span>D</span><div>Không dùng HTTP: gRPC chạy thẳng trên UDP.</div></div></div><div class="giai-thich">gRPC dùng HTTP/2: mỗi lời gọi là một HTTP/2 stream, nhiều lời gọi chia nhau một kết nối TCP.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">gRPC chạy trên phiên bản HTTP nào, và điều đó mang lại gì cho nhiều lời gọi tới cùng một server?</div></div><div class="lua-chon"><div class="dung"><span>A</span><div>HTTP/2: nhiều lời gọi chạy song song trên một kết nối nhờ multiplexing.</div></div><div class=""><span>B</span><div>HTTP/1.1: mỗi lời gọi một kết nối riêng nên không phải chờ nhau.</div></div><div class=""><span>C</span><div>HTTP/3: không bao giờ bị <span style="white-space:nowrap">head-of-line</span> blocking.</div></div><div class=""><span>D</span><div>Không dùng HTTP: gRPC chạy thẳng trên UDP.</div></div></div><div class="giai-thich">gRPC dùng HTTP/2: mỗi lời gọi là một HTTP/2 stream, nhiều lời gọi chia nhau một kết nối TCP.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>gRPC</b>: RPC trên HTTP/2; hợp đồng là <b>file .proto</b> viết bằng <b>Protocol Buffers</b></div></div><div class="the" data-s="2"><span class="so">2</span><div><b>Sinh mã</b>: protoc tạo lớp message và stub; client gọi RPC <b>unary</b> qua <b>blocking stub</b></div></div><div class="the" data-s="3"><span class="so">3</span><div>Mã hóa theo số trường: message nhỏ hơn JSON; chỉ thêm trường mới, không đổi số trường đã dùng</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>gRPC</span><span>Protocol Buffers</span><span>file .proto</span><span>sinh mã</span><span>unary</span><span>blocking stub</span></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li>Tương thích ngược và tương thích xuôi của Protocol Buffers</li><li><span style="white-space:nowrap">gRPC-Web</span> cho trình duyệt</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Thêm RPC Update(key, value) vào lookup.proto, sinh lại mã và viết test gọi Lookup sau Update.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">gRPC: streaming, deadline và mã trạng thái</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. REST với JSON dễ đọc và dễ gọi, nhưng hợp đồng không bắt buộc, và mỗi message mang cả tên trường dưới dạng văn bản. Khi hai dịch vụ gọi nhau hàng nghìn lần mỗi giây, có cách nào giữ hợp đồng chặt như RPC mà message lại nhỏ?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:16</span>
+      <h3>Slide 1. gRPC: quay lại RPC với hợp đồng chặt và message nhị phân</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>REST + JSON: hợp đồng **không bắt buộc**; gõ sai tên trường chỉ lộ ra lúc chạy</li><li>JSON là văn bản, mỗi message mang cả **tên trường**</li><li>**gRPC**: hợp đồng bằng **Protocol Buffers**, message nhị phân, chạy trên **HTTP/2**</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** định nghĩa dịch vụ bằng file .proto, sinh mã và gọi một RPC thế nào?</div></div>
+    <div class="kb-thoai"><p>Với REST, client và server thống nhất với nhau qua tài liệu, không có hợp đồng nào trình biên dịch kiểm tra được: client gõ sai tên một trường JSON thì lỗi chỉ lộ ra lúc chạy. Thêm nữa, JSON là văn bản, và mỗi message mang theo cả tên trường. gRPC, một framework RPC, quay lại mô hình RPC của đầu chương với hai thay đổi. Hợp đồng được viết bằng Protocol Buffers, ngôn ngữ mô tả message và dịch vụ kèm một định dạng nhị phân gọn, còn lời gọi chạy trên HTTP/2. Vậy định nghĩa dịch vụ tra cứu bằng file .proto, sinh mã và gọi một RPC thế nào?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Với REST”; bước 2 khi đọc “Thêm nữa”; bước 3 khi đọc “gRPC, một”; bước 4 khi đọc “Vậy định nghĩa”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:53</span>
+      <h3>Slide 2. Từ file .proto đến lời gọi: protoc sinh lớp message và stub</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Sinh mã**: từ **file .proto**, protoc tạo lớp message và stub; client và server dùng chung một hợp đồng.</li></ul></div></div>
+    <div class="kb-thoai"><p>Hợp đồng nằm trong file lookup.proto. Khối service khai báo dịch vụ Lookup với một RPC cùng tên, nhận LookupRequest và trả LookupReply. Mỗi khối message khai báo các trường, mỗi trường có kiểu, tên và một số thứ tự gọi là số trường. Lúc build, trình biên dịch protoc cùng plugin grpc-java thực hiện sinh mã, hay code generation. Kết quả là các lớp message, có sẵn phương thức mã hóa và giải mã, cùng lớp LookupGrpc chứa blocking stub cho client và lớp cơ sở LookupImplBase cho server. Lúc chạy, client gọi phương thức lookup trên stub như ở RMI, và lời gọi đi qua một kết nối HTTP/2; nhờ multiplexing, nhiều lời gọi chạy song song trên cùng kết nối đó. Như vậy, từ một file .proto, cả hai đầu có mã sinh sẵn để gọi nhau, kể cả khi client và server viết bằng hai ngôn ngữ khác nhau.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình proto-loi-goi: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Hợp đồng nằm”; bước 2 khi đọc “Lúc build”; bước 3 khi đọc “Lúc chạy”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:50</span>
+      <h3>Slide 3. Protocol Buffers mã hóa bằng số trường: 7 byte so với 15 byte JSON</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Protocol Buffers**: mỗi trường gồm tag (số trường, kiểu), độ dài, dữ liệu; tên trường không đi trên mạng.</li></ul></div></div>
+    <div class="kb-thoai"><p>Hợp đồng chặt là một lý do dùng gRPC; lý do còn lại là message nhỏ, nhờ cách mã hóa. Mình in từng byte của LookupRequest với khóa hanoi bằng chương trình SizeDemo: byte đầu tiên là tag, gộp số trường 1 và kiểu chuỗi; byte thứ hai là độ dài 5; năm byte sau là chữ hanoi theo UTF-8, tổng cộng 7 byte. JSON cùng nội dung cần 15 byte, vì phải mang cả tên trường key. Trên hai message của dịch vụ, Protocol Buffers luôn ngắn hơn: request 7 byte so với 15 byte JSON, response 31 byte so với 52. Ngoài kích thước, bảng so sánh còn ba khác biệt: gRPC bắt buộc có hợp đồng, chạy trên HTTP/2, và trình duyệt muốn gọi gRPC phải qua gRPC-Web. Như vậy, khác biệt về kích thước đến từ cách mã hóa: số trường là định danh của trường khi truyền, còn tên trường chỉ tồn tại trong mã nguồn.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình rest-grpc: ba bước của hình, bước 4 là ô kết luận. Số byte lấy từ results/SizeDemo.txt.
+Hiện dần: bước 1 khi đọc “Mình in từng byte”; bước 2 khi đọc “Trên hai message”; bước 3 khi đọc “Ngoài kích thước”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:45</span>
+      <h3>Slide 4. File .proto: dịch vụ, RPC unary và message có số trường</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>`service`, `rpc`: dịch vụ và lời gọi **unary**</li><li>`message`: mỗi trường có kiểu, tên và **số trường**</li><li>Không có khóa: `found` bằng false; trường không gán mang giá trị mặc định</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/main/proto/lookup.proto</span><pre><code>service Lookup {
+  rpc Lookup (LookupRequest) returns (LookupReply);  // unary: một request, một response
+}
+
+message LookupRequest {
+  string key = 1;  // số trường 1: định danh trường khi mã hóa, không được đổi
+}
+
+message LookupReply {
+  bool found = 1;
+  string value = 2;
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Khối service khai báo một RPC kiểu unary, tức một request và một response, như mọi lời gọi từ đầu chương. Hai khối message khai báo trường của request và của reply: mỗi trường có kiểu, tên và số trường; số trường được ghi vào tag, nên đã dùng thì không được đổi. Khóa không tồn tại được báo bằng trường found bằng false; phiên bản 3 của Protocol Buffers không có giá trị null, trường nào không gán thì mang giá trị mặc định, như chuỗi rỗng hay false.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã bên trái, ba ý bên phải hiện lần lượt. Highlight = 1, = 2 khi đọc &quot;số trường&quot;.
+Hiện dần: bước 1 khi đọc “Khối service”; bước 2 khi đọc “Hai khối message”; bước 3 khi đọc “Khóa không tồn tại”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:18</span>
+      <h3>Slide 5. Server: kế thừa lớp cơ sở sinh ra, trả kết quả qua StreamObserver</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/main/java/netlab/grpc/LookupServer.java</span><pre><code>static final class LookupService extends LookupGrpc.LookupImplBase {
+    @Override
+    public void lookup(LookupRequest request, StreamObserver&lt;LookupReply&gt; responseObserver) {
+        String value = DATA.get(request.getKey());
+        LookupReply reply = LookupReply.newBuilder()
+                .setFound(value != null)
+                .setValue(value != null ? value : &quot;&quot;)
+                .build();
+        responseObserver.onNext(reply);  // unary: gửi đúng một response
+        responseObserver.onCompleted();  // rồi kết thúc lời gọi</code></pre></div></div>
+    <div class="kb-thoai"><p>Phía server, lớp LookupService kế thừa LookupImplBase và ghi đè phương thức lookup. Khác với RMI, phương thức lookup không trả kết quả bằng lệnh return mà nhận thêm một đối tượng responseObserver, kiểu StreamObserver. Server gửi reply bằng phương thức onNext, rồi báo kết thúc bằng phương thức onCompleted. Lời gọi unary có đúng một lần onNext; cách viết qua StreamObserver chuẩn bị cho các lời gọi trả nhiều message ở phần sau. Ngoài đoạn mã trên slide, hàm main dùng ServerBuilder đăng ký dịch vụ ở port 9199. Hai lời gọi trong log chạy trên thread của executor mặc định trong gRPC.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, log phía dưới. Highlight extends LookupGrpc.LookupImplBase, rồi onNext, onCompleted theo lời đọc.
+Hiện dần: bước 1 khi đọc “Hai lời gọi trong log”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:06</span>
+      <h3>Slide 6. Client: ManagedChannel và blocking stub cho lời gọi unary</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/main/java/netlab/grpc/LookupClient.java</span><pre><code>ManagedChannel channel = ManagedChannelBuilder.forAddress(&quot;127.0.0.1&quot;, 9199)
+        .usePlaintext()  // HTTP/2 không mã hóa (h2c), chỉ để chạy cục bộ
+        .build();
+LookupGrpc.LookupBlockingStub stub = LookupGrpc.newBlockingStub(channel);
+LookupRequest request = LookupRequest.newBuilder().setKey(key).build();
+LookupReply reply = stub.lookup(request);  // lời gọi unary qua blocking stub</code></pre></div></div>
+    <div class="kb-thoai"><p>Phía client, mình tạo một đối tượng ManagedChannel để quản lý kết nối HTTP/2 tới server; phương thức usePlaintext chọn h2c, tức HTTP/2 không mã hóa như ở Chương 3, chỉ để chạy cục bộ. Trên channel đó, phương thức newBlockingStub tạo blocking stub, loại stub chặn thread gọi cho tới khi nhận được reply. Mình dựng request bằng builder của lớp message sinh ra, rồi gọi phương thức lookup trên stub và nhận về một LookupReply. Kết quả: khóa hanoi có trường found là true kèm giá trị, còn khóa atlantis có found là false và value rỗng.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới. Highlight newBlockingStub rồi stub.lookup(request) theo lời đọc.
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:51</span>
+      <h3>Slide 7. Đổi số trường làm client cũ đọc sai; chỉ thêm trường với số mới</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Đổi số trường: client cũ đọc **sai**, `found=false`, không có ngoại lệ</li><li>Thêm trường với **số mới**: client cũ đọc đúng các trường cũ, bỏ qua trường lạ</li></ul><div class="kb-slide-ma"><span class="kb-ma-tep">src/main/java/netlab/grpc/CompatDemo.java</span><pre><code>byte[] renumbered = LookupReplyRenumbered.newBuilder()
+        .setFound(true).setValue(&quot;Thủ đô của Việt Nam&quot;).build().toByteArray();
+print(&quot;server đổi số trường&quot;, LookupReply.parseFrom(renumbered));  // client cũ đọc theo số trường cũ
+byte[] extended = LookupReplyExtended.newBuilder()
+        .setFound(true).setValue(&quot;Thủ đô của Việt Nam&quot;).setVersion(7).build().toByteArray();
+print(&quot;server thêm trường 3&quot;, LookupReply.parseFrom(extended));</code></pre></div></div>
+    <div class="kb-thoai"><p>Vì số trường là định danh trên mạng, hợp đồng phải được sửa cẩn thận. Chương trình CompatDemo giả lập hai phiên bản server mới, trong khi client vẫn dùng LookupReply cũ. Bản thứ nhất đổi số của hai trường found và value; bản thứ hai giữ nguyên hai trường và thêm trường version với số 3. Kết quả: ở trường hợp thứ nhất, client đọc được trường found là false và trường value rỗng, hai trường của server bị coi là trường lạ, và không có ngoại lệ nào, nên client hiểu là không có khóa. Ở trường hợp thứ hai, client đọc đúng found và value, chỉ bỏ qua trường số 3. Vì vậy, quy tắc là chỉ thêm trường mới với số mới, không đổi số của trường đã dùng.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới, hai ý hiện sau kết quả.
+Hiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “ở trường hợp thứ nhất”; bước 3 khi đọc “Ở trường hợp thứ hai”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:41</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Mình kiểm tra lại vai trò của số trường bằng câu hỏi đầu tiên.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Trong file .proto, khai báo string key = 1; Số 1 dùng để làm gì?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Quy định thứ tự in các trường khi in message ra màn hình.</li>
+      <li><b>B.</b> Giới hạn trường key dài tối đa 1 byte.</li>
+      <li><b>C.</b> Định danh trường trong dữ liệu mã hóa; tên key không đi trên mạng.</li>
+      <li><b>D.</b> Số phiên bản của message LookupRequest.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: C</b> — <span>Số trường được ghi vào tag của trường trong byte mã hóa; bên nhận dựa vào số này, không dựa vào tên, để biết byte thuộc trường nào.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là C. Phương án A là hiểu nhầm hay gặp, vì số trường thường đánh theo thứ tự khai báo. Thực ra số trường được ghi vào tag của từng trường, nên CompatDemo đọc sai ngay khi số bị đổi.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án C được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:04</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Câu hỏi tiếp theo liên hệ gRPC với HTTP/2 ở Chương 3.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> gRPC chạy trên phiên bản HTTP nào, và điều đó mang lại gì cho nhiều lời gọi tới cùng một server?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> HTTP/2: nhiều lời gọi chạy song song trên một kết nối nhờ multiplexing.</li>
+      <li><b>B.</b> HTTP/1.1: mỗi lời gọi một kết nối riêng nên không phải chờ nhau.</li>
+      <li><b>C.</b> HTTP/3: không bao giờ bị head-of-line blocking.</li>
+      <li><b>D.</b> Không dùng HTTP: gRPC chạy thẳng trên UDP.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: A</b> — <span>gRPC dùng HTTP/2: mỗi lời gọi là một HTTP/2 stream, nhiều lời gọi chia nhau một kết nối TCP.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là A. Mỗi lời gọi gRPC là một HTTP/2 stream, nên các lời gọi tới cùng server chia nhau một kết nối, đúng cơ chế multiplexing ở Chương 3. Phương án B mô tả cách HTTP/1.1 phải mở nhiều kết nối để chạy song song.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án A.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:31</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**gRPC**: RPC trên HTTP/2; hợp đồng là **file .proto** viết bằng **Protocol Buffers**</li><li>**Sinh mã**: protoc tạo lớp message và stub; client gọi RPC **unary** qua **blocking stub**</li><li>Mã hóa theo số trường: message nhỏ hơn JSON; chỉ thêm trường mới, không đổi số trường đã dùng</li></ul></div>
+    <div class="kb-thoai"><p>gRPC quay lại mô hình RPC, chạy trên HTTP/2, với hợp đồng là file .proto viết bằng Protocol Buffers. Từ file .proto, protoc sinh lớp message và stub, và client gọi RPC unary qua blocking stub như gọi một phương thức cục bộ. Protocol Buffers mã hóa theo số trường nên message nhỏ hơn JSON, đổi lại số trường đã dùng thì không được đổi. Phần này khép lại với sáu từ khóa: gRPC, Protocol Buffers, file .proto, sinh mã, unary và blocking stub.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “gRPC quay lại”; bước 2 khi đọc “Từ file .proto”; bước 3 khi đọc “Protocol Buffers mã hóa”; bước 4 khi đọc “Phần này khép lại”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:05</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Quy tắc về số trường là một phần của chủ đề tương thích ngược và tương thích xuôi trong Protocol Buffers, đáng đọc thêm trước khi sửa hợp đồng của một hệ thống đang chạy; với trình duyệt, các bạn có thể tìm hiểu gRPC-Web. Bài tập mở rộng là thêm RPC Update nhận khóa và giá trị vào lookup.proto, sinh lại mã, rồi viết test gọi Lookup sau Update.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Quy tắc về số trường”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-12" data-index="12">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:27</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(12)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(12, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Mọi lời gọi ở đây đều là unary, và client chờ kết quả mà không đặt giới hạn thời gian nào. Phần tiếp theo bàn về streaming, deadline và mã trạng thái của gRPC.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V26", "tieu_de": "gRPC: Protocol Buffers và lời gọi unary", "giong": "vi-VN-NamMinhNeural", "tong": 459.24, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/540a35f0ad6aa317.mp3", "dur": 15.98, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.407, "REST", 1], [2.2, "với", 1], [2.538, "JSON", 1], [2.875, "dễ", 1], [3.062, "đọc", 1], [3.263, "và", 1], [3.413, "dễ", 1], [3.612, "gọi,", 1], [4.162, "nhưng", 1], [4.45, "hợp", 1], [4.625, "đồng", 1], [4.838, "không", 1], [5.05, "bắt", 1], [5.188, "buộc,", 1], [5.65, "và", 1], [5.862, "mỗi", 1], [6.062, "message", 1], [6.537, "mang", 1], [6.775, "cả", 1], [6.925, "tên", 1], [7.15, "trường", 1], [7.4, "dưới", 1], [7.575, "dạng", 1], [7.838, "văn", 1], [8.025, "bản.", 1], [9.238, "Khi", 2], [9.512, "hai", 2], [9.675, "dịch", 2], [9.85, "vụ", 2], [10.088, "gọi", 2], [10.312, "nhau", 2], [10.537, "hàng", 2], [10.725, "nghìn", 2], [10.9, "lần", 2], [11.062, "mỗi", 2], [11.25, "giây,", 2], [11.75, "có", 2], [11.887, "cách", 2], [12.062, "nào", 2], [12.275, "giữ", 2], [12.475, "hợp", 2], [12.65, "đồng", 2], [12.863, "chặt", 2], [13.113, "như", 2], [13.519, "RPC", 2], [13.925, "mà", 2], [14.088, "message", 2], [14.537, "lại", 2], [14.7, "nhỏ?", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. gRPC: quay lại RPC với hợp đồng chặt và message nhị phân", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Với REST”; bước 2 khi đọc “Thêm nữa”; bước 3 khi đọc “gRPC, một”; bước 4 khi đọc “Vậy định nghĩa”.", "start": 16.58, "audio": "audio/cbd5cabd34ed9743.mp3", "dur": 36.7, "words": [[0.1, "Với", 0], [0.488, "REST,", 0], [0.875, "client", 0], [1.35, "và", 0], [1.512, "server", 0], [1.9, "thống", 0], [2.112, "nhất", 0], [2.312, "với", 0], [2.462, "nhau", 0], [2.675, "qua", 0], [2.862, "tài", 0], [3.062, "liệu,", 0], [3.55, "không", 0], [3.775, "có", 0], [3.875, "hợp", 0], [4.037, "đồng", 0], [4.263, "nào", 0], [4.425, "trình", 0], [4.638, "biên", 0], [4.838, "dịch", 0], [5.0, "kiểm", 0], [5.213, "tra", 0], [5.375, "được:", 0], [5.838, "client", 0], [6.275, "gõ", 0], [6.438, "sai", 0], [6.688, "tên", 0], [6.85, "một", 0], [7.0, "trường", 0], [7.357, "JSON", 0], [7.713, "thì", 0], [7.862, "lỗi", 0], [8.113, "chỉ", 0], [8.312, "lộ", 0], [8.55, "ra", 0], [8.713, "lúc", 0], [8.887, "chạy.", 0], [10.025, "Thêm", 1], [10.262, "nữa,", 1], [10.825, "JSON", 1], [11.387, "là", 1], [11.512, "văn", 1], [11.713, "bản,", 1], [12.225, "và", 1], [12.438, "mỗi", 1], [12.637, "message", 1], [13.188, "mang", 1], [13.438, "theo", 1], [13.613, "cả", 1], [13.812, "tên", 1], [14.062, "trường.", 1], [15.25, "gRPC,", 2], [16.438, "một", 2], [16.663, "framework", 2], [17.438, "RPC,", 2], [18.212, "quay", 2], [18.438, "lại", 2], [18.613, "mô", 2], [18.788, "hình", 2], [19.194, "RPC", 2], [19.6, "của", 2], [19.725, "đầu", 2], [19.9, "chương", 2], [20.238, "với", 2], [20.363, "hai", 2], [20.55, "thay", 2], [20.7, "đổi.", 2], [21.913, "Hợp", 3], [22.15, "đồng", 3], [22.337, "được", 3], [22.475, "viết", 3], [22.663, "bằng", 3], [22.887, "Protocol", 3], [23.512, "Buffers,", 3], [24.238, "ngôn", 3], [24.475, "ngữ", 3], [24.675, "mô", 3], [24.85, "tả", 3], [25.062, "message", 3], [25.538, "và", 3], [25.688, "dịch", 3], [25.875, "vụ", 3], [26.1, "kèm", 3], [26.337, "một", 3], [26.488, "định", 3], [26.712, "dạng", 3], [26.925, "nhị", 3], [27.137, "phân", 3], [27.35, "gọn,", 3], [27.863, "còn", 3], [28.087, "lời", 3], [28.238, "gọi", 3], [28.425, "chạy", 3], [28.663, "trên", 3], [29.712, "HTTP/2.", 3], [30.762, "Vậy", 4], [31.012, "định", 4], [31.2, "nghĩa", 4], [31.4, "dịch", 4], [31.587, "vụ", 4], [31.788, "tra", 4], [31.975, "cứu", 4], [32.275, "bằng", 4], [32.5, "file", 4], [32.975, ".proto,", 4], [33.725, "sinh", 4], [33.987, "mã", 4], [34.288, "và", 4], [34.425, "gọi", 4], [34.625, "một", 4], [35.025, "RPC", 4], [35.425, "thế", 4], [35.538, "nào?", 4]], "cues": [0.1, 10.025, 15.25, 30.762], "lang": 0.6}, {"ten": "Slide 2. Từ file .proto đến lời gọi: protoc sinh lớp message và stub", "loai": "slide", "slide": "S02", "dung": "Hình proto-loi-goi: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Hợp đồng nằm”; bước 2 khi đọc “Lúc build”; bước 3 khi đọc “Lúc chạy”; bước 4 khi đọc “Như vậy”.", "start": 53.88, "audio": "audio/d13a04c73cdc353e.mp3", "dur": 53.54, "words": [[0.1, "Hợp", 0], [0.35, "đồng", 0], [0.637, "nằm", 0], [0.863, "trong", 0], [1.05, "file", 0], [1.275, "lookup.proto.", 0], [3.375, "Khối", 1], [3.688, "service", 1], [4.162, "khai", 1], [4.4, "báo", 1], [4.612, "dịch", 1], [4.787, "vụ", 1], [5.025, "Lookup", 1], [5.513, "với", 1], [5.662, "một", 1], [6.056, "RPC", 1], [6.45, "cùng", 1], [6.675, "tên,", 1], [7.225, "nhận", 1], [7.5, "LookupRequest", 1], [8.125, "và", 1], [8.338, "trả", 1], [8.6, "LookupReply.", 1], [10.312, "Mỗi", 2], [10.7, "khối", 2], [10.95, "message", 2], [11.4, "khai", 2], [11.625, "báo", 2], [11.85, "các", 2], [12.025, "trường,", 2], [12.537, "mỗi", 2], [12.775, "trường", 2], [13.012, "có", 2], [13.137, "kiểu,", 2], [13.762, "tên", 2], [14.05, "và", 2], [14.175, "một", 2], [14.338, "số", 2], [14.562, "thứ", 2], [14.713, "tự", 2], [14.938, "gọi", 2], [15.225, "là", 2], [15.363, "số", 2], [15.575, "trường.", 2], [16.738, "Lúc", 3], [17.0, "build,", 3], [17.5, "trình", 3], [17.7, "biên", 3], [17.9, "dịch", 3], [18.087, "protoc", 3], [18.8, "cùng", 3], [19.062, "plugin", 3], [19.869, "grpc-java", 3], [20.675, "thực", 3], [20.875, "hiện", 3], [21.075, "sinh", 3], [21.262, "mã,", 3], [21.863, "hay", 3], [22.087, "code", 3], [22.325, "generation.", 3], [23.938, "Kết", 4], [24.188, "quả", 4], [24.462, "là", 4], [24.562, "các", 4], [24.775, "lớp", 4], [24.988, "message,", 4], [25.7, "có", 4], [25.825, "sẵn", 4], [26.062, "phương", 4], [26.275, "thức", 4], [26.475, "mã", 4], [26.65, "hóa", 4], [26.938, "và", 4], [27.075, "giải", 4], [27.275, "mã,", 4], [27.863, "cùng", 4], [28.125, "lớp", 4], [28.337, "LookupGrpc", 4], [29.2, "chứa", 4], [29.462, "blocking", 4], [29.863, "stub", 4], [30.2, "cho", 4], [30.363, "client", 4], [30.75, "và", 4], [30.9, "lớp", 4], [31.15, "cơ", 4], [31.312, "sở", 4], [31.55, "LookupImplBase", 4], [32.562, "cho", 4], [32.7, "server.", 4], [33.975, "Lúc", 5], [34.225, "chạy,", 5], [34.725, "client", 5], [35.125, "gọi", 5], [35.325, "phương", 5], [35.538, "thức", 5], [35.737, "lookup", 5], [36.163, "trên", 5], [36.35, "stub", 5], [36.688, "như", 5], [36.938, "ở", 5], [37.544, "RMI,", 5], [38.15, "và", 5], [38.325, "lời", 5], [38.513, "gọi", 5], [38.737, "đi", 5], [38.862, "qua", 5], [39.038, "một", 5], [39.2, "kết", 5], [39.388, "nối", 5], [40.144, "HTTP/2;", 5], [40.9, "nhờ", 5], [41.225, "multiplexing,", 5], [42.075, "nhiều", 5], [42.3, "lời", 5], [42.45, "gọi", 5], [42.638, "chạy", 5], [42.862, "song", 5], [43.062, "song", 5], [43.3, "trên", 5], [43.462, "cùng", 5], [43.663, "kết", 5], [43.875, "nối", 5], [44.025, "đó.", 5], [45.212, "Như", 6], [45.462, "vậy,", 6], [45.938, "từ", 6], [46.1, "một", 6], [46.288, "file", 6], [46.737, ".proto,", 6], [47.487, "cả", 6], [47.625, "hai", 6], [47.812, "đầu", 6], [48.025, "có", 6], [48.15, "mã", 6], [48.337, "sinh", 6], [48.538, "sẵn", 6], [48.825, "để", 6], [48.938, "gọi", 6], [49.138, "nhau,", 6], [49.638, "kể", 6], [49.788, "cả", 6], [49.95, "khi", 6], [50.125, "client", 6], [50.587, "và", 6], [50.725, "server", 6], [51.15, "viết", 6], [51.35, "bằng", 6], [51.575, "hai", 6], [51.763, "ngôn", 6], [51.962, "ngữ", 6], [52.163, "khác", 6], [52.4, "nhau.", 6]], "cues": [0.1, 16.738, 33.975, 45.212], "lang": 2.6}, {"ten": "Slide 3. Protocol Buffers mã hóa bằng số trường: 7 byte so với 15 byte JSON", "loai": "slide", "slide": "S03", "dung": "Hình rest-grpc: ba bước của hình, bước 4 là ô kết luận. Số byte lấy từ results/SizeDemo.txt.\nHiện dần: bước 1 khi đọc “Mình in từng byte”; bước 2 khi đọc “Trên hai message”; bước 3 khi đọc “Ngoài kích thước”; bước 4 khi đọc “Như vậy”.", "start": 110.02, "audio": "audio/93d4390dd8536342.mp3", "dur": 53.04, "words": [[0.1, "Hợp", 0], [0.362, "đồng", 0], [0.6, "chặt", 0], [0.85, "là", 0], [0.963, "một", 0], [1.15, "lý", 0], [1.387, "do", 0], [1.55, "dùng", 0], [2.268, "gRPC;", 0], [2.987, "lý", 0], [3.237, "do", 0], [3.4, "còn", 0], [3.65, "lại", 0], [3.85, "là", 0], [3.975, "message", 0], [4.4, "nhỏ,", 0], [5.025, "nhờ", 0], [5.325, "cách", 0], [5.55, "mã", 0], [5.737, "hóa.", 0], [7.0, "Mình", 1], [7.4, "in", 1], [7.575, "từng", 1], [7.787, "byte", 1], [7.987, "của", 1], [8.15, "LookupRequest", 1], [8.8, "với", 1], [8.988, "khóa", 1], [9.238, "hanoi", 1], [9.65, "bằng", 1], [9.863, "chương", 1], [10.075, "trình", 1], [10.25, "SizeDemo:", 1], [11.238, "byte", 1], [11.488, "đầu", 1], [11.675, "tiên", 1], [11.938, "là", 1], [12.062, "tag,", 1], [12.575, "gộp", 1], [12.775, "số", 1], [13.025, "trường", 1], [13.238, "1", 1], [13.425, "và", 1], [13.537, "kiểu", 1], [13.762, "chuỗi;", 1], [14.387, "byte", 1], [14.6, "thứ", 1], [14.787, "hai", 1], [15.0, "là", 1], [15.1, "độ", 1], [15.3, "dài", 1], [15.512, "5;", 1], [16.025, "năm", 1], [16.363, "byte", 1], [16.562, "sau", 1], [16.775, "là", 1], [16.863, "chữ", 1], [17.087, "hanoi", 1], [17.475, "theo", 1], [18.156, "UTF-8,", 1], [18.837, "tổng", 1], [19.087, "cộng", 1], [19.312, "7", 1], [19.5, "byte.", 1], [20.344, "JSON", 2], [21.188, "cùng", 2], [21.4, "nội", 2], [21.587, "dung", 2], [21.8, "cần", 2], [22.012, "15", 2], [22.4, "byte,", 2], [22.913, "vì", 2], [23.2, "phải", 2], [23.363, "mang", 2], [23.587, "cả", 2], [23.762, "tên", 2], [24.012, "trường", 2], [24.238, "key.", 2], [25.4, "Trên", 3], [25.75, "hai", 3], [25.938, "message", 3], [26.337, "của", 3], [26.475, "dịch", 3], [26.663, "vụ,", 3], [27.2, "Protocol", 3], [27.887, "Buffers", 3], [28.363, "luôn", 3], [28.575, "ngắn", 3], [28.8, "hơn:", 3], [29.312, "request", 3], [29.538, "7", 3], [29.75, "byte", 3], [29.975, "so", 3], [30.15, "với", 3], [30.275, "15", 3], [30.7, "byte", 3], [31.125, "JSON,", 3], [31.55, "response", 3], [32.188, "31", 3], [32.663, "byte", 3], [32.9, "so", 3], [33.087, "với", 3], [33.212, "52.", 3], [34.663, "Ngoài", 4], [34.925, "kích", 4], [35.125, "thước,", 4], [35.55, "bảng", 4], [35.812, "so", 4], [35.962, "sánh", 4], [36.237, "còn", 4], [36.45, "ba", 4], [36.612, "khác", 4], [36.825, "biệt:", 4], [37.45, "gRPC", 4], [38.075, "bắt", 4], [38.263, "buộc", 4], [38.45, "có", 4], [38.562, "hợp", 4], [38.75, "đồng,", 4], [39.225, "chạy", 4], [39.475, "trên", 4], [40.207, "HTTP/2,", 4], [40.938, "và", 4], [41.112, "trình", 4], [41.3, "duyệt", 4], [41.475, "muốn", 4], [41.688, "gọi", 4], [42.213, "gRPC", 4], [42.737, "phải", 4], [42.913, "qua", 4], [43.938, "gRPC-Web.", 4], [44.962, "Như", 5], [45.2, "vậy,", 5], [45.663, "khác", 5], [45.9, "biệt", 5], [46.087, "về", 5], [46.212, "kích", 5], [46.425, "thước", 5], [46.625, "đến", 5], [46.875, "từ", 5], [47.062, "cách", 5], [47.288, "mã", 5], [47.462, "hóa:", 5], [48.062, "số", 5], [48.312, "trường", 5], [48.625, "là", 5], [48.712, "định", 5], [48.925, "danh", 5], [49.1, "của", 5], [49.225, "trường", 5], [49.462, "khi", 5], [49.625, "truyền,", 5], [50.15, "còn", 5], [50.425, "tên", 5], [50.625, "trường", 5], [50.862, "chỉ", 5], [51.025, "tồn", 5], [51.263, "tại", 5], [51.5, "trong", 5], [51.688, "mã", 5], [51.837, "nguồn.", 5]], "cues": [7.0, 25.4, 34.663, 44.962], "lang": 2.6}, {"ten": "Slide 4. File .proto: dịch vụ, RPC unary và message có số trường", "loai": "slide", "slide": "S04", "dung": "Mã bên trái, ba ý bên phải hiện lần lượt. Highlight = 1, = 2 khi đọc \"số trường\".\nHiện dần: bước 1 khi đọc “Khối service”; bước 2 khi đọc “Hai khối message”; bước 3 khi đọc “Khóa không tồn tại”.", "start": 165.66, "audio": "audio/7435db0435a299a4.mp3", "dur": 27.34, "words": [[0.1, "Khối", 0], [0.4, "service", 0], [0.875, "khai", 0], [1.125, "báo", 0], [1.337, "một", 0], [1.756, "RPC", 0], [2.175, "kiểu", 0], [2.475, "unary,", 0], [3.337, "tức", 0], [3.55, "một", 0], [3.75, "request", 0], [3.962, "và", 0], [4.112, "một", 0], [4.325, "response,", 0], [5.237, "như", 0], [5.463, "mọi", 0], [5.662, "lời", 0], [5.85, "gọi", 0], [6.062, "từ", 0], [6.25, "đầu", 0], [6.438, "chương.", 0], [7.662, "Hai", 1], [7.925, "khối", 1], [8.175, "message", 1], [8.625, "khai", 1], [8.85, "báo", 1], [9.062, "trường", 1], [9.35, "của", 1], [9.475, "request", 1], [9.7, "và", 1], [9.887, "của", 1], [10.062, "reply:", 1], [10.775, "mỗi", 1], [11.012, "trường", 1], [11.262, "có", 1], [11.387, "kiểu,", 1], [12.0, "tên", 1], [12.262, "và", 1], [12.387, "số", 1], [12.613, "trường;", 1], [13.125, "số", 1], [13.363, "trường", 1], [13.588, "được", 1], [13.738, "ghi", 1], [13.912, "vào", 1], [14.075, "tag,", 1], [14.6, "nên", 1], [14.887, "đã", 1], [15.0, "dùng", 1], [15.275, "thì", 1], [15.438, "không", 1], [15.65, "được", 1], [15.787, "đổi.", 1], [17.0, "Khóa", 2], [17.325, "không", 2], [17.538, "tồn", 2], [17.788, "tại", 2], [17.925, "được", 2], [18.062, "báo", 2], [18.288, "bằng", 2], [18.525, "trường", 2], [18.762, "found", 2], [18.938, "bằng", 2], [19.125, "false;", 2], [19.663, "phiên", 2], [19.925, "bản", 2], [20.137, "3", 2], [20.325, "của", 2], [20.562, "Protocol", 2], [21.288, "Buffers", 2], [21.712, "không", 2], [21.95, "có", 2], [22.062, "giá", 2], [22.262, "trị", 2], [22.475, "null,", 2], [22.988, "trường", 2], [23.25, "nào", 2], [23.438, "không", 2], [23.663, "gán", 2], [23.913, "thì", 2], [24.038, "mang", 2], [24.275, "giá", 2], [24.45, "trị", 2], [24.625, "mặc", 2], [24.8, "định,", 2], [25.275, "như", 2], [25.538, "chuỗi", 2], [25.775, "rỗng", 2], [26.012, "hay", 2], [26.163, "false.", 2]], "cues": [0.1, 7.662, 17.0], "lang": 5.6}, {"ten": "Slide 5. Server: kế thừa lớp cơ sở sinh ra, trả kết quả qua StreamObserver", "loai": "slide", "slide": "S05", "dung": "Mã phía trên, log phía dưới. Highlight extends LookupGrpc.LookupImplBase, rồi onNext, onCompleted theo lời đọc.\nHiện dần: bước 1 khi đọc “Hai lời gọi trong log”.", "start": 198.6, "audio": "audio/764c064cae89b3d5.mp3", "dur": 38.57, "words": [[0.1, "Phía", 0], [0.425, "server,", 0], [1.1, "lớp", 0], [1.425, "LookupService", 0], [2.2, "kế", 0], [2.413, "thừa", 0], [2.587, "LookupImplBase", 0], [3.587, "và", 0], [3.763, "ghi", 0], [3.95, "đè", 0], [4.138, "phương", 0], [4.338, "thức", 0], [4.562, "lookup.", 0], [5.85, "Khác", 1], [6.15, "với", 1], [6.725, "RMI,", 1], [7.3, "phương", 1], [7.562, "thức", 1], [7.787, "lookup", 1], [8.2, "không", 1], [8.488, "trả", 1], [8.675, "kết", 1], [8.875, "quả", 1], [9.1, "bằng", 1], [9.312, "lệnh", 1], [9.512, "return", 1], [10.125, "mà", 1], [10.262, "nhận", 1], [10.5, "thêm", 1], [10.688, "một", 1], [10.838, "đối", 1], [10.988, "tượng", 1], [11.25, "responseObserver,", 1], [12.625, "kiểu", 1], [12.863, "StreamObserver.", 1], [14.675, "Server", 2], [15.125, "gửi", 2], [15.363, "reply", 2], [15.812, "bằng", 2], [16.062, "phương", 2], [16.275, "thức", 2], [16.488, "onNext,", 2], [17.125, "rồi", 2], [17.413, "báo", 2], [17.637, "kết", 2], [17.812, "thúc", 2], [18.025, "bằng", 2], [18.225, "phương", 2], [18.438, "thức", 2], [18.65, "onCompleted.", 2], [20.075, "Lời", 3], [20.375, "gọi", 3], [20.625, "unary", 3], [21.15, "có", 3], [21.288, "đúng", 3], [21.475, "một", 3], [21.613, "lần", 3], [21.863, "onNext;", 3], [22.512, "cách", 3], [22.712, "viết", 3], [22.938, "qua", 3], [23.1, "StreamObserver", 3], [23.988, "chuẩn", 3], [24.288, "bị", 3], [24.488, "cho", 3], [24.6, "các", 3], [24.762, "lời", 3], [24.938, "gọi", 3], [25.125, "trả", 3], [25.337, "nhiều", 3], [25.562, "message", 3], [26.062, "ở", 3], [26.2, "phần", 3], [26.413, "sau.", 3], [27.575, "Ngoài", 4], [27.913, "đoạn", 4], [28.137, "mã", 4], [28.35, "trên", 4], [28.538, "slide,", 4], [29.175, "hàm", 4], [29.4, "main", 4], [29.587, "dùng", 4], [29.825, "ServerBuilder", 4], [30.538, "đăng", 4], [30.738, "ký", 4], [30.95, "dịch", 4], [31.137, "vụ", 4], [31.387, "ở", 4], [31.512, "port", 4], [32.55, "9199.", 4], [33.587, "Hai", 5], [33.812, "lời", 5], [33.962, "gọi", 5], [34.212, "trong", 5], [34.413, "log", 5], [34.638, "chạy", 5], [34.862, "trên", 5], [35.05, "thread", 5], [35.288, "của", 5], [35.6, "executor", 5], [36.163, "mặc", 5], [36.362, "định", 5], [36.6, "trong", 5], [36.6, "gRPC.", 5]], "cues": [33.587], "lang": 9.6}, {"ten": "Slide 6. Client: ManagedChannel và blocking stub cho lời gọi unary", "loai": "slide", "slide": "S06", "dung": "Mã phía trên, kết quả phía dưới. Highlight newBlockingStub rồi stub.lookup(request) theo lời đọc.\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 246.77, "audio": "audio/15c8a1edea0f820d.mp3", "dur": 34.97, "words": [[0.1, "Phía", 0], [0.4, "client,", 0], [1.025, "mình", 0], [1.25, "tạo", 0], [1.438, "một", 0], [1.613, "đối", 0], [1.775, "tượng", 0], [2.038, "ManagedChannel", 0], [3.0, "để", 0], [3.15, "quản", 0], [3.4, "lý", 0], [3.562, "kết", 0], [3.812, "nối", 0], [4.343, "HTTP/2", 0], [4.875, "tới", 0], [5.125, "server;", 0], [5.85, "phương", 0], [6.125, "thức", 0], [6.388, "usePlaintext", 0], [7.225, "chọn", 0], [7.812, "h2c,", 0], [8.4, "tức", 0], [8.975, "HTTP/2", 0], [9.55, "không", 0], [9.762, "mã", 0], [9.9, "hóa", 0], [10.15, "như", 0], [10.387, "ở", 0], [10.5, "Chương", 0], [10.738, "3,", 0], [11.188, "chỉ", 0], [11.425, "để", 0], [11.588, "chạy", 0], [11.8, "cục", 0], [11.988, "bộ.", 0], [13.125, "Trên", 1], [13.463, "channel", 1], [13.775, "đó,", 1], [14.275, "phương", 1], [14.55, "thức", 1], [14.775, "newBlockingStub", 1], [15.725, "tạo", 1], [15.963, "blocking", 1], [16.413, "stub,", 1], [16.988, "loại", 1], [17.238, "stub", 1], [17.562, "chặn", 1], [17.812, "thread", 1], [18.062, "gọi", 1], [18.312, "cho", 1], [18.438, "tới", 1], [18.637, "khi", 1], [18.812, "nhận", 1], [19.075, "được", 1], [19.25, "reply.", 1], [20.562, "Mình", 2], [20.913, "dựng", 2], [21.125, "request", 2], [21.312, "bằng", 2], [21.55, "builder", 2], [21.925, "của", 2], [22.075, "lớp", 2], [22.325, "message", 2], [22.712, "sinh", 2], [22.95, "ra,", 2], [23.462, "rồi", 2], [23.688, "gọi", 2], [23.887, "phương", 2], [24.087, "thức", 2], [24.288, "lookup", 2], [24.725, "trên", 2], [24.938, "stub", 2], [25.275, "và", 2], [25.45, "nhận", 2], [25.725, "về", 2], [25.837, "một", 2], [26.075, "LookupReply.", 2], [27.85, "Kết", 3], [28.05, "quả:", 3], [28.637, "khóa", 3], [28.887, "hanoi", 3], [29.288, "có", 3], [29.413, "trường", 3], [29.65, "found", 3], [29.887, "là", 3], [30.0, "true", 3], [30.212, "kèm", 3], [30.462, "giá", 3], [30.637, "trị,", 3], [31.188, "còn", 3], [31.425, "khóa", 3], [31.688, "atlantis", 3], [32.45, "có", 3], [32.575, "found", 3], [32.763, "là", 3], [32.888, "false", 3], [33.163, "và", 3], [33.325, "value", 3], [33.725, "rỗng.", 3]], "cues": [27.85], "lang": 9.6}, {"ten": "Slide 7. Đổi số trường làm client cũ đọc sai; chỉ thêm trường với số mới", "loai": "slide", "slide": "S07", "dung": "Mã phía trên, kết quả phía dưới, hai ý hiện sau kết quả.\nHiện dần: bước 1 khi đọc “Kết quả”; bước 2 khi đọc “ở trường hợp thứ nhất”; bước 3 khi đọc “Ở trường hợp thứ hai”.", "start": 291.34, "audio": "audio/e030eb72e4f259e6.mp3", "dur": 40.66, "words": [[0.1, "Vì", 0], [0.362, "số", 0], [0.613, "trường", 0], [0.925, "là", 0], [1.05, "định", 0], [1.275, "danh", 0], [1.488, "trên", 0], [1.675, "mạng,", 0], [2.188, "hợp", 0], [2.425, "đồng", 0], [2.65, "phải", 0], [2.788, "được", 0], [2.938, "sửa", 0], [3.15, "cẩn", 0], [3.4, "thận.", 0], [4.575, "Chương", 1], [4.912, "trình", 1], [5.138, "CompatDemo", 1], [5.938, "giả", 1], [6.175, "lập", 1], [6.375, "hai", 1], [6.575, "phiên", 1], [6.787, "bản", 1], [7.025, "server", 1], [7.338, "mới,", 1], [7.912, "trong", 1], [8.162, "khi", 1], [8.363, "client", 1], [8.812, "vẫn", 1], [9.037, "dùng", 1], [9.25, "LookupReply", 1], [10.088, "cũ.", 1], [11.35, "Bản", 2], [11.613, "thứ", 2], [11.762, "nhất", 2], [11.975, "đổi", 2], [12.137, "số", 2], [12.412, "của", 2], [12.575, "hai", 2], [12.762, "trường", 2], [13.025, "found", 2], [13.262, "và", 2], [13.387, "value;", 2], [14.075, "bản", 2], [14.312, "thứ", 2], [14.488, "hai", 2], [14.713, "giữ", 2], [14.887, "nguyên", 2], [15.125, "hai", 2], [15.3, "trường", 2], [15.625, "và", 2], [15.738, "thêm", 2], [15.975, "trường", 2], [16.25, "version", 2], [16.762, "với", 2], [16.875, "số", 2], [17.062, "3.", 2], [18.2, "Kết", 3], [18.4, "quả:", 3], [19.012, "ở", 3], [19.2, "trường", 3], [19.425, "hợp", 3], [19.6, "thứ", 3], [19.762, "nhất,", 3], [20.262, "client", 3], [20.675, "đọc", 3], [20.825, "được", 3], [20.975, "trường", 3], [21.238, "found", 3], [21.462, "là", 3], [21.575, "false", 3], [21.837, "và", 3], [21.962, "trường", 3], [22.262, "value", 3], [22.625, "rỗng,", 3], [23.2, "hai", 3], [23.4, "trường", 3], [23.675, "của", 3], [23.8, "server", 3], [24.2, "bị", 3], [24.375, "coi", 3], [24.575, "là", 3], [24.675, "trường", 3], [24.925, "lạ,", 3], [25.438, "và", 3], [25.688, "không", 3], [25.887, "có", 3], [25.975, "ngoại", 3], [26.2, "lệ", 3], [26.387, "nào,", 3], [26.887, "nên", 3], [27.2, "client", 3], [27.562, "hiểu", 3], [27.812, "là", 3], [27.95, "không", 3], [28.175, "có", 3], [28.288, "khóa.", 3], [29.55, "Ở", 4], [29.75, "trường", 4], [29.988, "hợp", 4], [30.175, "thứ", 4], [30.337, "hai,", 4], [30.875, "client", 4], [31.337, "đọc", 4], [31.5, "đúng", 4], [31.738, "found", 4], [31.988, "và", 4], [32.138, "value,", 4], [32.812, "chỉ", 4], [33.062, "bỏ", 4], [33.3, "qua", 4], [33.487, "trường", 4], [33.737, "số", 4], [33.95, "3.", 4], [35.087, "Vì", 5], [35.337, "vậy,", 5], [35.8, "quy", 5], [35.987, "tắc", 5], [36.25, "là", 5], [36.425, "chỉ", 5], [36.625, "thêm", 5], [36.85, "trường", 5], [37.112, "mới", 5], [37.362, "với", 5], [37.475, "số", 5], [37.663, "mới,", 5], [38.237, "không", 5], [38.5, "đổi", 5], [38.663, "số", 5], [38.913, "của", 5], [39.062, "trường", 5], [39.337, "đã", 5], [39.487, "dùng.", 5]], "cues": [18.2, 19.012, 29.55], "lang": 9.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án C được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 341.6, "audio": "audio/c9464f2cd69cbfab.mp3", "dur": 4.18, "words": [[0.1, "Mình", 0], [0.487, "kiểm", 0], [0.7, "tra", 0], [0.912, "lại", 0], [1.087, "vai", 0], [1.275, "trò", 0], [1.55, "của", 0], [1.663, "số", 0], [1.875, "trường", 0], [2.188, "bằng", 0], [2.4, "câu", 0], [2.587, "hỏi", 0], [2.8, "đầu", 0], [2.962, "tiên.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/a1e397b41657d435.mp3", "dur2": 12.1, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.675, "là", 0], [0.775, "C.", 0], [1.15, "Phương", 1], [1.5, "án", 1], [1.738, "A", 1], [1.962, "là", 1], [2.075, "hiểu", 1], [2.263, "nhầm", 1], [2.525, "hay", 1], [2.675, "gặp,", 1], [3.15, "vì", 1], [3.35, "số", 1], [3.538, "trường", 1], [3.775, "thường", 1], [4.013, "đánh", 1], [4.2, "theo", 1], [4.35, "thứ", 1], [4.55, "tự", 1], [4.763, "khai", 1], [4.987, "báo.", 1], [6.175, "Thực", 2], [6.388, "ra", 2], [6.525, "số", 2], [6.8, "trường", 2], [7.013, "được", 2], [7.15, "ghi", 2], [7.325, "vào", 2], [7.475, "tag", 2], [7.713, "của", 2], [7.812, "từng", 2], [8.025, "trường,", 2], [8.525, "nên", 2], [8.825, "CompatDemo", 2], [9.65, "đọc", 2], [9.85, "sai", 2], [10.113, "ngay", 2], [10.287, "khi", 2], [10.45, "số", 2], [10.7, "bị", 2], [10.863, "đổi.", 2]], "dap_an": "C", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án A.", "start": 364.48, "audio": "audio/13d469ddaef047fc.mp3", "dur": 4.73, "words": [[0.1, "Câu", 0], [0.287, "hỏi", 0], [0.475, "tiếp", 0], [0.713, "theo", 0], [0.887, "liên", 0], [1.087, "hệ", 0], [1.606, "gRPC", 0], [2.125, "với", 0], [2.675, "HTTP/2", 0], [3.225, "ở", 0], [3.325, "Chương", 0], [3.6, "3.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/0fcfd52c1965ace4.mp3", "dur2": 15.77, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.662, "là", 0], [0.863, "A.", 0], [1.238, "Mỗi", 1], [1.438, "lời", 1], [1.587, "gọi", 1], [2.125, "gRPC", 1], [2.663, "là", 1], [2.763, "một", 1], [3.312, "HTTP/2", 1], [3.862, "stream,", 1], [4.513, "nên", 1], [4.787, "các", 1], [4.95, "lời", 1], [5.1, "gọi", 1], [5.287, "tới", 1], [5.487, "cùng", 1], [5.725, "server", 1], [6.088, "chia", 1], [6.3, "nhau", 1], [6.537, "một", 1], [6.713, "kết", 1], [6.875, "nối,", 1], [7.388, "đúng", 1], [7.638, "cơ", 1], [7.825, "chế", 1], [8.062, "multiplexing", 1], [8.8, "ở", 1], [8.912, "Chương", 1], [9.175, "3.", 1], [10.287, "Phương", 2], [10.637, "án", 2], [10.838, "B", 2], [10.988, "mô", 2], [11.188, "tả", 2], [11.412, "cách", 2], [11.412, "HTTP/1.1", 2], [11.412, "phải", 2], [11.412, "mở", 2], [11.412, "nhiều", 2], [11.412, "kết", 2], [11.412, "nối", 2], [11.412, "để", 2], [11.412, "chạy", 2], [11.412, "song", 2], [11.412, "song.", 2]], "dap_an": "A", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “gRPC quay lại”; bước 2 khi đọc “Từ file .proto”; bước 3 khi đọc “Protocol Buffers mã hóa”; bước 4 khi đọc “Phần này khép lại”.", "start": 391.58, "audio": "audio/eec14d99213d57b9.mp3", "dur": 33.58, "words": [[0.988, "gRPC", 0], [0.988, "quay", 0], [1.212, "lại", 0], [1.375, "mô", 0], [1.55, "hình", 0], [2.1, "RPC,", 0], [2.65, "chạy", 0], [2.888, "trên", 0], [3.607, "HTTP/2,", 0], [4.325, "với", 0], [4.5, "hợp", 0], [4.7, "đồng", 0], [4.975, "là", 0], [5.125, "file", 0], [5.575, ".proto", 0], [6.013, "viết", 0], [6.188, "bằng", 0], [6.4, "Protocol", 0], [7.05, "Buffers.", 0], [8.35, "Từ", 1], [8.65, "file", 1], [9.125, ".proto,", 1], [9.85, "protoc", 1], [10.537, "sinh", 1], [10.762, "lớp", 1], [11.0, "message", 1], [11.412, "và", 1], [11.562, "stub,", 1], [12.162, "và", 1], [12.4, "client", 1], [12.812, "gọi", 1], [13.206, "RPC", 1], [13.6, "unary", 1], [14.062, "qua", 1], [14.3, "blocking", 1], [14.675, "stub", 1], [15.225, "như", 1], [15.45, "gọi", 1], [15.625, "một", 1], [15.812, "phương", 1], [16.05, "thức", 1], [16.25, "cục", 1], [16.425, "bộ.", 1], [17.575, "Protocol", 2], [18.262, "Buffers", 2], [18.712, "mã", 2], [18.9, "hóa", 2], [19.163, "theo", 2], [19.325, "số", 2], [19.562, "trường", 2], [19.85, "nên", 2], [20.05, "message", 2], [20.438, "nhỏ", 2], [20.7, "hơn", 2], [21.175, "JSON,", 2], [21.65, "đổi", 2], [21.825, "lại", 2], [21.975, "số", 2], [22.188, "trường", 2], [22.45, "đã", 2], [22.562, "dùng", 2], [22.837, "thì", 2], [23.0, "không", 2], [23.2, "được", 2], [23.337, "đổi.", 2], [24.55, "Phần", 3], [24.8, "này", 3], [24.95, "khép", 3], [25.163, "lại", 3], [25.363, "với", 3], [25.475, "sáu", 3], [25.712, "từ", 3], [25.875, "khóa:", 3], [26.8, "gRPC,", 3], [27.725, "Protocol", 3], [28.387, "Buffers,", 3], [29.113, "file", 3], [29.637, ".proto,", 3], [30.375, "sinh", 3], [30.637, "mã,", 3], [31.25, "unary", 3], [31.8, "và", 3], [31.95, "blocking", 3], [32.413, "stub.", 3]], "cues": [0.988, 8.35, 17.575, 24.55], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Quy tắc về số trường”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 425.76, "audio": "audio/a8e75b4c2199c351.mp3", "dur": 20.98, "words": [[0.1, "Quy", 0], [0.3, "tắc", 0], [0.537, "về", 0], [0.713, "số", 0], [0.95, "trường", 0], [1.275, "là", 0], [1.375, "một", 0], [1.562, "phần", 0], [1.788, "của", 0], [1.913, "chủ", 0], [2.138, "đề", 0], [2.3, "tương", 0], [2.525, "thích", 0], [2.688, "ngược", 0], [2.9, "và", 0], [3.05, "tương", 0], [3.263, "thích", 0], [3.375, "xuôi", 0], [3.6, "trong", 0], [3.812, "Protocol", 0], [4.4, "Buffers,", 0], [5.138, "đáng", 0], [5.375, "đọc", 0], [5.537, "thêm", 0], [5.787, "trước", 0], [5.963, "khi", 0], [6.15, "sửa", 0], [6.325, "hợp", 0], [6.5, "đồng", 0], [6.737, "của", 0], [6.85, "một", 0], [7.025, "hệ", 0], [7.175, "thống", 0], [7.388, "đang", 0], [7.575, "chạy;", 0], [8.1, "với", 0], [8.262, "trình", 0], [8.475, "duyệt,", 0], [8.938, "các", 0], [9.125, "bạn", 0], [9.325, "có", 0], [9.425, "thể", 0], [9.588, "tìm", 0], [9.838, "hiểu", 0], [10.881, "gRPC-Web.", 0], [11.925, "Bài", 1], [12.162, "tập", 1], [12.363, "mở", 1], [12.562, "rộng", 1], [12.825, "là", 1], [12.988, "thêm", 1], [13.425, "RPC", 1], [13.863, "Update", 1], [14.35, "nhận", 1], [14.6, "khóa", 1], [14.925, "và", 1], [15.05, "giá", 1], [15.238, "trị", 1], [15.488, "vào", 1], [15.637, "lookup.proto,", 1], [17.1, "sinh", 1], [17.337, "lại", 1], [17.5, "mã,", 1], [18.087, "rồi", 1], [18.3, "viết", 1], [18.5, "test", 1], [18.738, "gọi", 1], [19.0, "Lookup", 1], [19.4, "sau", 1], [19.725, "Update.", 1]], "cues": [0.1, 11.925], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 447.34, "audio": "audio/63560b06c2bde8e4.mp3", "dur": 11.3, "words": [[0.1, "Mọi", 0], [0.463, "lời", 0], [0.65, "gọi", 0], [0.9, "ở", 0], [0.988, "đây", 0], [1.188, "đều", 0], [1.337, "là", 0], [1.55, "unary,", 0], [2.4, "và", 0], [2.675, "client", 0], [3.075, "chờ", 0], [3.288, "kết", 0], [3.5, "quả", 0], [3.775, "mà", 0], [3.938, "không", 0], [4.162, "đặt", 0], [4.312, "giới", 0], [4.513, "hạn", 0], [4.75, "thời", 0], [4.888, "gian", 0], [5.088, "nào.", 0], [6.2, "Phần", 1], [6.463, "tiếp", 1], [6.688, "theo", 1], [6.838, "bàn", 1], [7.062, "về", 1], [7.237, "streaming,", 1], [7.963, "deadline", 1], [8.537, "và", 1], [8.675, "mã", 1], [8.875, "trạng", 1], [9.1, "thái", 1], [9.35, "của", 1], [9.35, "gRPC.", 1]], "cues": [], "lang": 0.6}], "video_sau": "gRPC: streaming, deadline và mã trạng thái"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

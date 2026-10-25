@@ -1,0 +1,2 @@
+hanoi -> found=true, value="Thủ đô của Việt Nam"
+atlantis -> found=false, value=""

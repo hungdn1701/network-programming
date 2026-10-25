@@ -1,0 +1,3 @@
+server returned version 1; client entry.version = 0
+client entry: sapa = sửa ở client (version 0)
+server entry: sapa = Thị trấn vùng cao (version 1)

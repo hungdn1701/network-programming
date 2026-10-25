@@ -1,0 +1,3 @@
+bound "LookupService" in RMI registry on port 1099; object on port 9199
+lookup("hanoi") on thread RMI TCP Connection(2)-127.0.0.1
+lookup("atlantis") on thread RMI TCP Connection(2)-127.0.0.1

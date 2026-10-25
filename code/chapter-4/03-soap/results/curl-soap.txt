@@ -1,0 +1,9 @@
+HTTP 200, request body 205 bytes, response body 250 bytes
+<?xml version="1.0" encoding="UTF-8"?>
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Body>
+    <ns2:lookupResponse xmlns:ns2="http://netlab/lookup">
+      <return>Thủ đô của Việt Nam</return>
+    </ns2:lookupResponse>
+  </S:Body>
+</S:Envelope>

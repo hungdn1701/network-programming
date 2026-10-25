@@ -1,0 +1,7 @@
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:lk="http://netlab/lookup">
+  <soap:Body>
+    <lk:lookup>
+      <key>hanoi</key>
+    </lk:lookup>
+  </soap:Body>
+</soap:Envelope>

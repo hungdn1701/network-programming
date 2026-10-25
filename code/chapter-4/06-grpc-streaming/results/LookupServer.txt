@@ -1,0 +1,3 @@
+gRPC server on port 9199
+Prefix("hanoi."): completed, 5 entries
+Prefix("hanoi."): cancelled by client after 3 entries

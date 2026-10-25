@@ -1,0 +1,406 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V24 — Web service: SOAP, hợp đồng WSDL và message XML · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a> · <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-4/03-soap">Mã</a>
+<h1>V24 · Web service: SOAP, hợp đồng WSDL và message XML</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng · Chương 4</div><div class="ten">Web service: SOAP, hợp đồng WSDL và message XML</div><div class="gv">TS. Đặng Ngọc Hùng</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Gọi dịch vụ từ ngôn ngữ khác: cần hợp đồng và message chung</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">RMI: stub, serialization, giao thức đều là cơ chế <b>riêng của Java</b></li><li data-s="2">Cần một <b>hợp đồng</b> mô tả thao tác và kiểu dữ liệu, không phụ thuộc ngôn ngữ</li><li data-s="3">Cần một <b>định dạng message</b> mọi ngôn ngữ đọc được, truyền qua giao thức sẵn có: <b>HTTP</b></li></ul><div class="khung" data-s="4"><b>Câu hỏi của phần:</b> SOAP message có cấu trúc thế nào, và WSDL mô tả dịch vụ ra sao để ngôn ngữ nào cũng gọi được?</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>SOAP message: Envelope bọc Header và Body, đi trong một HTTP POST</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Trái: request là một HTTP POST tới /lookup, kiểu nội dung text/xml; thân là phần tử soap:Envelope, chứa soap:Header tùy chọn và soap:Body. Body chứa phần tử lookup trong namespace của dịch vụ, với phần tử con key có giá trị hanoi: tên thao tác và tham số. Phải: response HTTP 200, cũng là một Envelope; Body chứa lookupResponse với phần tử return có giá trị Thủ đô của Việt Nam.">
+
+  <!-- ① request: HTTP POST mang Envelope gồm Header và Body -->
+  <g data-s="1">
+    <rect x="40" y="40" width="780" height="420" rx="8" fill="#F4F5F8" stroke="#9AA3B8" stroke-width="2"/>
+    <text x="64" y="76" font-size="21" fill="#5B6478" font-family="Consolas, monospace">POST /lookup · Content-Type: text/xml</text>
+    <rect x="70" y="96" width="720" height="340" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="94" y="132" font-size="21" font-weight="500" fill="#051A53" font-family="Consolas, monospace">soap:Envelope</text>
+    <rect x="100" y="150" width="660" height="56" rx="4" fill="#FFFFFF" stroke="#9AA3B8" stroke-width="2" stroke-dasharray="7 5"/>
+    <text x="124" y="185" font-size="20" fill="#5B6478"><tspan font-family="Consolas, monospace">soap:Header</tspan> · tùy chọn (bảo mật, giao dịch…)</text>
+    <rect x="100" y="222" width="660" height="196" rx="4" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="124" y="256" font-size="21" font-weight="500" fill="#6B4E06" font-family="Consolas, monospace">soap:Body</text>
+  </g>
+
+  <!-- ② Body: tên thao tác và tham số -->
+  <g data-s="2">
+    <rect x="130" y="276" width="600" height="122" rx="4" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="154" y="314" font-size="21" fill="#22603F" font-family="Consolas, monospace">&lt;lk:lookup&gt;   ← tên thao tác</text>
+    <text x="184" y="350" font-size="21" fill="#22603F" font-family="Consolas, monospace">&lt;key&gt;hanoi&lt;/key&gt;   ← tham số</text>
+    <text x="154" y="384" font-size="21" fill="#22603F" font-family="Consolas, monospace">&lt;/lk:lookup&gt;</text>
+  </g>
+
+  <!-- ③ response: cùng cấu trúc, Body mang kết quả -->
+  <g data-s="3">
+    <rect x="900" y="40" width="820" height="420" rx="8" fill="#F4F5F8" stroke="#9AA3B8" stroke-width="2"/>
+    <text x="924" y="76" font-size="21" fill="#5B6478" font-family="Consolas, monospace">HTTP 200 · Content-Type: text/xml</text>
+    <rect x="930" y="96" width="760" height="340" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="954" y="132" font-size="21" font-weight="500" fill="#051A53" font-family="Consolas, monospace">S:Envelope</text>
+    <rect x="960" y="222" width="700" height="196" rx="4" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="984" y="256" font-size="21" font-weight="500" fill="#6B4E06" font-family="Consolas, monospace">S:Body</text>
+    <rect x="990" y="276" width="640" height="122" rx="4" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1014" y="314" font-size="21" fill="#22603F" font-family="Consolas, monospace">&lt;ns2:lookupResponse&gt;</text>
+    <text x="1044" y="350" font-size="21" fill="#22603F" font-family="Consolas, monospace">&lt;return&gt;Thủ đô của Việt Nam&lt;/return&gt;</text>
+    <text x="1014" y="384" font-size="21" fill="#22603F" font-family="Consolas, monospace">&lt;/ns2:lookupResponse&gt;</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>SOAP</b>: lời gọi và kết quả là message <b>XML</b>; <b>SOAP envelope</b> chứa Header tùy chọn và Body mang thao tác, tham số.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>WSDL là hợp đồng: từ đó mỗi ngôn ngữ tạo stub của mình</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Trái: WSDL của dịch vụ tra cứu do server sinh ở địa chỉ endpoint kèm ?wsdl, gồm types: phần tử lookup có key kiểu chuỗi; portType: thao tác lookup với message vào và ra; binding: SOAP qua HTTP; service: địa chỉ http://127.0.0.1:9199/lookup. Phải: từ cùng một WSDL, công cụ của từng ngôn ngữ tạo stub: Java dùng wsimport, C# dùng dotnet-svcutil, Python dùng thư viện zeep đọc WSDL lúc chạy; client mọi ngôn ngữ gửi SOAP message qua HTTP tới server Java.">
+  <defs>
+    <marker id="wh-a" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="wh-g" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#8A6508"/></marker>
+  </defs>
+
+  <!-- khung WSDL -->
+  <rect x="40" y="40" width="620" height="420" rx="8" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+  <text x="64" y="76" font-size="22" font-weight="500" fill="#6B4E06">WSDL · /lookup?wsdl</text>
+
+  <!-- ① có gì: kiểu dữ liệu và thao tác -->
+  <g data-s="1">
+    <rect x="64" y="96" width="572" height="80" rx="4" fill="#FFFFFF" stroke="#8A6508" stroke-width="2"/>
+    <text x="84" y="128" font-size="20" fill="#6B4E06" font-family="Consolas, monospace">types</text>
+    <text x="84" y="158" font-size="20" fill="#373D4E">phần tử lookup: key kiểu chuỗi</text>
+    <rect x="64" y="188" width="572" height="80" rx="4" fill="#FFFFFF" stroke="#8A6508" stroke-width="2"/>
+    <text x="84" y="220" font-size="20" fill="#6B4E06" font-family="Consolas, monospace">portType</text>
+    <text x="84" y="250" font-size="20" fill="#373D4E">thao tác lookup: message vào, message ra</text>
+  </g>
+
+  <!-- ② gọi bằng gì, ở đâu -->
+  <g data-s="2">
+    <rect x="64" y="280" width="572" height="80" rx="4" fill="#FFFFFF" stroke="#8A6508" stroke-width="2"/>
+    <text x="84" y="312" font-size="20" fill="#6B4E06" font-family="Consolas, monospace">binding</text>
+    <text x="84" y="342" font-size="20" fill="#373D4E">SOAP qua HTTP</text>
+    <rect x="64" y="372" width="572" height="72" rx="4" fill="#FFFFFF" stroke="#8A6508" stroke-width="2"/>
+    <text x="84" y="402" font-size="20" fill="#6B4E06" font-family="Consolas, monospace">service</text>
+    <text x="84" y="430" font-size="20" fill="#373D4E" font-family="Consolas, monospace">http://127.0.0.1:9199/lookup</text>
+  </g>
+
+  <!-- ③ mỗi ngôn ngữ tạo stub từ WSDL, gọi cùng một server -->
+  <g data-s="3">
+    <g stroke-width="2.5">
+      <rect x="800" y="70" width="440" height="96" rx="6" fill="#EEF2FB" stroke="#051A53"/>
+      <rect x="800" y="202" width="440" height="96" rx="6" fill="#EEF2FB" stroke="#051A53"/>
+      <rect x="800" y="334" width="440" height="96" rx="6" fill="#EEF2FB" stroke="#051A53"/>
+    </g>
+    <text x="824" y="108" font-size="21" font-weight="500" fill="#051A53">client Java</text>
+    <text x="824" y="142" font-size="20" fill="#373D4E">wsimport sinh stub</text>
+    <text x="824" y="240" font-size="21" font-weight="500" fill="#051A53">client C#</text>
+    <text x="824" y="274" font-size="20" fill="#373D4E">dotnet-svcutil sinh stub</text>
+    <text x="824" y="372" font-size="21" font-weight="500" fill="#051A53">client Python</text>
+    <text x="824" y="406" font-size="20" fill="#373D4E">zeep đọc WSDL lúc chạy</text>
+    <line x1="662" y1="250" x2="794" y2="118" stroke="#8A6508" stroke-width="2" marker-end="url(#wh-g)"/>
+    <line x1="662" y1="250" x2="794" y2="250" stroke="#8A6508" stroke-width="2" marker-end="url(#wh-g)"/>
+    <line x1="662" y1="250" x2="794" y2="382" stroke="#8A6508" stroke-width="2" marker-end="url(#wh-g)"/>
+    <rect x="1440" y="190" width="280" height="120" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1580" y="240" text-anchor="middle" font-size="22" font-weight="500" fill="#22603F">server Java</text>
+    <text x="1580" y="274" text-anchor="middle" font-size="20" fill="#22603F">Metro, port 9199</text>
+    <line x1="1242" y1="118" x2="1434" y2="214" stroke="#051A53" stroke-width="2" marker-end="url(#wh-a)"/>
+    <line x1="1242" y1="250" x2="1434" y2="250" stroke="#051A53" stroke-width="2" marker-end="url(#wh-a)"/>
+    <line x1="1242" y1="382" x2="1434" y2="286" stroke="#051A53" stroke-width="2" marker-end="url(#wh-a)"/>
+    <text x="1580" y="344" text-anchor="middle" font-size="20" fill="#051A53">nhận SOAP qua HTTP</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="4"><p><b>WSDL</b> mô tả thao tác, kiểu dữ liệu và endpoint; công cụ của từng ngôn ngữ đọc WSDL để tạo stub.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Server SOAP: vài chú thích và một lời gọi publish</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-a">@WebService</span>(serviceName = <span class="hl-s">"</span><span class="hl-s">LookupService</span><span class="hl-s">"</span>, targetNamespace = <span class="hl-s">"</span><span class="hl-s">http://netlab/lookup</span><span class="hl-s">"</span>)
+<span class="hl-k">public</span> <span class="hl-k">class</span> <span class="hl-t">LookupWebService</span> {
+    <span class="hl-a">@WebMethod</span>
+    <span class="hl-k">public</span> <span class="hl-t">String</span> <span class="hl-m">lookup</span>(<span class="hl-a">@WebParam</span>(name = <span class="hl-s">"</span><span class="hl-s">key</span><span class="hl-s">"</span>) <span class="hl-t">String</span> key) {  <span class="hl-c">// thao tác lookup, tham số tên key trong message</span>
+        <span class="hl-k">return</span> <span class="hl-t">DATA</span>.<span class="hl-m">get</span>(key);
+    }
+}
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>SOAP endpoint http://127.0.0.1:9199/lookup, WSDL http://127.0.0.1:9199/lookup?wsdl
+lookup("hanoi")</pre></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S05"><header><h1>Gửi SOAP request bằng curl và đọc response XML</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Xml</span>&lt;soap:Envelope xmlns:soap=<span class="hl-s">"http://schemas.xmlsoap.org/soap/envelope/"</span> xmlns:lk=<span class="hl-s">"http://netlab/lookup"</span>&gt;
+  &lt;soap:Body&gt;
+    &lt;lk:lookup&gt;
+      &lt;key&gt;hanoi&lt;/key&gt;
+    &lt;/lk:lookup&gt;
+  &lt;/soap:Body&gt;
+&lt;/soap:Envelope&gt;
+</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>HTTP 200, request body 205 bytes, response body 250 bytes
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"&gt;
+  &lt;S:Body&gt;
+    &lt;ns2:lookupResponse xmlns:ns2="http://netlab/lookup"&gt;
+      &lt;return&gt;Thủ đô của Việt Nam&lt;/return&gt;
+    &lt;/ns2:lookupResponse&gt;
+  &lt;/S:Body&gt;
+&lt;/S:Envelope&gt;</pre></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S06"><header><h1>SOAP nặng: message dài, xử lý XML tốn tài nguyên, nhiều chuẩn mở rộng</h1></header><main class="bo-cuc-y"><ul class="y"><li data-s="1">Một lần tra cứu: request <b>205 byte</b>, response <b>250 byte</b> XML; giao thức dòng ở Chương 2 chỉ cần 6 và 31 byte</li><li data-s="2">Mỗi đầu phải phân tích XML và namespace: tốn CPU và bộ nhớ hơn nhiều so với đọc một dòng</li><li data-s="3">Họ chuẩn mở rộng <b>WS-</b>* (bảo mật, giao dịch, gửi tin cậy…) làm hệ thống phức tạp</li></ul><div class="khung" data-s="4"><b>Lưu ý:</b> SOAP vẫn có mặt trong hệ thống ngân hàng, dịch vụ công; API trên web chuyển dần sang REST.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q1"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Một client viết bằng C# muốn gọi dịch vụ tra cứu SOAP. WSDL cung cấp cho client những thông tin gì?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Mã nguồn Java của lớp LookupWebService.</div></div><div class="dung"><span>B</span><div>Thao tác, kiểu dữ liệu của tham số và kết quả, cách gọi (SOAP qua HTTP) và địa chỉ endpoint.</div></div><div class=""><span>C</span><div>Dữ liệu tra cứu hiện có trên server.</div></div><div class=""><span>D</span><div>Tài khoản và mật khẩu để gọi dịch vụ.</div></div></div><div class="giai-thich">WSDL là hợp đồng: types và portType mô tả thao tác, kiểu dữ liệu; binding và service mô tả giao thức và endpoint. Từ đó công cụ của C# tạo stub.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q1-dap-an"><header><h1>Câu hỏi 1</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">Một client viết bằng C# muốn gọi dịch vụ tra cứu SOAP. WSDL cung cấp cho client những thông tin gì?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Mã nguồn Java của lớp LookupWebService.</div></div><div class="dung"><span>B</span><div>Thao tác, kiểu dữ liệu của tham số và kết quả, cách gọi (SOAP qua HTTP) và địa chỉ endpoint.</div></div><div class=""><span>C</span><div>Dữ liệu tra cứu hiện có trên server.</div></div><div class=""><span>D</span><div>Tài khoản và mật khẩu để gọi dịch vụ.</div></div></div><div class="giai-thich">WSDL là hợp đồng: types và portType mô tả thao tác, kiểu dữ liệu; binding và service mô tả giao thức và endpoint. Từ đó công cụ của C# tạo stub.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide" id="Q2"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">So với Java RMI, SOAP giải quyết giới hạn nào?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Lời gọi từ xa không còn thất bại vì mạng.</div></div><div class=""><span>B</span><div>Message nhỏ hơn và xử lý nhanh hơn.</div></div><div class=""><span>C</span><div>Server không cần chạy khi client gọi.</div></div><div class="dung"><span>D</span><div>Client và server có thể viết bằng các ngôn ngữ khác nhau.</div></div></div><div class="giai-thich">SOAP dùng message XML và hợp đồng WSDL không phụ thuộc ngôn ngữ, truyền qua HTTP. Lời gọi vẫn có thể thất bại vì mạng, và message XML lớn hơn, xử lý chậm hơn.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide cau-hoi-slide show-answer" id="Q2-dap-an"><header><h1>Câu hỏi 2</h1></header><main class="bo-cuc-cau-hoi"><div class="cau-hoi"><div class="de">So với Java RMI, SOAP giải quyết giới hạn nào?</div></div><div class="lua-chon"><div class=""><span>A</span><div>Lời gọi từ xa không còn thất bại vì mạng.</div></div><div class=""><span>B</span><div>Message nhỏ hơn và xử lý nhanh hơn.</div></div><div class=""><span>C</span><div>Server không cần chạy khi client gọi.</div></div><div class="dung"><span>D</span><div>Client và server có thể viết bằng các ngôn ngữ khác nhau.</div></div></div><div class="giai-thich">SOAP dùng message XML và hợp đồng WSDL không phụ thuộc ngôn ngữ, truyền qua HTTP. Lời gọi vẫn có thể thất bại vì mạng, và message XML lớn hơn, xử lý chậm hơn.</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="TK"><header><h1>Tổng kết</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>Web service</b>: thao tác gọi qua HTTP, message và hợp đồng không phụ thuộc ngôn ngữ</div></div><div class="the" data-s="2"><span class="so">2</span><div><b>SOAP</b>: message <b>XML</b>; <b>SOAP envelope</b> gồm Header tùy chọn và Body mang thao tác, tham số</div></div><div class="the" data-s="3"><span class="so">3</span><div><b>WSDL</b>: hợp đồng mô tả thao tác, kiểu dữ liệu, endpoint; mỗi ngôn ngữ tạo stub từ WSDL</div></div></div><div class="tu-khoa" data-s="4"><span class="nhan">Từ khóa cần nhớ</span><span>web service</span><span>SOAP</span><span>SOAP envelope</span><span>WSDL</span><span>XML</span></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="MR"><header><h1>Mở rộng</h1></header><main class="bo-cuc-mo-rong"><div class="cot-mr" data-s="1"><div class="nhan-mr">Chủ đề nâng cao</div><ul><li><span style="white-space:nowrap">WS-Security</span></li><li>SOAP trong hệ thống ngân hàng và dịch vụ công</li></ul></div><div class="cot-mr" data-s="2"><div class="nhan-mr">Bài tập mở rộng</div><p>Sinh client từ WSDL của dịch vụ tra cứu (wsimport hoặc công cụ tương đương) và gọi thao tác lookup.</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Web service: REST, tài nguyên, phương thức HTTP và JSON</div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Dịch vụ tra cứu qua RMI chỉ phục vụ được client viết bằng Java. Muốn một hệ thống viết bằng C# hay Python cũng gọi được dịch vụ, lời gọi từ xa cần thay đổi những gì?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:13</span>
+      <h3>Slide 1. Gọi dịch vụ từ ngôn ngữ khác: cần hợp đồng và message chung</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>RMI: stub, serialization, giao thức đều là cơ chế **riêng của Java**</li><li>Cần một **hợp đồng** mô tả thao tác và kiểu dữ liệu, không phụ thuộc ngôn ngữ</li><li>Cần một **định dạng message** mọi ngôn ngữ đọc được, truyền qua giao thức sẵn có: **HTTP**</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Câu hỏi của phần:** SOAP message có cấu trúc thế nào, và WSDL mô tả dịch vụ ra sao để ngôn ngữ nào cũng gọi được?</div></div>
+    <div class="kb-thoai"><p>Với RMI, mọi thứ giữa hai đầu đều là cơ chế riêng của Java: stub do JDK sinh, tham số đi qua serialization của Java, và giao thức truyền cũng chỉ RMI runtime hiểu. Để ngôn ngữ khác gọi được, lời gọi từ xa cần hai thứ. Thứ nhất là một hợp đồng mô tả dịch vụ có những thao tác nào, tham số và kết quả thuộc kiểu gì, viết ở dạng không phụ thuộc ngôn ngữ. Thứ hai là một định dạng message mà ngôn ngữ nào cũng đọc được, truyền qua một giao thức có ở mọi nơi là HTTP. Dịch vụ cung cấp thao tác theo cách đó gọi là web service, tức dịch vụ gọi qua giao thức web; SOAP và WSDL là cặp chuẩn đầu tiên cho loại dịch vụ này, SOAP cho message, WSDL cho hợp đồng. Vậy SOAP message có cấu trúc thế nào, và WSDL mô tả dịch vụ ra sao để ngôn ngữ nào cũng gọi được?</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.
+Hiện dần: bước 1 khi đọc “Với RMI”; bước 2 khi đọc “Thứ nhất”; bước 3 khi đọc “Thứ hai”; bước 4 khi đọc “Vậy SOAP message”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:03</span>
+      <h3>Slide 2. SOAP message: Envelope bọc Header và Body, đi trong một HTTP POST</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**SOAP**: lời gọi và kết quả là message **XML**; **SOAP envelope** chứa Header tùy chọn và Body mang thao tác, tham số.</li></ul></div></div>
+    <div class="kb-thoai"><p>Trước hết là message. SOAP là giao thức đóng gói lời gọi và kết quả thành message XML, thường truyền qua HTTP. Các bạn nhìn request ở bên trái: đó là một HTTP POST tới đường dẫn lookup, với kiểu nội dung text/xml. Thân request là SOAP envelope, phần tử gốc của message, gồm phần Header tùy chọn cho các thông tin như bảo mật hay giao dịch, và phần Body. Phần Body mang lời gọi: phần tử lookup cho biết tên thao tác, còn phần tử con key chứa tham số, khóa hanoi. Response ở bên phải có cùng cấu trúc, và Body của nó chứa kết quả trong phần tử return. Ở cả hai chiều, XML thay cho serialization của Java, vì đây là dạng văn bản mà ngôn ngữ nào cũng có thư viện đọc ghi.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình soap-message: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Các bạn nhìn request”; bước 2 khi đọc “Phần Body mang lời gọi”; bước 3 khi đọc “Response ở bên phải”; bước 4 khi đọc “Ở cả hai chiều”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:51</span>
+      <h3>Slide 3. WSDL là hợp đồng: từ đó mỗi ngôn ngữ tạo stub của mình</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**WSDL** mô tả thao tác, kiểu dữ liệu và endpoint; công cụ của từng ngôn ngữ đọc WSDL để tạo stub.</li></ul></div></div>
+    <div class="kb-thoai"><p>Client ở ngôn ngữ khác biết phải gửi message như thế nào nhờ WSDL, hay Web Services Description Language, tài liệu XML mô tả web service. Server tự sinh WSDL và công bố ngay tại endpoint. Hai phần đầu mô tả dịch vụ có gì: phần types định nghĩa kiểu dữ liệu, ở đây phần tử lookup có trường key kiểu chuỗi; phần portType liệt kê thao tác lookup với message vào và message ra. Hai phần sau mô tả gọi bằng gì và ở đâu: phần binding chọn SOAP qua HTTP, phần service ghi địa chỉ endpoint. Từ cùng một WSDL, mỗi ngôn ngữ có công cụ tạo stub: Java có công cụ wsimport, C# có công cụ dotnet-svcutil, còn thư viện zeep của Python đọc WSDL ngay lúc chạy. Như vậy, vai trò của remote interface trong RMI được thay bằng WSDL, một hợp đồng không gắn với ngôn ngữ nào.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình wsdl-hop-dong: ba bước của hình, bước 4 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Hai phần đầu”; bước 2 khi đọc “Hai phần sau”; bước 3 khi đọc “Từ cùng một WSDL”; bước 4 khi đọc “Như vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:47</span>
+      <h3>Slide 4. Server SOAP: vài chú thích và một lời gọi publish</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">src/main/java/netlab/soap/LookupWebService.java</span><pre><code>@WebService(serviceName = &quot;LookupService&quot;, targetNamespace = &quot;http://netlab/lookup&quot;)
+public class LookupWebService {
+    @WebMethod
+    public String lookup(@WebParam(name = &quot;key&quot;) String key) {  // thao tác lookup, tham số tên key trong message
+        return DATA.get(key);
+    }
+}</code></pre></div></div>
+    <div class="kb-thoai"><p>Áp dụng vào dịch vụ tra cứu, mình dùng Jakarta XML Web Services, bộ API chuẩn cho SOAP. Từ JDK 11, API này không còn nằm sẵn trong JDK, nên mình lấy bản hiện thực Metro qua Maven. Trong lớp LookupWebService trên slide, mình chỉ thêm chú thích WebService cho lớp và chú thích WebMethod cho phương thức; chú thích WebParam đặt tên key cho tham số trong message. Ngoài slide còn một lớp khởi động nhỏ, SoapServer, chỉ gọi phương thức publish của lớp Endpoint với địa chỉ của dịch vụ, port 9199, đường dẫn lookup; Metro nhận request bằng HTTP server có sẵn trong JDK. Mình không viết dòng nào đọc hay ghi XML. Log của server in địa chỉ endpoint, địa chỉ WSDL, và một lời gọi lookup với khóa hanoi gửi tới từ curl.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, log của server phía dưới. Highlight @WebService, @WebMethod, @WebParam theo lời đọc.
+Hiện dần: bước 1 khi đọc “Log của server”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:46</span>
+      <h3>Slide 5. Gửi SOAP request bằng curl và đọc response XML</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-ma"><span class="kb-ma-tep">request.xml</span><pre><code>&lt;soap:Envelope xmlns:soap=&quot;http://schemas.xmlsoap.org/soap/envelope/&quot; xmlns:lk=&quot;http://netlab/lookup&quot;&gt;
+  &lt;soap:Body&gt;
+    &lt;lk:lookup&gt;
+      &lt;key&gt;hanoi&lt;/key&gt;
+    &lt;/lk:lookup&gt;
+  &lt;/soap:Body&gt;
+&lt;/soap:Envelope&gt;</code></pre></div></div>
+    <div class="kb-thoai"><p>Vì SOAP chỉ là XML trong một HTTP POST, curl gửi được request mà không cần stub nào. File request.xml chứa SOAP envelope có Body là phần tử lookup với khóa hanoi; namespace của phần tử lookup phải khớp targetNamespace của dịch vụ, đúng như WSDL đã mô tả. Mình gửi file này bằng curl, với header Content-Type là text/xml, rồi định dạng lại response cho dễ đọc. Các bạn thử đoán: để gửi một khóa dài 5 byte, request SOAP dài bao nhiêu byte? Kết quả: mã trạng thái 200, và phần tử return trong SOAP envelope trả về mang giá trị của khóa hanoi. Kích thước mới là điều đáng chú ý: request dài 205 byte, response dài 250 byte, chưa kể header HTTP.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> XML request phía trên, kết quả phía dưới. Sau câu &quot;dài bao nhiêu byte&quot;, dừng khoảng 2 giây trước khi khung kết quả hiện. Highlight &lt;key&gt;hanoi&lt;/key&gt; trong request, &lt;return&gt; và dòng kích thước trong kết quả.
+Hiện dần: bước 1 khi đọc “Kết quả”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-6" data-index="6">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">4:42</span>
+      <h3>Slide 6. SOAP nặng: message dài, xử lý XML tốn tài nguyên, nhiều chuẩn mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(6)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(6, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>Một lần tra cứu: request **205 byte**, response **250 byte** XML; giao thức dòng ở Chương 2 chỉ cần 6 và 31 byte</li><li>Mỗi đầu phải phân tích XML và namespace: tốn CPU và bộ nhớ hơn nhiều so với đọc một dòng</li><li>Họ chuẩn mở rộng **WS-*** (bảo mật, giao dịch, gửi tin cậy…) làm hệ thống phức tạp</li></ul><div class="kb-slide-khung"><b>Trọng tâm:</b> **Lưu ý:** SOAP vẫn có mặt trong hệ thống ngân hàng, dịch vụ công; API trên web chuyển dần sang REST.</div></div>
+    <div class="kb-thoai"><p>Để độc lập với ngôn ngữ, SOAP phải trả ba cái giá. Trước hết là kích thước: một lần tra cứu cần 205 byte request và 250 byte response, trong khi giao thức dòng ở Chương 2 chỉ cần 6 byte cho khóa hanoi kèm LF, và 31 byte cho phản hồi. Thứ hai là chi phí xử lý: mỗi đầu phải phân tích cây XML và namespace, tốn CPU và bộ nhớ hơn nhiều so với đọc một dòng. Cuối cùng là độ phức tạp: quanh SOAP có cả một họ chuẩn mở rộng WS-*, cho bảo mật, giao dịch, gửi tin cậy, và hệ thống càng dùng nhiều chuẩn càng khó cấu hình. Dù vậy, SOAP vẫn có mặt trong các hệ thống cần hợp đồng chặt và các chuẩn mở rộng ấy, như ngân hàng hay dịch vụ công; còn API trên web chuyển dần sang REST.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba ý hiện lần lượt, khung lưu ý hiện cuối.
+Hiện dần: bước 1 khi đọc “Trước hết là kích thước”; bước 2 khi đọc “Thứ hai là chi phí”; bước 3 khi đọc “Cuối cùng là độ phức tạp”; bước 4 khi đọc “Dù vậy”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-7" data-index="7">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:27</span>
+      <h3>Câu hỏi tương tác 1</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(7)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(7, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>WSDL là chủ đề của câu hỏi đầu tiên.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> Một client viết bằng C# muốn gọi dịch vụ tra cứu SOAP. WSDL cung cấp cho client những thông tin gì?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Mã nguồn Java của lớp LookupWebService.</li>
+      <li><b>B.</b> Thao tác, kiểu dữ liệu của tham số và kết quả, cách gọi (SOAP qua HTTP) và địa chỉ endpoint.</li>
+      <li><b>C.</b> Dữ liệu tra cứu hiện có trên server.</li>
+      <li><b>D.</b> Tài khoản và mật khẩu để gọi dịch vụ.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: B</b> — <span>WSDL là hợp đồng: types và portType mô tả thao tác, kiểu dữ liệu; binding và service mô tả giao thức và endpoint. Từ đó công cụ của C# tạo stub.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là B. Phương án A là hiểu nhầm hay gặp: WSDL không chứa mã của server, mà chỉ mô tả giao diện của dịch vụ, nên client ở ngôn ngữ khác không cần biết server viết bằng gì.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án B được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-8" data-index="8">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">5:49</span>
+      <h3>Câu hỏi tương tác 2</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(8)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(8, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai">
+  <p class="kb-thoai-truoc"><em>Tiếp theo, các bạn đặt SOAP cạnh RMI của nhóm trước.</em></p>
+  <div class="kb-cau-hoi-box">
+    <div class="kb-ch-cau"><b>Câu hỏi:</b> So với Java RMI, SOAP giải quyết giới hạn nào?</div>
+    <ul class="kb-ch-lua-chon">
+      <li><b>A.</b> Lời gọi từ xa không còn thất bại vì mạng.</li>
+      <li><b>B.</b> Message nhỏ hơn và xử lý nhanh hơn.</li>
+      <li><b>C.</b> Server không cần chạy khi client gọi.</li>
+      <li><b>D.</b> Client và server có thể viết bằng các ngôn ngữ khác nhau.</li>
+    </ul>
+    <div class="kb-ch-dap-an"><b>Đáp án đúng: D</b> — <span>SOAP dùng message XML và hợp đồng WSDL không phụ thuộc ngôn ngữ, truyền qua HTTP. Lời gọi vẫn có thể thất bại vì mạng, và message XML lớn hơn, xử lý chậm hơn.</span></div>
+  </div>
+  <p class="kb-thoai-sau">Đáp án là D. Phương án B ngược với kết quả vừa đo: message XML của SOAP dài hàng trăm byte cho một khóa 5 byte, và mỗi đầu còn phải phân tích XML. Phương án A cũng sai, vì SOAP vẫn là lời gọi qua mạng và vẫn có thể thất bại như lời gọi RMI.</p>
+</div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án D.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-9" data-index="9">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:16</span>
+      <h3>Tổng kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(9)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(9, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**Web service**: thao tác gọi qua HTTP, message và hợp đồng không phụ thuộc ngôn ngữ</li><li>**SOAP**: message **XML**; **SOAP envelope** gồm Header tùy chọn và Body mang thao tác, tham số</li><li>**WSDL**: hợp đồng mô tả thao tác, kiểu dữ liệu, endpoint; mỗi ngôn ngữ tạo stub từ WSDL</li></ul></div>
+    <div class="kb-thoai"><p>Web service đưa lời gọi từ xa ra ngoài một ngôn ngữ: thao tác được gọi qua HTTP, với message và hợp đồng không phụ thuộc ngôn ngữ. Với SOAP, lời gọi và kết quả là message XML, trong đó SOAP envelope gồm Header tùy chọn và Body mang thao tác cùng tham số. WSDL đóng vai hợp đồng, mô tả thao tác, kiểu dữ liệu và endpoint, để mỗi ngôn ngữ tạo stub của mình. Năm từ khóa đi cùng SOAP là web service, SOAP, SOAP envelope, WSDL và XML.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.
+Hiện dần: bước 1 khi đọc “Web service đưa”; bước 2 khi đọc “Với SOAP”; bước 3 khi đọc “WSDL đóng vai”; bước 4 khi đọc “Năm từ khóa đi cùng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-10" data-index="10">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">6:48</span>
+      <h3>Mở rộng</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(10)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(10, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Phần Header của envelope là chỗ của các chuẩn mở rộng, tiêu biểu là WS-Security cho ký và mã hóa message; các bạn cũng có thể tìm hiểu vì sao SOAP vẫn được dùng trong hệ thống ngân hàng và dịch vụ công. Bài tập mở rộng là sinh client từ WSDL của dịch vụ tra cứu bằng wsimport hoặc công cụ tương đương, rồi gọi thao tác lookup.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.
+Hiện dần: bước 1 khi đọc “Phần Header của envelope”; bước 2 khi đọc “Bài tập mở rộng”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-11" data-index="11">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">7:10</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(11)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(11, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>SOAP gửi mọi thao tác tới một địa chỉ, trong một envelope XML. Phần tiếp theo dùng chính các thành phần của HTTP để biểu diễn lời gọi, với REST, tài nguyên, phương thức HTTP và JSON.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V24", "tieu_de": "Web service: SOAP, hợp đồng WSDL và message XML", "giong": "vi-VN-NamMinhNeural", "tong": 444.43, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề.", "start": 0.0, "audio": "audio/8966e7ddff1df4dd.mp3", "dur": 13.01, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Dịch", 1], [2.112, "vụ", 1], [2.3, "tra", 1], [2.5, "cứu", 1], [2.75, "qua", 1], [3.269, "RMI", 1], [3.788, "chỉ", 1], [3.962, "phục", 1], [4.125, "vụ", 1], [4.362, "được", 1], [4.55, "client", 1], [4.9, "viết", 1], [5.112, "bằng", 1], [5.35, "Java.", 1], [6.65, "Muốn", 2], [7.037, "một", 2], [7.175, "hệ", 2], [7.325, "thống", 2], [7.55, "viết", 2], [7.737, "bằng", 2], [8.056, "C#", 2], [8.375, "hay", 2], [8.525, "Python", 2], [8.963, "cũng", 2], [9.162, "gọi", 2], [9.338, "được", 2], [9.488, "dịch", 2], [9.688, "vụ,", 2], [10.238, "lời", 2], [10.475, "gọi", 2], [10.688, "từ", 2], [10.863, "xa", 2], [11.1, "cần", 2], [11.312, "thay", 2], [11.45, "đổi", 2], [11.662, "những", 2], [11.863, "gì?", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Gọi dịch vụ từ ngôn ngữ khác: cần hợp đồng và message chung", "loai": "slide", "slide": "S01", "dung": "Ba ý hiện lần lượt, khung câu hỏi hiện cuối và giữ nguyên đến hết slide.\nHiện dần: bước 1 khi đọc “Với RMI”; bước 2 khi đọc “Thứ nhất”; bước 3 khi đọc “Thứ hai”; bước 4 khi đọc “Vậy SOAP message”.", "start": 13.61, "audio": "audio/a36c498f47baa339.mp3", "dur": 49.66, "words": [[0.1, "Với", 0], [0.687, "RMI,", 0], [1.275, "mọi", 0], [1.462, "thứ", 0], [1.65, "giữa", 0], [1.837, "hai", 0], [2.025, "đầu", 0], [2.25, "đều", 0], [2.388, "là", 0], [2.513, "cơ", 0], [2.712, "chế", 0], [2.925, "riêng", 0], [3.15, "của", 0], [3.288, "Java:", 0], [3.938, "stub", 0], [4.3, "do", 0], [4.631, "JDK", 0], [4.963, "sinh,", 0], [5.5, "tham", 0], [5.713, "số", 0], [5.963, "đi", 0], [6.075, "qua", 0], [6.287, "serialization", 0], [7.088, "của", 0], [7.25, "Java,", 0], [7.912, "và", 0], [8.125, "giao", 0], [8.3, "thức", 0], [8.463, "truyền", 0], [8.762, "cũng", 0], [8.95, "chỉ", 0], [9.375, "RMI", 0], [9.8, "runtime", 0], [10.213, "hiểu.", 0], [11.425, "Để", 1], [11.625, "ngôn", 1], [11.85, "ngữ", 1], [12.075, "khác", 1], [12.312, "gọi", 1], [12.512, "được,", 1], [12.963, "lời", 1], [13.25, "gọi", 1], [13.5, "từ", 1], [13.7, "xa", 1], [13.988, "cần", 1], [14.25, "hai", 1], [14.425, "thứ.", 1], [15.625, "Thứ", 2], [15.825, "nhất", 2], [16.1, "là", 2], [16.275, "một", 2], [16.438, "hợp", 2], [16.613, "đồng", 2], [16.825, "mô", 2], [17.025, "tả", 2], [17.225, "dịch", 2], [17.413, "vụ", 2], [17.637, "có", 2], [17.762, "những", 2], [17.95, "thao", 2], [18.1, "tác", 2], [18.325, "nào,", 2], [18.8, "tham", 2], [19.038, "số", 2], [19.35, "và", 2], [19.475, "kết", 2], [19.688, "quả", 2], [19.875, "thuộc", 2], [20.062, "kiểu", 2], [20.25, "gì,", 2], [20.762, "viết", 2], [21.075, "ở", 2], [21.175, "dạng", 2], [21.45, "không", 2], [21.688, "phụ", 2], [21.85, "thuộc", 2], [22.062, "ngôn", 2], [22.262, "ngữ.", 2], [23.475, "Thứ", 3], [23.712, "hai", 3], [23.988, "là", 3], [24.05, "một", 3], [24.212, "định", 3], [24.425, "dạng", 3], [24.663, "message", 3], [25.25, "mà", 3], [25.4, "ngôn", 3], [25.613, "ngữ", 3], [25.8, "nào", 3], [26.012, "cũng", 3], [26.2, "đọc", 3], [26.35, "được,", 3], [26.825, "truyền", 3], [27.113, "qua", 3], [27.275, "một", 3], [27.45, "giao", 3], [27.637, "thức", 3], [27.812, "có", 3], [27.95, "ở", 3], [28.075, "mọi", 3], [28.3, "nơi", 3], [28.538, "là", 3], [29.456, "HTTP.", 3], [30.375, "Dịch", 4], [30.625, "vụ", 4], [30.812, "cung", 4], [31.012, "cấp", 4], [31.188, "thao", 4], [31.363, "tác", 4], [31.587, "theo", 4], [31.7, "cách", 4], [31.875, "đó", 4], [32.087, "gọi", 4], [32.3, "là", 4], [32.425, "web", 4], [32.612, "service,", 4], [33.325, "tức", 4], [33.525, "dịch", 4], [33.7, "vụ", 4], [33.925, "gọi", 4], [34.138, "qua", 4], [34.362, "giao", 4], [34.538, "thức", 4], [34.725, "web;", 4], [35.112, "SOAP", 4], [35.5, "và", 4], [35.5, "WSDL", 4], [35.5, "là", 4], [35.5, "cặp", 4], [35.5, "chuẩn", 4], [35.5, "đầu", 4], [35.5, "tiên", 4], [35.5, "cho", 4], [35.5, "loại", 4], [35.5, "dịch", 4], [35.5, "vụ", 4], [35.5, "này,", 4], [35.5, "SOAP", 4], [35.5, "cho", 4], [35.5, "message,", 4], [35.5, "WSDL", 4], [35.5, "cho", 4], [35.5, "hợp", 4], [35.5, "đồng.", 4], [35.5, "Vậy", 5], [35.5, "SOAP", 5], [35.5, "message", 5], [35.5, "có", 5], [35.5, "cấu", 5], [35.5, "trúc", 5], [35.5, "thế", 5], [35.5, "nào,", 5], [35.5, "và", 5], [35.5, "WSDL", 5], [35.5, "mô", 5], [35.5, "tả", 5], [35.5, "dịch", 5], [35.5, "vụ", 5], [35.5, "ra", 5], [35.5, "sao", 5], [35.5, "để", 5], [35.5, "ngôn", 5], [35.5, "ngữ", 5], [35.5, "nào", 5], [35.5, "cũng", 5], [35.5, "gọi", 5], [35.5, "được?", 5]], "cues": [0.1, 15.625, 23.475, 35.5], "lang": 0.6}, {"ten": "Slide 2. SOAP message: Envelope bọc Header và Body, đi trong một HTTP POST", "loai": "slide", "slide": "S02", "dung": "Hình soap-message: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Các bạn nhìn request”; bước 2 khi đọc “Phần Body mang lời gọi”; bước 3 khi đọc “Response ở bên phải”; bước 4 khi đọc “Ở cả hai chiều”.", "start": 63.87, "audio": "audio/22cbeb82e0986ce0.mp3", "dur": 44.83, "words": [[0.1, "Trước", 0], [0.438, "hết", 0], [0.675, "là", 0], [0.938, "message.", 0], [1.844, "SOAP", 1], [2.75, "là", 1], [2.95, "giao", 1], [3.138, "thức", 1], [3.3, "đóng", 1], [3.562, "gói", 1], [3.725, "lời", 1], [3.888, "gọi", 1], [4.162, "và", 1], [4.287, "kết", 1], [4.5, "quả", 1], [4.688, "thành", 1], [4.912, "message", 1], [5.594, "XML,", 1], [6.275, "thường", 1], [6.537, "truyền", 1], [6.8, "qua", 1], [7.738, "HTTP.", 1], [8.675, "Các", 2], [8.875, "bạn", 2], [9.062, "nhìn", 2], [9.275, "request", 2], [9.5, "ở", 2], [9.588, "bên", 2], [9.787, "trái:", 2], [10.312, "đó", 2], [10.488, "là", 2], [10.575, "một", 2], [10.963, "HTTP", 2], [11.35, "POST", 2], [11.738, "tới", 2], [11.95, "đường", 2], [12.2, "dẫn", 2], [12.425, "lookup,", 2], [13.037, "với", 2], [13.25, "kiểu", 2], [13.45, "nội", 2], [13.65, "dung", 2], [13.863, "text/xml.", 2], [15.387, "Thân", 3], [15.662, "request", 3], [15.9, "là", 3], [16.2, "SOAP", 3], [16.5, "envelope,", 3], [17.2, "phần", 3], [17.45, "tử", 3], [17.663, "gốc", 3], [17.837, "của", 3], [17.988, "message,", 3], [18.738, "gồm", 3], [19.025, "phần", 3], [19.238, "Header", 3], [19.587, "tùy", 3], [19.812, "chọn", 3], [20.1, "cho", 3], [20.212, "các", 3], [20.387, "thông", 3], [20.575, "tin", 3], [20.775, "như", 3], [20.962, "bảo", 3], [21.175, "mật", 3], [21.387, "hay", 3], [21.55, "giao", 3], [21.738, "dịch,", 3], [22.188, "và", 3], [22.4, "phần", 3], [22.65, "Body.", 3], [23.9, "Phần", 4], [24.2, "Body", 4], [24.512, "mang", 4], [24.725, "lời", 4], [24.863, "gọi:", 4], [25.35, "phần", 4], [25.6, "tử", 4], [25.812, "lookup", 4], [26.262, "cho", 4], [26.425, "biết", 4], [26.637, "tên", 4], [26.837, "thao", 4], [27.025, "tác,", 4], [27.538, "còn", 4], [27.75, "phần", 4], [27.962, "tử", 4], [28.163, "con", 4], [28.35, "key", 4], [28.562, "chứa", 4], [28.8, "tham", 4], [29.0, "số,", 4], [29.575, "khóa", 4], [29.837, "hanoi.", 4], [31.175, "Response", 5], [31.9, "ở", 5], [32.05, "bên", 5], [32.3, "phải", 5], [32.487, "có", 5], [32.6, "cùng", 5], [32.812, "cấu", 5], [33.013, "trúc,", 5], [33.462, "và", 5], [33.725, "Body", 5], [34.125, "của", 5], [34.263, "nó", 5], [34.462, "chứa", 5], [34.7, "kết", 5], [34.913, "quả", 5], [35.188, "trong", 5], [35.362, "phần", 5], [35.575, "tử", 5], [35.788, "return.", 5], [37.138, "Ở", 6], [37.337, "cả", 6], [37.55, "hai", 6], [37.737, "chiều,", 6], [38.281, "XML", 6], [38.825, "thay", 6], [39.0, "cho", 6], [39.15, "serialization", 6], [40.025, "của", 6], [40.188, "Java,", 6], [40.862, "vì", 6], [41.075, "đây", 6], [41.237, "là", 6], [41.35, "dạng", 6], [41.6, "văn", 6], [41.788, "bản", 6], [42.05, "mà", 6], [42.188, "ngôn", 6], [42.4, "ngữ", 6], [42.587, "nào", 6], [42.825, "cũng", 6], [43.025, "có", 6], [43.125, "thư", 6], [43.288, "viện", 6], [43.5, "đọc", 6], [43.675, "ghi.", 6]], "cues": [8.675, 23.9, 31.175, 37.138], "lang": 2.6}, {"ten": "Slide 3. WSDL là hợp đồng: từ đó mỗi ngôn ngữ tạo stub của mình", "loai": "slide", "slide": "S03", "dung": "Hình wsdl-hop-dong: ba bước của hình, bước 4 là ô kết luận.\nHiện dần: bước 1 khi đọc “Hai phần đầu”; bước 2 khi đọc “Hai phần sau”; bước 3 khi đọc “Từ cùng một WSDL”; bước 4 khi đọc “Như vậy”.", "start": 111.3, "audio": "audio/aa2092f4a68e6d74.mp3", "dur": 53.62, "words": [[0.1, "Client", 0], [0.637, "ở", 0], [0.713, "ngôn", 0], [0.925, "ngữ", 0], [1.125, "khác", 0], [1.337, "biết", 0], [1.525, "phải", 0], [1.688, "gửi", 0], [1.863, "message", 0], [2.375, "như", 0], [2.55, "thế", 0], [2.663, "nào", 0], [2.888, "nhờ", 0], [2.888, "WSDL,", 0], [2.888, "hay", 0], [2.888, "Web", 0], [2.888, "Services", 0], [2.888, "Description", 0], [2.888, "Language,", 0], [2.888, "tài", 0], [2.888, "liệu", 0], [2.888, "XML", 0], [2.888, "mô", 0], [2.888, "tả", 0], [2.888, "web", 0], [2.888, "service.", 0], [2.888, "Server", 1], [2.888, "tự", 1], [2.888, "sinh", 1], [2.888, "WSDL", 1], [2.888, "và", 1], [2.888, "công", 1], [2.888, "bố", 1], [2.888, "ngay", 1], [2.888, "tại", 1], [2.888, "endpoint.", 1], [2.888, "Hai", 2], [2.888, "phần", 2], [2.888, "đầu", 2], [2.888, "mô", 2], [2.888, "tả", 2], [2.888, "dịch", 2], [2.888, "vụ", 2], [2.888, "có", 2], [2.888, "gì:", 2], [2.888, "phần", 2], [2.888, "types", 2], [2.888, "định", 2], [2.888, "nghĩa", 2], [2.888, "kiểu", 2], [2.888, "dữ", 2], [2.888, "liệu,", 2], [2.888, "ở", 2], [2.888, "đây", 2], [2.888, "phần", 2], [2.888, "tử", 2], [2.888, "lookup", 2], [2.888, "có", 2], [2.888, "trường", 2], [2.888, "key", 2], [2.888, "kiểu", 2], [2.888, "chuỗi;", 2], [2.888, "phần", 2], [2.888, "portType", 2], [2.888, "liệt", 2], [2.888, "kê", 2], [2.888, "thao", 2], [2.888, "tác", 2], [2.888, "lookup", 2], [2.888, "với", 2], [2.888, "message", 2], [2.888, "vào", 2], [2.888, "và", 2], [2.888, "message", 2], [2.888, "ra.", 2], [2.888, "Hai", 3], [2.888, "phần", 3], [2.888, "sau", 3], [2.888, "mô", 3], [2.888, "tả", 3], [2.888, "gọi", 3], [2.888, "bằng", 3], [2.888, "gì", 3], [2.888, "và", 3], [2.888, "ở", 3], [2.888, "đâu:", 3], [2.888, "phần", 3], [2.888, "binding", 3], [2.888, "chọn", 3], [2.888, "SOAP", 3], [2.888, "qua", 3], [2.888, "HTTP,", 3], [2.888, "phần", 3], [2.888, "service", 3], [2.888, "ghi", 3], [2.888, "địa", 3], [2.888, "chỉ", 3], [2.888, "endpoint.", 3], [2.888, "Từ", 4], [2.888, "cùng", 4], [2.888, "một", 4], [2.888, "WSDL,", 4], [2.888, "mỗi", 4], [2.888, "ngôn", 4], [2.888, "ngữ", 4], [2.888, "có", 4], [2.888, "công", 4], [2.888, "cụ", 4], [2.888, "tạo", 4], [2.888, "stub:", 4], [2.888, "Java", 4], [2.888, "có", 4], [2.888, "công", 4], [2.888, "cụ", 4], [2.888, "wsimport,", 4], [2.888, "C#", 4], [2.888, "có", 4], [2.888, "công", 4], [2.888, "cụ", 4], [2.888, "dotnet-svcutil,", 4], [2.888, "còn", 4], [2.888, "thư", 4], [2.888, "viện", 4], [2.888, "zeep", 4], [2.888, "của", 4], [2.888, "Python", 4], [2.888, "đọc", 4], [2.888, "WSDL", 4], [2.888, "ngay", 4], [2.888, "lúc", 4], [2.888, "chạy.", 4], [2.888, "Như", 5], [2.888, "vậy,", 5], [2.888, "vai", 5], [2.888, "trò", 5], [2.888, "của", 5], [2.888, "remote", 5], [2.888, "interface", 5], [2.888, "trong", 5], [2.888, "RMI", 5], [2.888, "được", 5], [2.888, "thay", 5], [2.888, "bằng", 5], [2.888, "WSDL,", 5], [2.888, "một", 5], [2.888, "hợp", 5], [2.888, "đồng", 5], [2.888, "không", 5], [2.888, "gắn", 5], [2.888, "với", 5], [2.888, "ngôn", 5], [2.888, "ngữ", 5], [2.888, "nào.", 5]], "cues": [2.888, 2.888, 2.888, 2.888], "lang": 2.6}, {"ten": "Slide 4. Server SOAP: vài chú thích và một lời gọi publish", "loai": "slide", "slide": "S04", "dung": "Mã phía trên, log của server phía dưới. Highlight @WebService, @WebMethod, @WebParam theo lời đọc.\nHiện dần: bước 1 khi đọc “Log của server”.", "start": 167.52, "audio": "audio/4079cdb6c28cfc60.mp3", "dur": 49.49, "words": [[0.1, "Áp", 0], [0.312, "dụng", 0], [0.588, "vào", 0], [0.7, "dịch", 0], [0.887, "vụ", 0], [1.087, "tra", 0], [1.25, "cứu,", 0], [1.825, "mình", 0], [2.038, "dùng", 0], [2.263, "Jakarta", 0], [2.875, "XML", 0], [3.487, "Web", 0], [3.663, "Services,", 0], [4.562, "bộ", 0], [4.975, "API", 0], [5.388, "chuẩn", 0], [5.662, "cho", 0], [6.306, "SOAP.", 0], [6.95, "Từ", 1], [7.306, "JDK", 1], [7.662, "11,", 1], [8.306, "API", 1], [8.95, "này", 1], [9.137, "không", 1], [9.35, "còn", 1], [9.537, "nằm", 1], [9.713, "sẵn", 1], [10.025, "trong", 1], [10.518, "JDK,", 1], [11.012, "nên", 1], [11.275, "mình", 1], [11.463, "lấy", 1], [11.625, "bản", 1], [11.838, "hiện", 1], [12.05, "thực", 1], [12.262, "Metro", 1], [12.688, "qua", 1], [12.95, "Maven.", 1], [14.275, "Trong", 2], [14.613, "lớp", 2], [14.825, "LookupWebService", 2], [15.825, "trên", 2], [16.038, "slide,", 2], [16.663, "mình", 2], [16.887, "chỉ", 2], [17.062, "thêm", 2], [17.262, "chú", 2], [17.45, "thích", 2], [17.65, "WebService", 2], [18.262, "cho", 2], [18.45, "lớp", 2], [18.712, "và", 2], [18.925, "chú", 2], [19.125, "thích", 2], [19.312, "WebMethod", 2], [19.962, "cho", 2], [20.087, "phương", 2], [20.3, "thức;", 2], [20.775, "chú", 2], [20.988, "thích", 2], [21.225, "WebParam", 2], [21.875, "đặt", 2], [22.062, "tên", 2], [22.25, "key", 2], [22.475, "cho", 2], [22.625, "tham", 2], [22.812, "số", 2], [23.075, "trong", 2], [23.3, "message.", 2], [24.625, "Ngoài", 3], [24.925, "slide", 3], [25.275, "còn", 3], [25.488, "một", 3], [25.625, "lớp", 3], [25.788, "khởi", 3], [25.975, "động", 3], [26.175, "nhỏ,", 3], [26.75, "SoapServer,", 3], [27.688, "chỉ", 3], [27.9, "gọi", 3], [28.137, "phương", 3], [28.337, "thức", 3], [28.512, "publish", 3], [28.9, "của", 3], [29.05, "lớp", 3], [29.312, "Endpoint", 3], [29.725, "với", 3], [29.837, "địa", 3], [29.988, "chỉ", 3], [30.262, "của", 3], [30.4, "dịch", 3], [30.587, "vụ,", 3], [31.113, "port", 3], [31.788, "9199,", 3], [32.462, "đường", 3], [32.725, "dẫn", 3], [32.962, "lookup;", 3], [33.6, "Metro", 3], [34.0, "nhận", 3], [34.237, "request", 3], [34.425, "bằng", 3], [34.888, "HTTP", 3], [35.35, "server", 3], [35.775, "có", 3], [35.925, "sẵn", 3], [36.225, "trong", 3], [37.031, "JDK.", 3], [37.837, "Mình", 4], [38.25, "không", 4], [38.475, "viết", 4], [38.638, "dòng", 4], [38.85, "nào", 4], [39.038, "đọc", 4], [39.237, "hay", 4], [39.425, "ghi", 4], [40.306, "XML.", 4], [41.188, "Log", 5], [41.525, "của", 5], [41.775, "server", 5], [42.188, "in", 5], [42.45, "địa", 5], [42.612, "chỉ", 5], [42.913, "endpoint,", 5], [43.638, "địa", 5], [43.862, "chỉ", 5], [43.862, "WSDL,", 5], [43.862, "và", 5], [43.862, "một", 5], [43.862, "lời", 5], [43.862, "gọi", 5], [43.862, "lookup", 5], [43.862, "với", 5], [43.862, "khóa", 5], [43.862, "hanoi", 5], [43.862, "gửi", 5], [43.862, "tới", 5], [43.862, "từ", 5], [43.862, "curl.", 5]], "cues": [41.188], "lang": 9.6}, {"ten": "Slide 5. Gửi SOAP request bằng curl và đọc response XML", "loai": "slide", "slide": "S05", "dung": "XML request phía trên, kết quả phía dưới. Sau câu \"dài bao nhiêu byte\", dừng khoảng 2 giây trước khi khung kết quả hiện. Highlight <key>hanoi</key> trong request, <return> và dòng kích thước trong kết quả.\nHiện dần: bước 1 khi đọc “Kết quả”.", "start": 226.61, "audio": "audio/171d2faecc8be950.mp3", "dur": 46.18, "words": [[0.1, "Vì", 0], [0.357, "SOAP", 0], [0.613, "chỉ", 0], [0.762, "là", 0], [1.156, "XML", 0], [1.55, "trong", 0], [1.712, "một", 0], [2.187, "HTTP", 0], [2.663, "POST,", 0], [3.138, "curl", 0], [3.413, "gửi", 0], [3.625, "được", 0], [3.8, "request", 0], [4.088, "mà", 0], [4.35, "không", 0], [4.55, "cần", 0], [4.75, "stub", 0], [5.013, "nào.", 0], [6.125, "File", 1], [6.412, "request.xml", 1], [7.888, "chứa", 1], [8.163, "SOAP", 1], [8.438, "envelope", 1], [8.925, "có", 1], [9.088, "Body", 1], [9.475, "là", 1], [9.6, "phần", 1], [9.838, "tử", 1], [10.0, "lookup", 1], [10.463, "với", 1], [10.65, "khóa", 1], [10.9, "hanoi;", 1], [11.588, "namespace", 1], [12.238, "của", 1], [12.5, "phần", 1], [12.787, "tử", 1], [12.963, "lookup", 1], [13.387, "phải", 1], [13.588, "khớp", 1], [13.825, "targetNamespace", 1], [14.812, "của", 1], [14.975, "dịch", 1], [15.175, "vụ,", 1], [15.7, "đúng", 1], [15.912, "như", 1], [15.912, "WSDL", 1], [15.912, "đã", 1], [15.912, "mô", 1], [15.912, "tả.", 1], [15.912, "Mình", 2], [15.912, "gửi", 2], [15.912, "file", 2], [15.912, "này", 2], [15.912, "bằng", 2], [15.912, "curl,", 2], [15.912, "với", 2], [15.912, "header", 2], [15.912, "Content-Type", 2], [15.912, "là", 2], [15.912, "text/xml,", 2], [15.912, "rồi", 2], [15.912, "định", 2], [15.912, "dạng", 2], [15.912, "lại", 2], [15.912, "response", 2], [15.912, "cho", 2], [15.912, "dễ", 2], [15.912, "đọc.", 2], [15.912, "Các", 3], [15.912, "bạn", 3], [15.912, "thử", 3], [15.912, "đoán:", 3], [15.912, "để", 3], [15.912, "gửi", 3], [15.912, "một", 3], [15.912, "khóa", 3], [15.912, "dài", 3], [15.912, "5", 3], [15.912, "byte,", 3], [15.912, "request", 3], [15.912, "SOAP", 3], [15.912, "dài", 3], [15.912, "bao", 3], [15.912, "nhiêu", 3], [15.912, "byte?", 3], [15.912, "Kết", 4], [15.912, "quả:", 4], [15.912, "mã", 4], [15.912, "trạng", 4], [15.912, "thái", 4], [15.912, "200,", 4], [15.912, "và", 4], [15.912, "phần", 4], [15.912, "tử", 4], [15.912, "return", 4], [15.912, "trong", 4], [15.912, "SOAP", 4], [15.912, "envelope", 4], [15.912, "trả", 4], [15.912, "về", 4], [15.912, "mang", 4], [15.912, "giá", 4], [15.912, "trị", 4], [15.912, "của", 4], [15.912, "khóa", 4], [15.912, "hanoi.", 4], [15.912, "Kích", 5], [15.912, "thước", 5], [15.912, "mới", 5], [15.912, "là", 5], [15.912, "điều", 5], [15.912, "đáng", 5], [15.912, "chú", 5], [15.912, "ý:", 5], [15.912, "request", 5], [15.912, "dài", 5], [15.912, "205", 5], [15.912, "byte,", 5], [15.912, "response", 5], [15.912, "dài", 5], [15.912, "250", 5], [15.912, "byte,", 5], [15.912, "chưa", 5], [15.912, "kể", 5], [15.912, "header", 5], [15.912, "HTTP.", 5]], "cues": [15.912], "lang": 9.6}, {"ten": "Slide 6. SOAP nặng: message dài, xử lý XML tốn tài nguyên, nhiều chuẩn mở rộng", "loai": "slide", "slide": "S06", "dung": "Ba ý hiện lần lượt, khung lưu ý hiện cuối.\nHiện dần: bước 1 khi đọc “Trước hết là kích thước”; bước 2 khi đọc “Thứ hai là chi phí”; bước 3 khi đọc “Cuối cùng là độ phức tạp”; bước 4 khi đọc “Dù vậy”.", "start": 282.39, "audio": "audio/290bdba28c98f3d0.mp3", "dur": 44.09, "words": [[0.1, "Để", 0], [0.338, "độc", 0], [0.525, "lập", 0], [0.713, "với", 0], [0.838, "ngôn", 0], [1.075, "ngữ,", 0], [1.494, "SOAP", 0], [1.913, "phải", 0], [2.112, "trả", 0], [2.35, "ba", 0], [2.562, "cái", 0], [2.775, "giá.", 0], [4.0, "Trước", 1], [4.287, "hết", 1], [4.537, "là", 1], [4.675, "kích", 1], [4.9, "thước:", 1], [5.375, "một", 1], [5.562, "lần", 1], [5.75, "tra", 1], [5.925, "cứu", 1], [6.188, "cần", 1], [6.425, "205", 1], [7.175, "byte", 1], [7.338, "request", 1], [7.575, "và", 1], [7.787, "250", 1], [8.475, "byte", 1], [8.688, "response,", 1], [9.575, "trong", 1], [9.812, "khi", 1], [9.988, "giao", 1], [10.162, "thức", 1], [10.363, "dòng", 1], [10.688, "ở", 1], [10.762, "Chương", 1], [11.0, "2", 1], [11.188, "chỉ", 1], [11.35, "cần", 1], [11.537, "6", 1], [11.762, "byte", 1], [11.975, "cho", 1], [12.113, "khóa", 1], [12.312, "hanoi", 1], [12.688, "kèm", 1], [13.144, "LF,", 1], [13.6, "và", 1], [13.887, "31", 1], [14.412, "byte", 1], [14.637, "cho", 1], [14.787, "phản", 1], [15.037, "hồi.", 1], [16.163, "Thứ", 2], [16.375, "hai", 2], [16.637, "là", 2], [16.738, "chi", 2], [16.95, "phí", 2], [17.15, "xử", 2], [17.35, "lý:", 2], [17.887, "mỗi", 2], [18.1, "đầu", 2], [18.312, "phải", 2], [18.488, "phân", 2], [18.688, "tích", 2], [18.9, "cây", 2], [19.368, "XML", 2], [19.837, "và", 2], [19.95, "namespace,", 2], [20.85, "tốn", 2], [21.337, "CPU", 2], [21.825, "và", 2], [21.95, "bộ", 2], [22.15, "nhớ", 2], [22.375, "hơn", 2], [22.575, "nhiều", 2], [22.812, "so", 2], [23.025, "với", 2], [23.125, "đọc", 2], [23.3, "một", 2], [23.462, "dòng.", 2], [24.6, "Cuối", 3], [24.825, "cùng", 3], [25.087, "là", 3], [25.212, "độ", 3], [25.387, "phức", 3], [25.6, "tạp:", 3], [26.15, "quanh", 3], [26.368, "SOAP", 3], [26.587, "có", 3], [26.725, "cả", 3], [26.85, "một", 3], [27.038, "họ", 3], [27.212, "chuẩn", 3], [27.45, "mở", 3], [27.65, "rộng", 3], [28.331, "WS-*,", 3], [29.012, "cho", 3], [29.2, "bảo", 3], [29.413, "mật,", 3], [29.913, "giao", 3], [30.15, "dịch,", 3], [30.625, "gửi", 3], [30.85, "tin", 3], [31.087, "cậy,", 3], [31.625, "và", 3], [31.825, "hệ", 3], [31.988, "thống", 3], [32.212, "càng", 3], [32.438, "dùng", 3], [32.625, "nhiều", 3], [32.825, "chuẩn", 3], [33.1, "càng", 3], [33.3, "khó", 3], [33.538, "cấu", 3], [33.75, "hình.", 3], [34.862, "Dù", 4], [35.125, "vậy,", 4], [35.462, "SOAP", 4], [35.8, "vẫn", 4], [36.0, "có", 4], [36.087, "mặt", 4], [36.312, "trong", 4], [36.5, "các", 4], [36.65, "hệ", 4], [36.8, "thống", 4], [37.038, "cần", 4], [37.212, "hợp", 4], [37.375, "đồng", 4], [37.587, "chặt", 4], [37.825, "và", 4], [37.962, "các", 4], [38.15, "chuẩn", 4], [38.362, "mở", 4], [38.587, "rộng", 4], [38.837, "ấy,", 4], [39.325, "như", 4], [39.55, "ngân", 4], [39.763, "hàng", 4], [39.987, "hay", 4], [40.138, "dịch", 4], [40.3, "vụ", 4], [40.5, "công;", 4], [41.062, "còn", 4], [41.475, "API", 4], [41.888, "trên", 4], [42.087, "web", 4], [42.288, "chuyển", 4], [42.538, "dần", 4], [42.75, "sang", 4], [42.75, "REST.", 4]], "cues": [4.0, 16.163, 24.6, 34.862], "lang": 0.6}, {"ten": "Câu hỏi tương tác 1", "loai": "cau-hoi", "slide": "Q1", "dung": "Dừng video, hiện câu hỏi H5P. Sau khi người học trả lời: slide câu hỏi với đáp án B được tô xanh, các đáp án còn lại mờ đi, trong lúc đọc đoạn đáp án.", "start": 327.08, "audio": "audio/2eae41613ae72c31.mp3", "dur": 4.08, "words": [[0.0, "WSDL", 0], [0.0, "là", 0], [0.0, "chủ", 0], [0.0, "đề", 0], [0.0, "của", 0], [0.0, "câu", 0], [0.0, "hỏi", 0], [0.0, "đầu", 0], [0.0, "tiên.", 0]], "slide2": "Q1-dap-an", "audio2": "audio/959d012ebab38d73.mp3", "dur2": 11.81, "words2": [[0.1, "Đáp", 0], [0.45, "án", 0], [0.65, "là", 0], [0.75, "B.", 0], [1.087, "Phương", 1], [1.387, "án", 1], [1.613, "A", 1], [1.812, "là", 1], [1.925, "hiểu", 1], [2.1, "nhầm", 1], [2.362, "hay", 1], [2.513, "gặp:", 1], [2.513, "WSDL", 1], [2.513, "không", 1], [2.513, "chứa", 1], [2.513, "mã", 1], [2.513, "của", 1], [2.513, "server,", 1], [2.513, "mà", 1], [2.513, "chỉ", 1], [2.513, "mô", 1], [2.513, "tả", 1], [2.513, "giao", 1], [2.513, "diện", 1], [2.513, "của", 1], [2.513, "dịch", 1], [2.513, "vụ,", 1], [2.513, "nên", 1], [2.513, "client", 1], [2.513, "ở", 1], [2.513, "ngôn", 1], [2.513, "ngữ", 1], [2.513, "khác", 1], [2.513, "không", 1], [2.513, "cần", 1], [2.513, "biết", 1], [2.513, "server", 1], [2.513, "viết", 1], [2.513, "bằng", 1], [2.513, "gì.", 1]], "dap_an": "B", "cues": [], "lang": 6.6}, {"ten": "Câu hỏi tương tác 2", "loai": "cau-hoi", "slide": "Q2", "dung": "Như câu hỏi 1: dừng video, hiện H5P, sau đó tô xanh đáp án D.", "start": 349.57, "audio": "audio/efda269c24817e3d.mp3", "dur": 4.2, "words": [[0.1, "Tiếp", 0], [0.4, "theo,", 0], [0.912, "các", 0], [1.075, "bạn", 0], [1.3, "đặt", 0], [1.494, "SOAP", 0], [1.688, "cạnh", 0], [2.169, "RMI", 0], [2.65, "của", 0], [2.812, "nhóm", 0], [3.075, "trước.", 0]], "slide2": "Q2-dap-an", "audio2": "audio/db1b3e40b1178787.mp3", "dur2": 15.94, "words2": [[0.1, "Đáp", 0], [0.463, "án", 0], [0.675, "là", 0], [0.8, "D.", 0], [1.15, "Phương", 1], [1.488, "án", 1], [1.663, "B", 1], [1.812, "ngược", 1], [2.05, "với", 1], [2.163, "kết", 1], [2.337, "quả", 1], [2.575, "vừa", 1], [2.75, "đo:", 1], [3.263, "message", 1], [3.806, "XML", 1], [4.35, "của", 1], [4.525, "SOAP", 1], [4.7, "dài", 1], [4.888, "hàng", 1], [5.1, "trăm", 1], [5.312, "byte", 1], [5.513, "cho", 1], [5.625, "một", 1], [5.812, "khóa", 1], [6.05, "5", 1], [6.25, "byte,", 1], [6.713, "và", 1], [6.888, "mỗi", 1], [7.1, "đầu", 1], [7.287, "còn", 1], [7.513, "phải", 1], [7.675, "phân", 1], [7.875, "tích", 1], [8.744, "XML.", 1], [9.613, "Phương", 2], [9.975, "án", 2], [10.2, "A", 2], [10.325, "cũng", 2], [10.512, "sai,", 2], [11.062, "vì", 2], [11.293, "SOAP", 2], [11.525, "vẫn", 2], [11.7, "là", 2], [11.812, "lời", 2], [12.025, "gọi", 2], [12.225, "qua", 2], [12.438, "mạng", 2], [12.75, "và", 2], [12.887, "vẫn", 2], [13.062, "có", 2], [13.162, "thể", 2], [13.325, "thất", 2], [13.512, "bại", 2], [13.75, "như", 2], [13.925, "lời", 2], [14.125, "gọi", 2], [14.125, "RMI.", 2]], "dap_an": "D", "cues": [], "lang": 6.6}, {"ten": "Tổng kết", "loai": "tong-ket", "slide": "TK", "dung": "Ba thẻ hiện lần lượt; hàng từ khóa hiện cuối.\nHiện dần: bước 1 khi đọc “Web service đưa”; bước 2 khi đọc “Với SOAP”; bước 3 khi đọc “WSDL đóng vai”; bước 4 khi đọc “Năm từ khóa đi cùng”.", "start": 376.31, "audio": "audio/ddb8ce6dbe46ea55.mp3", "dur": 31.66, "words": [[0.1, "Web", 0], [0.35, "service", 0], [0.812, "đưa", 0], [0.988, "lời", 0], [1.163, "gọi", 0], [1.4, "từ", 0], [1.575, "xa", 0], [1.825, "ra", 0], [1.938, "ngoài", 0], [2.138, "một", 0], [2.325, "ngôn", 0], [2.487, "ngữ:", 0], [3.075, "thao", 0], [3.275, "tác", 0], [3.513, "được", 0], [3.65, "gọi", 0], [3.85, "qua", 0], [4.463, "HTTP,", 0], [5.075, "với", 0], [5.275, "message", 0], [5.763, "và", 0], [5.888, "hợp", 0], [6.05, "đồng", 0], [6.3, "không", 0], [6.525, "phụ", 0], [6.688, "thuộc", 0], [6.9, "ngôn", 0], [7.1, "ngữ.", 0], [8.325, "Với", 1], [8.694, "SOAP,", 1], [9.062, "lời", 1], [9.287, "gọi", 1], [9.55, "và", 1], [9.675, "kết", 1], [9.875, "quả", 1], [10.1, "là", 1], [10.213, "message", 1], [10.863, "XML,", 1], [11.512, "trong", 1], [11.725, "đó", 1], [11.957, "SOAP", 1], [12.188, "envelope", 1], [12.725, "gồm", 1], [13.037, "Header", 1], [13.412, "tùy", 1], [13.65, "chọn", 1], [13.963, "và", 1], [14.088, "Body", 1], [14.438, "mang", 1], [14.675, "thao", 1], [14.85, "tác", 1], [15.1, "cùng", 1], [15.312, "tham", 1], [15.512, "số.", 1], [15.596, "WSDL", 2], [15.68, "đóng", 2], [15.764, "vai", 2], [15.849, "hợp", 2], [15.933, "đồng,", 2], [16.017, "mô", 2], [16.101, "tả", 2], [16.185, "thao", 2], [16.269, "tác,", 2], [16.354, "kiểu", 2], [16.438, "dữ", 2], [16.522, "liệu", 2], [16.606, "và", 2], [16.69, "endpoint,", 2], [16.774, "để", 2], [16.858, "mỗi", 2], [16.943, "ngôn", 2], [17.027, "ngữ", 2], [17.111, "tạo", 2], [17.195, "stub", 2], [17.279, "của", 2], [17.363, "mình.", 2], [17.448, "Năm", 3], [17.532, "từ", 3], [17.616, "khóa", 3], [17.7, "đi", 3], [17.7, "cùng", 3], [17.7, "SOAP", 3], [17.7, "là", 3], [17.7, "web", 3], [17.7, "service,", 3], [17.7, "SOAP,", 3], [17.7, "SOAP", 3], [17.7, "envelope,", 3], [17.7, "WSDL", 3], [17.7, "và", 3], [17.7, "XML.", 3]], "cues": [0.1, 8.325, 15.596, 17.448], "lang": 0.6}, {"ten": "Mở rộng", "loai": "mo-rong", "slide": "MR", "dung": "Slide Mở rộng sinh từ kế hoạch: cột chủ đề nâng cao, rồi cột bài tập.\nHiện dần: bước 1 khi đọc “Phần Header của envelope”; bước 2 khi đọc “Bài tập mở rộng”.", "start": 408.57, "audio": "audio/9bb7bcdbdea03e7d.mp3", "dur": 21.34, "words": [[0.1, "Phần", 0], [0.375, "Header", 0], [0.8, "của", 0], [1.062, "envelope", 0], [1.7, "là", 0], [1.975, "chỗ", 0], [2.263, "của", 0], [2.388, "các", 0], [2.538, "chuẩn", 0], [2.75, "mở", 0], [2.962, "rộng,", 0], [3.462, "tiêu", 0], [3.638, "biểu", 0], [3.875, "là", 0], [4.713, "WS-Security", 0], [5.55, "cho", 0], [5.725, "ký", 0], [6.037, "và", 0], [6.175, "mã", 0], [6.35, "hóa", 0], [6.562, "message;", 0], [7.312, "các", 0], [7.5, "bạn", 0], [7.737, "cũng", 0], [7.888, "có", 0], [7.975, "thể", 0], [8.137, "tìm", 0], [8.363, "hiểu", 0], [8.6, "vì", 0], [8.738, "sao", 0], [8.976, "SOAP", 0], [9.213, "vẫn", 0], [9.412, "được", 0], [9.55, "dùng", 0], [9.8, "trong", 0], [9.988, "hệ", 0], [10.113, "thống", 0], [10.312, "ngân", 0], [10.5, "hàng", 0], [10.738, "và", 0], [10.863, "dịch", 0], [11.037, "vụ", 0], [11.225, "công.", 0], [12.387, "Bài", 1], [12.625, "tập", 1], [12.825, "mở", 1], [13.012, "rộng", 1], [13.275, "là", 1], [13.425, "sinh", 1], [13.675, "client", 1], [14.05, "từ", 1], [14.05, "WSDL", 1], [14.05, "của", 1], [14.05, "dịch", 1], [14.05, "vụ", 1], [14.05, "tra", 1], [14.05, "cứu", 1], [14.05, "bằng", 1], [14.05, "wsimport", 1], [14.05, "hoặc", 1], [14.05, "công", 1], [14.05, "cụ", 1], [14.05, "tương", 1], [14.05, "đương,", 1], [14.05, "rồi", 1], [14.05, "gọi", 1], [14.05, "thao", 1], [14.05, "tác", 1], [14.05, "lookup.", 1]], "cues": [0.1, 12.387], "lang": 0.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Mở rộng mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 430.51, "audio": "audio/3e9369235e5da53b.mp3", "dur": 13.32, "words": [[0.425, "SOAP", 0], [0.425, "gửi", 0], [0.6, "mọi", 0], [0.85, "thao", 0], [1.025, "tác", 0], [1.262, "tới", 0], [1.425, "một", 0], [1.6, "địa", 0], [1.775, "chỉ,", 0], [2.388, "trong", 0], [2.6, "một", 0], [2.875, "envelope", 0], [3.944, "XML.", 0], [5.013, "Phần", 1], [5.287, "tiếp", 1], [5.537, "theo", 1], [5.713, "dùng", 1], [5.963, "chính", 1], [6.175, "các", 1], [6.325, "thành", 1], [6.513, "phần", 1], [6.725, "của", 1], [7.162, "HTTP", 1], [7.6, "để", 1], [7.725, "biểu", 1], [7.938, "diễn", 1], [8.2, "lời", 1], [8.35, "gọi,", 1], [8.887, "với", 1], [9.274, "REST,", 1], [9.662, "tài", 1], [9.875, "nguyên,", 1], [10.425, "phương", 1], [10.713, "thức", 1], [11.232, "HTTP", 1], [11.75, "và", 1], [11.75, "JSON.", 1]], "cues": [], "lang": 0.6}], "video_sau": "Web service: REST, tài nguyên, phương thức HTTP và JSON"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

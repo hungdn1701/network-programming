@@ -1,0 +1,16 @@
+$ UpdatePublisher sapa dalat hue
+published "updated sapa"
+published "updated dalat"
+published "updated hue"
+$ UpdateConsumer --crash-on dalat
+consumer waiting on lookup.updates (manual ack)
+got "updated sapa"
+got "updated dalat"
+crash while processing "updated dalat"
+$ rabbitmqctl list_queues name messages_ready messages_unacknowledged
+name  messages_ready  messages_unacknowledged
+lookup.updates  2  0
+$ UpdateConsumer --max 2
+consumer waiting on lookup.updates (manual ack)
+got "updated dalat" (redelivered)
+got "updated hue" (redelivered)

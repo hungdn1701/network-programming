@@ -46,14 +46,14 @@ TS. Đặng Ngọc Hùng · 3 tín chỉ · Tiếng Việt · Java 21
 
 | | Phần | Phút | |
 |---|---|---|---|
-| 1 | RPC: lời gọi thủ tục từ xa và Java RMI | 8′ |  |
-| 2 | RPC: truyền tham số, idempotency và truy cập đồng thời trong RMI | 7′ |  |
-| 3 | Web service: SOAP, hợp đồng WSDL và message XML | 6′ |  |
-| 4 | Web service: REST, tài nguyên, phương thức HTTP và JSON | 6′ |  |
-| 5 | gRPC: Protocol Buffers và lời gọi unary | 8′ |  |
-| 6 | gRPC: streaming, deadline và mã trạng thái | 7′ |  |
-| 7 | Message broker: RabbitMQ, exchange, queue và binding | 7′ |  |
-| 8 | Bài toán ứng dụng: thông báo bất đồng bộ qua message broker | 8′ |  |
+| 1 | RPC: lời gọi thủ tục từ xa và Java RMI | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V22/) · [slide](https://hungdn1701.github.io/network-programming/V22/slide.pdf) · [mã](code/chapter-4/01-rmi/) |
+| 2 | RPC: truyền tham số, idempotency và truy cập đồng thời trong RMI | 7′ | [xem trước](https://hungdn1701.github.io/network-programming/V23/) · [slide](https://hungdn1701.github.io/network-programming/V23/slide.pdf) · [mã](code/chapter-4/02-rmi-update/) |
+| 3 | Web service: SOAP, hợp đồng WSDL và message XML | 6′ | [xem trước](https://hungdn1701.github.io/network-programming/V24/) · [slide](https://hungdn1701.github.io/network-programming/V24/slide.pdf) · [mã](code/chapter-4/03-soap/) |
+| 4 | Web service: REST, tài nguyên, phương thức HTTP và JSON | 6′ | [xem trước](https://hungdn1701.github.io/network-programming/V25/) · [slide](https://hungdn1701.github.io/network-programming/V25/slide.pdf) · [mã](code/chapter-4/04-rest/) |
+| 5 | gRPC: Protocol Buffers và lời gọi unary | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V26/) · [slide](https://hungdn1701.github.io/network-programming/V26/slide.pdf) · [mã](code/chapter-4/05-grpc/) |
+| 6 | gRPC: streaming, deadline và mã trạng thái | 7′ | [xem trước](https://hungdn1701.github.io/network-programming/V27/) · [slide](https://hungdn1701.github.io/network-programming/V27/slide.pdf) · [mã](code/chapter-4/06-grpc-streaming/) |
+| 7 | Message broker: RabbitMQ, exchange, queue và binding | 7′ | [xem trước](https://hungdn1701.github.io/network-programming/V28/) · [slide](https://hungdn1701.github.io/network-programming/V28/slide.pdf) · [mã](code/chapter-4/07-rabbitmq/) |
+| 8 | Bài toán ứng dụng: thông báo bất đồng bộ qua message broker | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V29/) · [slide](https://hungdn1701.github.io/network-programming/V29/slide.pdf) · [mã](code/chapter-4/08-notify/) |
 
 ## Chương 5. Các chủ đề nâng cao
 
@@ -69,4 +69,4 @@ TS. Đặng Ngọc Hùng · 3 tín chỉ · Tiếng Việt · Java 21
 
 ---
 
-Repo này được sinh tự động từ nguồn biên soạn; không sửa trực tiếp. Cập nhật 2026-10-24.
+Repo này được sinh tự động từ nguồn biên soạn; không sửa trực tiếp. Cập nhật 2026-10-25.

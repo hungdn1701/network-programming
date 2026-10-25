@@ -1,0 +1,6 @@
+LookupRequest:
+  protobuf 7 bytes: 0a 05 68 61 6e 6f 69
+  JSON     15 bytes: {"key":"hanoi"}
+LookupReply:
+  protobuf 31 bytes: 08 01 12 1b 54 68 e1 bb a7 20 c4 91 c3 b4 20 63 e1 bb a7 61 20 56 69 e1 bb 87 74 20 4e 61 6d
+  JSON     52 bytes: {"found":true,"value":"Thủ đô của Việt Nam"}

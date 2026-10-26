@@ -1,11 +1,13 @@
 listening on 127.0.0.1:9199
-connection from 127.0.0.1:49958
-hanoi
-> OK Thủ đô của Việt Nam
-atlantis
-> NOTFOUND
+connection from 127.0.0.1:60463
+GET /hello.txt HTTP/1.1
+Host: 127.0.0.1:9199
+User-Agent: curl/8.7.1
+Accept: */*
 (empty line)
-> ERR empty key
-xxxxxxxxxxxxxxxxxxxx… (300 bytes)
-> ERR line too long
+> HTTP/1.1 200 OK
+> Content-Type: text/plain
+> Content-Length: 7
+> (empty line)
+> hello
 (connection closed by peer)

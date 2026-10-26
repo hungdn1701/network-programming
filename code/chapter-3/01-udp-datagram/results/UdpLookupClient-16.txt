@@ -1,1 +1,0 @@
-buffer 16 bytes: "OK Thủ đô c�" (16 bytes)

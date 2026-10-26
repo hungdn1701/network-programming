@@ -1,4 +1,0 @@
-UDP lookup on port 9199
-from /127.0.0.1:62554: 5 bytes "hanoi", replied 30 bytes
-from /127.0.0.1:62555: 8 bytes "atlantis", replied 8 bytes
-from /127.0.0.1:62556: 5 bytes "hanoi", replied 30 bytes

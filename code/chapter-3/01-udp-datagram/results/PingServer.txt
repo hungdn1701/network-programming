@@ -1,0 +1,11 @@
+UDP ping server on port 12000
+from /127.0.0.1:52239: Ping 1 09:49:05.743 -> dropped
+from /127.0.0.1:52239: Ping 2 09:49:06.774 -> replied
+from /127.0.0.1:52239: Ping 3 09:49:06.800 -> replied
+from /127.0.0.1:52239: Ping 4 09:49:06.801 -> dropped
+from /127.0.0.1:52239: Ping 5 09:49:07.809 -> replied
+from /127.0.0.1:52239: Ping 6 09:49:07.812 -> replied
+from /127.0.0.1:52239: Ping 7 09:49:07.814 -> replied
+from /127.0.0.1:52239: Ping 8 09:49:07.816 -> replied
+from /127.0.0.1:52239: Ping 9 09:49:07.817 -> replied
+from /127.0.0.1:52239: Ping 10 09:49:07.818 -> replied

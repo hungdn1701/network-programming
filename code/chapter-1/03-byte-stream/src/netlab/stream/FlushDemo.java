@@ -16,7 +16,7 @@ public final class FlushDemo {
     public static void main(String[] args) throws IOException {
         var sink = new CountingOutputStream();  // ở vị trí stream của socket
         try (var out = new BufferedOutputStream(sink)) {  // decorator: thêm buffer 8192 byte
-            out.write("hanoi\n".getBytes(StandardCharsets.UTF_8));
+            out.write("hello\n".getBytes(StandardCharsets.UTF_8));
             System.out.println("after write(): " + sink.count() + " bytes passed down");
             out.flush();
             System.out.println("after flush(): " + sink.count() + " bytes passed down");

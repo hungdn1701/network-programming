@@ -1,0 +1,10 @@
+Ping 1: request timed out
+PING 2 09:49:06.774, RTT 1.94 ms
+PING 3 09:49:06.800, RTT 0.46 ms
+Ping 4: request timed out
+PING 5 09:49:07.809, RTT 1.18 ms
+PING 6 09:49:07.812, RTT 1.30 ms
+PING 7 09:49:07.814, RTT 1.12 ms
+PING 8 09:49:07.816, RTT 1.10 ms
+PING 9 09:49:07.817, RTT 0.30 ms
+PING 10 09:49:07.818, RTT 0.25 ms

@@ -17,8 +17,8 @@ public final class BoundaryDemo {
 
     public static void main(String[] args) throws IOException {
         try (DatagramSocket receiver = new DatagramSocket(9303); DatagramSocket sender = new DatagramSocket()) {
-            for (String key : new String[] {"hanoi", "danang"}) {  // hai lần send liên tiếp
-                byte[] data = key.getBytes(UTF_8);
+            for (String message : new String[] {"Ping 1", "Ping 2"}) {  // hai lần send liên tiếp
+                byte[] data = message.getBytes(UTF_8);
                 sender.send(new DatagramPacket(data, data.length, new InetSocketAddress("127.0.0.1", 9303)));
             }
             byte[] buf = new byte[512];

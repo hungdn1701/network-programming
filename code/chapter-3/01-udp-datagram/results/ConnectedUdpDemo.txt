@@ -1,3 +1,3 @@
-connect() to 192.0.2.1:9199 returned after 29 ms, isConnected = true
+connect() to 192.0.2.1:9199 returned after 30 ms, isConnected = true
 receive #1: "from server" from port 9301
 receive #2: nothing more (datagram from port 9302 was dropped)

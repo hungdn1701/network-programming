@@ -12,11 +12,14 @@ import java.net.InetSocketAddress;
 public final class EndpointDemo {
 
     public static void main(String[] args) {
-        var server = new InetSocketAddress("localhost", 9199);
-        System.out.println(server + "  isUnresolved() = " + server.isUnresolved());
+        var web = new InetSocketAddress("ptit.edu.vn", 443);
+        System.out.println(web + "  isUnresolved() = " + web.isUnresolved());
+
+        var local = new InetSocketAddress("localhost", 9199);
+        System.out.println(local + "  isUnresolved() = " + local.isUnresolved());
 
         // .invalid là tên miền dành riêng, không bao giờ phân giải được (RFC 6761)
-        var unknown = new InetSocketAddress("lookup.invalid", 9199);
+        var unknown = new InetSocketAddress("ptit.invalid", 443);
         System.out.println(unknown + "  isUnresolved() = " + unknown.isUnresolved());
     }
 }

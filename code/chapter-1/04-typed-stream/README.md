@@ -14,9 +14,9 @@ java -cp out netlab.stream.WrongOrderDemo
 
 | Lớp | Dùng ở | Cho thấy |
 |---|---|---|
-| `DataStreamDemo` | slide 4 | `writeInt(9199)` = `00 00 23 EF` (big-endian); double 8 byte; `writeUTF` có 2 byte độ dài; tổng 19 byte |
-| `ObjectStreamDemo` | slide 5 | Serialization: 100 byte cho một yêu cầu chứa chuỗi 5 ký tự; đối tượng đọc lại `equals` nhưng không `==` |
-| `WrongOrderDemo` | slide 6 | Đọc sai thứ tự không báo lỗi, chỉ cho giá trị sai |
+| `DataStreamDemo` | slide 4 | Bản ghi đo của cảm biến: `writeInt(1001)` = `00 00 03 E9` (big-endian); nhiệt độ `27.5` kiểu double 8 byte; `writeUTF("P301")` có 2 byte độ dài; tổng 18 byte |
+| `ObjectStreamDemo` | slide 5 | Serialization: 137 byte cho cùng bản ghi đo dạng đối tượng `SensorReading`; đối tượng đọc lại `equals` nhưng không `==` |
+| `WrongOrderDemo` | slide 6 | Đọc sai thứ tự (double trước int) không báo lỗi, chỉ cho giá trị sai |
 
 `ByteArrayOutputStream` đứng ở vị trí stream của socket để xem được từng byte. Không deserialize dữ liệu từ
 nguồn không tin cậy.

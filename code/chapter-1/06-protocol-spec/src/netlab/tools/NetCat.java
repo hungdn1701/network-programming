@@ -19,14 +19,15 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * trình. Mã socket bên trong học ở Chương 2; ở Chương 1 chỉ dùng như một công cụ.
  *
  * <pre>
- *   java -cp out netlab.tools.NetCat -l 9199          lắng nghe ở 127.0.0.1:9199, nhận một kết nối
- *   java -cp out netlab.tools.NetCat 127.0.0.1 9199   kết nối tới endpoint
+ *   java -cp out netlab.tools.NetCat -l 9199                lắng nghe ở 127.0.0.1:9199, nhận một kết nối
+ *   java -cp out netlab.tools.NetCat ptit.edu.vn 80         kết nối tới endpoint
+ *   java -cp out netlab.tools.NetCat --crlf ptit.edu.vn 80  kết thúc mỗi dòng gửi đi bằng CRLF, như HTTP/1.1 quy định
  * </pre>
  *
- * Mỗi dòng gõ vào được gửi đi (UTF-8, kết thúc bằng LF); mỗi dòng nhận được in ra. Hết đầu vào (Ctrl+D, hoặc
- * Ctrl+Z rồi Enter trên Windows) thì báo cho đầu kia và chờ đầu kia đóng.
+ * Mỗi dòng gõ vào được gửi đi (UTF-8, kết thúc bằng LF, hoặc CRLF với {@code --crlf}); mỗi dòng nhận được in ra.
+ * Hết đầu vào (Ctrl+D, hoặc Ctrl+Z rồi Enter trên Windows) thì báo cho đầu kia và chờ đầu kia đóng.
  *
- * <p>Tùy chọn {@code --echo} (dùng khi chạy theo kịch bản, xem {@link NetCatSession}): in lại mỗi dòng gửi đi với
+ * <p>Tùy chọn {@code --echo} (dùng khi ghi phiên cho slide, xem {@code record.sh}): in lại mỗi dòng gửi đi với
  * dấu "> " để bản ghi màn hình có cả hai chiều. Dòng rỗng nhận được in thành "(empty line)"; dòng dài hơn 60 ký tự
  * in rút gọn kèm số byte. Dữ liệu gửi và nhận luôn đủ, chỉ phần in ra màn hình được rút gọn.
  *
@@ -37,8 +38,10 @@ public final class NetCat {
     private static final PrintStream OUT = new PrintStream(new FileOutputStream(FileDescriptor.out), true, UTF_8);
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        boolean echo = args.length > 0 && args[0].equals("--echo");
-        String[] a = echo ? java.util.Arrays.copyOfRange(args, 1, args.length) : args;
+        var options = java.util.List.of(args).stream().filter(s -> s.startsWith("--")).toList();
+        boolean echo = options.contains("--echo");
+        String eol = options.contains("--crlf") ? "\r\n" : "\n";  // HTTP/1.1, SMTP: mỗi dòng kết thúc bằng CRLF
+        String[] a = java.util.List.of(args).stream().filter(s -> !s.startsWith("--")).toArray(String[]::new);
         Socket socket;
         if (a.length == 2 && a[0].equals("-l")) {
             int port = Integer.parseInt(a[1]);
@@ -51,7 +54,7 @@ public final class NetCat {
             socket = new Socket(a[0], Integer.parseInt(a[1]));
             OUT.println("connected to " + a[0] + ":" + a[1]);
         } else {
-            OUT.println("usage: NetCat [--echo] -l <port> | NetCat [--echo] <host> <port>");
+            OUT.println("usage: NetCat [--echo] [--crlf] -l <port> | NetCat [--echo] [--crlf] <host> <port>");
             return;
         }
         try (socket) {
@@ -75,7 +78,7 @@ public final class NetCat {
                 if (echo) {
                     OUT.println("> " + show(line));
                 }
-                toPeer.write(line + "\n");
+                toPeer.write(line + eol);
                 toPeer.flush();
             }
             socket.shutdownOutput();  // hết đầu vào: báo cho đầu kia, vẫn nhận tiếp

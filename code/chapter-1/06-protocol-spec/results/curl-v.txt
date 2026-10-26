@@ -1,14 +1,14 @@
-* Host example.com:80 was resolved.
+* Host ptit.edu.vn:80 was resolved.
 * IPv6: (none)
-* IPv4: 172.66.147.243, 104.20.23.154
-*   Trying 172.66.147.243:80...
-* Connected to example.com (172.66.147.243) port 80
-> GET / HTTP/1.1
-> Host: example.com
-> User-Agent: curl/8.7.1
-> Accept: */*
-> 
+* IPv4: 103.9.211.85
+*   Trying 103.9.211.85:80...
+* Connected to ptit.edu.vn (103.9.211.85) port 80
+> GET / HTTP/1.1
+> Host: ptit.edu.vn
+> User-Agent: curl/8.7.1
+> Accept: */*
+> 
 * Request completely sent off
-< HTTP/1.1 200 OK
-< Date: Tue, 20 Oct 2026 04:21:51 GMT
-< Content-Type: text/html; charset=utf-8
+< HTTP/1.1 301 Moved Permanently
+< Server: nginx/1.24.0 (Ubuntu)
+< Date: Mon, 26 Oct 2026 02:26:33 GMT

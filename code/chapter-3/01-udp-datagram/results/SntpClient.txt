@@ -1,0 +1,2 @@
+buffer 48: received 48 bytes, server time 2026-10-26T02:49:38Z
+buffer 16: received 16 bytes, no Transmit Timestamp (bytes 40-47)

@@ -1,2 +1,11 @@
-localhost -> 127.0.0.1
-localhost -> 0:0:0:0:0:0:0:1
+localhost -> 127.0.0.1  IPv4
+localhost -> 0:0:0:0:0:0:0:1  IPv6
+ptit.edu.vn -> 103.9.211.85  IPv4
+www.google.com -> 142.251.157.119  IPv4
+www.google.com -> 142.251.155.119  IPv4
+www.google.com -> 142.251.151.119  IPv4
+www.google.com -> 142.251.154.119  IPv4
+www.google.com -> 142.251.153.119  IPv4
+www.google.com -> 142.251.152.119  IPv4
+www.google.com -> 142.251.150.119  IPv4
+www.google.com -> 142.251.156.119  IPv4

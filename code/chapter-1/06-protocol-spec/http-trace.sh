@@ -1,1 +1,1 @@
-curl -sv -o /dev/null http://example.com 2>&1 | head -14
+curl -sv -o /dev/null http://ptit.edu.vn 2>&1 | head -14

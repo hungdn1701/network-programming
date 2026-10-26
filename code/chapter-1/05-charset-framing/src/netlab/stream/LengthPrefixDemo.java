@@ -17,7 +17,7 @@ import java.util.HexFormat;
 public final class LengthPrefixDemo {
 
     public static void main(String[] args) throws IOException {
-        byte[] data = "huế".getBytes(StandardCharsets.UTF_8);
+        byte[] data = "chào".getBytes(StandardCharsets.UTF_8);
         var bytes = new ByteArrayOutputStream();  // ở vị trí stream của socket
         try (var out = new DataOutputStream(bytes)) {
             out.writeInt(data.length);  // tiền tố: 4 byte độ dài

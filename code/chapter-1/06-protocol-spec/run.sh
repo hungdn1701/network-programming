@@ -1,5 +1,7 @@
-# Terminal 1: đóng vai server, lắng nghe ở 127.0.0.1:9199
-java -cp out netlab.tools.NetCat -l 9199
+# Vai client: nói HTTP/1.1 với web server thật. Gõ từng dòng của request, kết thúc bằng một dòng trống
+# (hoặc dùng request đã soạn sẵn: ... < requests/get-root.txt)
+java -cp out netlab.tools.NetCat --crlf ptit.edu.vn 80
 
-# Terminal 2: đóng vai client, kết nối tới server
-java -cp out netlab.tools.NetCat 127.0.0.1 9199
+# Vai server: NetCat lắng nghe ở loopback, port 9199; ở terminal khác, curl đóng vai client
+java -cp out netlab.tools.NetCat --crlf -l 9199
+curl -i http://127.0.0.1:9199/hello.txt

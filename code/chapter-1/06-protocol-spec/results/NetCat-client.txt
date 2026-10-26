@@ -1,10 +1,21 @@
-connected to 127.0.0.1:9199
-> hanoi
-OK Thủ đô của Việt Nam
-> atlantis
-NOTFOUND
+connected to ptit.edu.vn:80
+> GET / HTTP/1.1
+> Host: ptit.edu.vn
+> Connection: close
 > (empty line)
-ERR empty key
-> xxxxxxxxxxxxxxxxxxxx… (300 bytes)
-ERR line too long
+HTTP/1.1 301 Moved Permanently
+Server: nginx/1.24.0 (Ubuntu)
+Date: Mon, 26 Oct 2026 02:26:29 GMT
+Content-Type: text/html
+Content-Length: 178
+Connection: close
+Location: https://ptit.edu.vn/
+(empty line)
+<html>
+<head><title>301 Moved Permanently</title></head>
+<body>
+<center><h1>301 Moved Permanently</h1></center>
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+</body>
+</html>
 (connection closed by peer)

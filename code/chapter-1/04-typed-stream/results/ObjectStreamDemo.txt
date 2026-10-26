@@ -1,2 +1,2 @@
-serialized: 100 bytes
+serialized: 137 bytes
 equals: true, same object: false

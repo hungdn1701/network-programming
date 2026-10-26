@@ -16,35 +16,40 @@ import java.util.Objects;
  */
 public final class ObjectStreamDemo {
 
-    /** Yêu cầu tra cứu dạng đối tượng. */
-    static final class LookupRequest implements Serializable {
+    /** Bản ghi đo của một cảm biến: mã cảm biến, nhiệt độ (độ C), tên phòng. */
+    static final class SensorReading implements Serializable {
         private static final long serialVersionUID = 1L;
-        private final String key;
+        private final int sensorId;
+        private final double temperature;
+        private final String room;
 
-        LookupRequest(String key) {
-            this.key = key;
+        SensorReading(int sensorId, double temperature, String room) {
+            this.sensorId = sensorId;
+            this.temperature = temperature;
+            this.room = room;
         }
 
         @Override
         public boolean equals(Object o) {
-            return o instanceof LookupRequest other && key.equals(other.key);
+            return o instanceof SensorReading other && sensorId == other.sensorId
+                    && temperature == other.temperature && room.equals(other.room);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(key);
+            return Objects.hash(sensorId, temperature, room);
         }
     }
 
     public static void main(String[] args) throws IOException, ClassNotFoundException {
-        var sent = new LookupRequest("hanoi");
+        var sent = new SensorReading(1001, 27.5, "P301");
         var bytes = new ByteArrayOutputStream();  // ở vị trí stream của socket
         try (var out = new ObjectOutputStream(bytes)) {
             out.writeObject(sent);
         }
         System.out.println("serialized: " + bytes.size() + " bytes");
         try (var in = new ObjectInputStream(new ByteArrayInputStream(bytes.toByteArray()))) {
-            var received = (LookupRequest) in.readObject();
+            var received = (SensorReading) in.readObject();
             System.out.println("equals: " + sent.equals(received) + ", same object: " + (sent == received));
         }
     }

@@ -1,2 +1,0 @@
-buffer 512 bytes: "OK Thủ đô của Việt Nam" (30 bytes)
-buffer 512 bytes: "NOTFOUND" (8 bytes)

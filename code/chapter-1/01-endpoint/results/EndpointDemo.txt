@@ -1,2 +1,3 @@
+ptit.edu.vn/103.9.211.85:443  isUnresolved() = false
 localhost/127.0.0.1:9199  isUnresolved() = false
-lookup.invalid/<unresolved>:9199  isUnresolved() = true
+ptit.invalid/<unresolved>:443  isUnresolved() = true

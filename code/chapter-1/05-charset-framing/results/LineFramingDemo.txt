@@ -1,2 +1,3 @@
-message: hanoi
-message: huế
+14 chars: GET / HTTP/1.1
+17 chars: Host: ptit.edu.vn
+17 chars: Connection: close

@@ -1,2 +1,2 @@
-00 00 00 05 68 75 E1 BA BF
-5 bytes: huế
+00 00 00 05 63 68 C3 A0 6F
+5 bytes: chào

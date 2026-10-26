@@ -16,8 +16,8 @@ public final class WrongOrderDemo {
     public static void main(String[] args) throws IOException {
         var bytes = new ByteArrayOutputStream();
         try (var out = new DataOutputStream(bytes)) {
-            out.writeInt(9199);
-            out.writeDouble(1.5);
+            out.writeInt(1001);      // mã cảm biến
+            out.writeDouble(27.5);   // nhiệt độ, độ C
         }
         try (var in = new DataInputStream(new ByteArrayInputStream(bytes.toByteArray()))) {
             System.out.println(in.readDouble());  // SAI: phía ghi đã ghi int trước

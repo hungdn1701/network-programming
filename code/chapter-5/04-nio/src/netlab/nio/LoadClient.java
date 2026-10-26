@@ -14,8 +14,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * V33: tạo tải cho server tra cứu ở port 9199. Mở trước 5 000 kết nối và giữ mở; sau đó mỗi kết nối (một virtual thread phía
- * client) gửi 20 yêu cầu lần lượt, đo độ trễ từng yêu cầu. In thông lượng (yêu cầu mỗi giây) và độ trễ p50, p99.
+ * V33: tạo tải cho echo server ở port 9199. Mở trước 5 000 kết nối và giữ mở; sau đó mỗi kết nối (một virtual thread phía
+ * client) gửi lần lượt 20 dòng, mỗi dòng chờ được gửi lại rồi mới gửi dòng sau, đo độ trễ từng yêu cầu. In thông lượng (yêu cầu mỗi giây) và độ trễ p50, p99.
  *
  * <p>Chạy: {@code java -cp out netlab.nio.LoadClient <nhãn server> [số kết nối] [số yêu cầu mỗi kết nối]}
  */
@@ -41,11 +41,11 @@ public final class LoadClient {
                     var in = new BufferedReader(new InputStreamReader(socket.getInputStream(), UTF_8));
                     for (int r = 0; r < requests; r++) {
                         long begin = System.nanoTime();
-                        out.write("hanoi\n");
+                        out.write("hello\n");
                         out.flush();
                         String reply = in.readLine();
-                        latency[id * requests + r] = System.nanoTime() - begin;  // độ trễ: gửi đến khi nhận đủ phản hồi
-                        if (reply == null || !reply.startsWith("OK")) {
+                        latency[id * requests + r] = System.nanoTime() - begin;  // độ trễ: gửi đến khi nhận lại đủ dòng
+                        if (!"hello".equals(reply)) {
                             errors.incrementAndGet();
                         }
                     }

@@ -1,12 +1,9 @@
-$ UpdatePublisher sapa dalat hue
-published "updated sapa"
-published "updated dalat"
-published "updated hue"
-$ UpdateConsumer --auto-ack --crash-on dalat
-consumer waiting on lookup.updates (autoAck)
-got "updated sapa"
-got "updated dalat"
-crash while processing "updated dalat"
+$ Worker --auto-ack --crash-on Second message..
+ [*] Waiting for messages (autoAck)
+ [x] Received 'First message.'
+ [x] Done
+ [x] Received 'Second message..'
+ [!] crash while working on 'Second message..'
 $ rabbitmqctl list_queues name messages_ready messages_unacknowledged
 name  messages_ready  messages_unacknowledged
-lookup.updates  0  0
+task_queue  0  0

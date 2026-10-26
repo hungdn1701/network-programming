@@ -1,2 +1,2 @@
-127.0.0.1: SocketTimeoutException: Read timed out after 2073 ms
-192.0.2.1: SocketTimeoutException: Connect timed out after 3009 ms
+127.0.0.1: SocketTimeoutException: Read timed out after 2045 ms
+192.0.2.1: SocketTimeoutException: Connect timed out after 3014 ms

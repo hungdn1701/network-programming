@@ -1,4 +1,0 @@
-consumer waiting on lookup.updates (manual ack)
-got "updated sapa"
-got "updated dalat"
-got "updated hue"

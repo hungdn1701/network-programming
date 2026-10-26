@@ -12,10 +12,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 
 /**
- * V35: 100 client cùng gọi khi server đang lỗi (lỗi từ lúc bắt đầu đến 1 400 ms), mỗi client retry đến khi thành công. Ba cách
- * retry: cố định mỗi 100 ms; exponential backoff (100, 200, 400, 800, tối đa 1 600 ms); exponential backoff có full jitter.
- * Mỗi dòng: tổng số request; số request dồn vào 100 ms đông nhất kể từ lúc server hồi phục; thời điểm client cuối cùng
- * nhận được 200.
+ * V35: 100 client (đơn hàng của 100 người mua) cùng gửi thanh toán khi dịch vụ thanh toán đang lỗi (lỗi từ lúc bắt đầu đến
+ * 1 400 ms), mỗi client retry đến khi thành công, như thí nghiệm trong bài "Exponential Backoff And Jitter" (Brooker, AWS
+ * Architecture Blog). Ba cách retry: cố định mỗi 100 ms; exponential backoff (100, 200, 400, 800, tối đa 1 600 ms); exponential
+ * backoff có full jitter. Mỗi dòng: tổng số request; số request dồn vào 100 ms đông nhất kể từ lúc dịch vụ hồi phục; thời điểm
+ * client cuối cùng thanh toán xong; số khoản thanh toán đã tạo (mỗi đơn một idempotency key, nên retry không tạo khoản trùng).
  *
  * <p>Chạy: {@code java -cp out netlab.resilience.RetryStormDemo}
  */
@@ -26,10 +27,10 @@ public final class RetryStormDemo {
     static final long DOWN_MILLIS = 1400;
 
     public static void main(String[] args) throws Exception {
-        System.out.printf("%-15s%9s%31s%15s%n", "", "requests", "peak / 100 ms after recovery", "all OK after");
-        FlakyServer server = FlakyServer.start(9199);
+        System.out.printf("%-15s%9s%31s%15s%10s%n", "", "requests", "peak / 100 ms after recovery", "all OK after", "payments");
+        PaymentService server = PaymentService.start(9199);
         HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
-        runClients(http, null, null);  // khởi động: mỗi client một request khi server còn tốt, mở sẵn kết nối
+        runClients(http, null, null);  // khởi động: mỗi client một request khi dịch vụ còn tốt, mở sẵn kết nối
         for (Mode mode : Mode.values()) {
             CountDownLatch go = new CountDownLatch(1);
             Thread starter = Thread.ofVirtual().start(() -> {
@@ -44,11 +45,11 @@ public final class RetryStormDemo {
             runClients(http, mode, go);
             starter.join();
             List<Long> afterRecovery = server.arrivals().stream().filter(t -> t >= DOWN_MILLIS).toList();
-            System.out.printf("%-15s%9d%31d%12d ms%n", switch (mode) {
+            System.out.printf("%-15s%9d%31d%12d ms%10d%n", switch (mode) {
                 case FIXED -> "fixed 100 ms";
                 case BACKOFF -> "backoff";
                 case JITTER -> "backoff+jitter";
-            }, server.arrivals().size(), peak(afterRecovery, 100), server.lastOkMillis());
+            }, server.arrivals().size(), peak(afterRecovery, 100), server.lastOkMillis(), server.paymentsCreated());
         }
         server.stop();
     }
@@ -56,13 +57,14 @@ public final class RetryStormDemo {
     static void runClients(HttpClient http, Mode mode, CountDownLatch go) {
         try (var clients = Executors.newVirtualThreadPerTaskExecutor()) {
             for (int c = 0; c < 100; c++) {
+                int order = c;
                 RandomGenerator random = new SplittableRandom(c);  // seed theo client: chạy lại cho cùng chuỗi jitter
                 clients.submit(() -> {
                     try {
                         if (go != null) {
                             go.await();  // 100 client bắt đầu cùng lúc
                         }
-                        callUntilOk(http, mode, random);
+                        callUntilOk(http, mode, random, "order-" + order);
                     } catch (Exception e) {
                         System.out.println("client error: " + e);
                     }
@@ -71,11 +73,13 @@ public final class RetryStormDemo {
         }
     }
 
-    static void callUntilOk(HttpClient http, Mode mode, RandomGenerator random) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:9199/entries/hanoi"))
+    static void callUntilOk(HttpClient http, Mode mode, RandomGenerator random, String order) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:9199/payments"))
+                .header("Idempotency-Key", order)  // mọi lần retry của cùng đơn hàng mang cùng key
+                .POST(HttpRequest.BodyPublishers.ofString("{\"order\":\"" + order + "\",\"amount\":250000}"))
                 .timeout(Duration.ofSeconds(2)).build();
         for (int attempt = 0; ; attempt++) {
-            if (http.send(request, HttpResponse.BodyHandlers.discarding()).statusCode() == 200) {
+            if (http.send(request, HttpResponse.BodyHandlers.discarding()).statusCode() / 100 == 2) {  // 201 hoặc 200: đã thanh toán
                 return;
             }
             if (mode == null) {

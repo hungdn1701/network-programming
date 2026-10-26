@@ -1,1 +1,1 @@
-platform  30,793 requests/s   p50 109.8 ms   p99 472.1 ms   0 errors
+platform  34,084 requests/s   p50 108.0 ms   p99 628.8 ms   0 errors

@@ -1,1 +1,0 @@
-bound EntryService, UnsafeEntryService; object port 9199

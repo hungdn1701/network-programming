@@ -1,6 +1,0 @@
-blocking  hanoi -> Thủ đô của Việt Nam
-blocking  sapa -> Thị trấn vùng cao
-blocking  failed: UNAVAILABLE
-blocking  total 335 ms
-async     Thủ đô của Việt Nam | Thị trấn vùng cao | (không tra được: UNAVAILABLE)
-async     total 214 ms

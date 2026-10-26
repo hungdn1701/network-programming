@@ -1,4 +1,4 @@
-                requests   peak / 100 ms after recovery   all OK after
-fixed 100 ms        1261                             85        1531 ms
-backoff              500                            100        1608 ms
-backoff+jitter       647                             14        2896 ms
+                requests   peak / 100 ms after recovery   all OK after  payments
+fixed 100 ms        1203                             99        1520 ms       100
+backoff              500                            100        1608 ms       100
+backoff+jitter       646                             16        2957 ms       100

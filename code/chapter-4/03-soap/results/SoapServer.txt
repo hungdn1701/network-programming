@@ -1,2 +1,2 @@
-SOAP endpoint http://127.0.0.1:9199/lookup, WSDL http://127.0.0.1:9199/lookup?wsdl
-lookup("hanoi")
+SOAP endpoint http://127.0.0.1:9199/tempconvert, WSDL http://127.0.0.1:9199/tempconvert?wsdl
+celsiusToFahrenheit(100.0)

@@ -1,20 +1,22 @@
-// V26: hai phiên bản giả định của LookupReply ở phía server, chỉ để CompatDemo thử tương thích với client dùng lookup.proto.
+// V26: hai phiên bản giả định của message ở phía server, chỉ để CompatDemo thử tương thích với client dùng route_guide.proto.
 syntax = "proto3";
 
-package lookup;
+package routeguide;
+
+import "route_guide.proto";
 
 option java_package = "netlab.grpc.compat";
 option java_multiple_files = true;
 
 // Server đổi số của hai trường đã dùng: sai, client cũ đọc sai mà không báo lỗi.
-message LookupReplyRenumbered {
-  bool found = 2;
-  string value = 1;
+message PointRenumbered {
+  int32 latitude = 2;
+  int32 longitude = 1;
 }
 
 // Server thêm trường mới với số mới: đúng, client cũ bỏ qua trường lạ.
-message LookupReplyExtended {
-  bool found = 1;
-  string value = 2;
-  int64 version = 3;
+message FeatureExtended {
+  string name = 1;
+  Point location = 2;
+  string category = 3;
 }

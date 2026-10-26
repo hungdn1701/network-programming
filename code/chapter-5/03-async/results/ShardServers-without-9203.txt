@@ -1,2 +1,0 @@
-shard hanoi on port 9201, delay 100 ms
-shard sapa on port 9202, delay 200 ms

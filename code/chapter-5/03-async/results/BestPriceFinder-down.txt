@@ -1,0 +1,6 @@
+blocking  BestPrice 139.99
+blocking  LetsSaveBig 129.99
+blocking  failed: UNAVAILABLE
+blocking  total 346 ms
+async     MyFavoriteShop skipped: UNAVAILABLE
+async     best LetsSaveBig 129.99, total 222 ms

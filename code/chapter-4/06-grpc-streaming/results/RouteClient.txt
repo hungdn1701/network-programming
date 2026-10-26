@@ -1,0 +1,15 @@
+RecordRoute (client streaming):
++  10 ms  sent 21.0288, 105.8360
++ 422 ms  sent 21.0368, 105.8347
++ 825 ms  sent 21.0479, 105.8368
++1244 ms  sent 21.0431, 105.8580
++1679 ms  summary: 4 points, 4 features, 4415 m, 1 s
+RouteChat (bidirectional streaming):
++  19 ms  sent "tin 1" at 21.0288, 105.8525
++ 328 ms  sent "tin 2" at 21.0288, 105.8525
++ 397 ms  received "tin 1" at 21.0288, 105.8525
++ 650 ms  sent "tin 3" at 21.0288, 105.8360
++ 961 ms  sent "tin 4" at 21.0288, 105.8525
++ 977 ms  received "tin 1" at 21.0288, 105.8525
++ 980 ms  received "tin 2" at 21.0288, 105.8525
++1274 ms  server completed

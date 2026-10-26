@@ -1,1 +1,0 @@
-hanoi -> OK Thủ đô của Việt Nam (2 ms)

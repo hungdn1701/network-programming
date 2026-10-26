@@ -1,1 +1,1 @@
-nio       18,177 requests/s   p50 250.9 ms   p99 461.0 ms   0 errors
+nio       18,705 requests/s   p50 239.0 ms   p99 509.9 ms   0 errors

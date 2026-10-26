@@ -1,7 +1,0 @@
-$ LookupClient tls 127.0.0.1 9199 hanoi
-SSLHandshakeException: (certificate_unknown) No subject alternative names matching IP address 127.0.0.1 found
-$ LookupClient tls-no-hostname-check 127.0.0.1 9199 hanoi
-TLSv1.3 TLS_AES_256_GCM_SHA384, server cert CN=localhost
-hanoi -> OK Thủ đô của Việt Nam
-$ LookupClient tls localhost 9199 hanoi --default-trust
-SSLHandshakeException: (certificate_unknown) PKIX path building failed: sun.security.provider.certpath.SunCertPat ...

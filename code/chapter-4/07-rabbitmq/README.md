@@ -1,7 +1,7 @@
 # Message broker: RabbitMQ, exchange, queue và binding
 
-Mã chạy được của phần “Message broker: RabbitMQ, exchange, queue và binding”: dịch vụ tra cứu gửi sự kiện cập nhật qua RabbitMQ. Mọi đoạn mã trên slide trích từ thư mục này; mọi
-kết quả chạy trên slide lấy từ `results/` (output thật, không gõ lại).
+Mã chạy được của phần “Message broker: RabbitMQ, exchange, queue và binding”: work queue theo hướng dẫn chính thức của RabbitMQ (Tutorial 2, Work Queues: `NewTask`, `Worker`).
+Mọi đoạn mã trên slide trích từ thư mục này; mọi kết quả chạy trên slide lấy từ `results/` (output thật, không gõ lại).
 
 **Môi trường:** JDK 21 (Temurin 21.0.12), Windows 11. RabbitMQ 4.3.6 (AMQP 0-9-1, port 5672), thư viện `amqp-client` 5.37.0
 qua Maven Wrapper (`mvnw` tự tải Maven 3.9.16).
@@ -23,30 +23,29 @@ Releases của `rabbitmq/rabbitmq-server` và `erlang/otp` (2026-10-25). Biến 
 sh mvnw -q package dependency:copy-dependencies -DincludeScope=runtime    # Windows cmd: mvnw.cmd ...
 
 CP="target/classes;target/dependency/*"                                 # Linux, macOS: "target/classes:target/dependency/*"
-java -Dstdout.encoding=UTF-8 -cp "$CP" netlab.broker.UpdateConsumer                     # terminal 1: chờ sự kiện
-java -Dstdout.encoding=UTF-8 -cp "$CP" netlab.broker.UpdatePublisher sapa dalat hue     # terminal 2: gửi ba sự kiện
+java -cp "$CP" netlab.broker.Worker                          # terminal 1: chờ việc
+java -cp "$CP" netlab.broker.NewTask First message.          # terminal 2: giao việc (mỗi dấu chấm một giây)
+java -cp "$CP" netlab.broker.NewTask Second message..
 
-java -Dstdout.encoding=UTF-8 -cp "$CP" netlab.broker.UpdateConsumer --auto-ack --crash-on dalat   # autoAck, chết ở dalat
-java -Dstdout.encoding=UTF-8 -cp "$CP" netlab.broker.UpdateConsumer --crash-on dalat              # ack thủ công, chết ở dalat
+java -cp "$CP" netlab.broker.Worker --auto-ack --crash-on "Second message.."   # autoAck, chết khi đang làm việc thứ hai
+java -cp "$CP" netlab.broker.Worker --crash-on "Second message.."              # ack thủ công, chết khi đang làm việc thứ hai
 ```
 
-Trong các file `results/`, dòng `$ UpdatePublisher ...`, `$ UpdateConsumer ...` là lệnh `java ... netlab.broker.<lớp> ...` như
-trên, chạy lần lượt trong một terminal; `$ rabbitmqctl ...` là `rabbitmqctl -q list_queues ...` của RabbitMQ (cột cách nhau bằng
-khoảng trắng).
+Trong các file `results/`, dòng `$ NewTask ...`, `$ Worker ...` là lệnh `java ... netlab.broker.<lớp> ...` như trên, chạy lần lượt
+trong một terminal; `$ rabbitmqctl ...` là `rabbitmqctl -q list_queues ...` của RabbitMQ (cột cách nhau bằng khoảng trắng).
 
 | File | Dùng ở | Cho thấy |
 |---|---|---|
-| `Topology` | slide 4 | `exchangeDeclare` (direct `lookup.events`), `queueDeclare` (`lookup.updates`, durable), `queueBind` (routing key `entry.updated`); producer và consumer đều khai báo |
-| `UpdatePublisher` | slide 4 | `basicPublish(exchange, routingKey, ...)`: gửi tới exchange, không biết queue |
-| `UpdateConsumer` | slide 5–7 | `basicConsume`; xử lý 200 ms rồi `basicAck`; `--auto-ack`; `--crash-on <khóa>` tắt tiến trình (`Runtime.halt`) khi đang xử lý; `--max <n>` |
-| `results/online-*.txt` | slide 5 (lời giảng) | consumer đang chạy nhận ngay ba sự kiện |
-| `results/offline.txt` | slide 5 | consumer tắt: queue giữ 2 message; consumer chạy lại nhận đủ, queue về 0 |
-| `results/autoack-crash.txt` | slide 6 | autoAck, chết ở dalat: queue còn 0, dalat và hue mất |
-| `results/manual-crash.txt` | slide 7 | ack thủ công, chết ở dalat: queue còn 2, giao lại với cờ `redelivered` |
+| `NewTask` | slide 4 | như bản gốc: `queueDeclare("task_queue", durable=true, ...)`; `basicPublish("", "task_queue", PERSISTENT_TEXT_PLAIN, ...)`: exchange mặc định (tên rỗng, kiểu direct, mọi queue tự có binding theo tên queue); một việc mỗi lần chạy |
+| `Worker` | slide 5–7 | như bản gốc: `basicQos(1)`, `basicConsume` với ack thủ công, `doWork` ngủ một giây mỗi dấu chấm, làm xong mới `basicAck`; thêm để chạy theo kịch bản: `--auto-ack`, `--crash-on <message>` tắt tiến trình (`Runtime.halt`) khi đang làm việc đó, `--max <n>`, và in `(redelivered)` khi cờ redeliver bật |
+| `results/offline.txt` | slide 5 | Worker chưa chạy: queue giữ 2 message; Worker chạy lại nhận đủ, queue về 0 |
+| `results/autoack-crash-setup.txt`, `autoack-crash.txt` | slide 6 | giao ba việc; autoAck, chết ở việc thứ hai: queue còn 0, việc thứ hai và thứ ba mất |
+| `results/manual-crash-setup.txt`, `manual-crash.txt` | slide 7 | giao ba việc; ack thủ công, chết ở việc thứ hai: queue còn 2; việc thứ hai giao lại với cờ `redelivered`, việc thứ ba chưa từng được giao nên không có cờ |
+
+Với ack thủ công, `basicQos(1)` giới hạn mỗi consumer giữ một message chưa ack (prefetch), nên khi Worker chết, việc thứ ba vẫn
+nằm trong queue. Với autoAck, giới hạn prefetch không áp dụng: broker giao trước mọi message trong queue cho consumer; consumer
+chết thì cả message đang xử lý lẫn các message đã giao nhưng chưa xử lý đều mất.
 
 RabbitMQ 4.3 không cho tạo queue thường không durable (`transient_nonexcl_queues` bị chặn theo mặc định; khai báo queue với
-`durable=false` làm broker đóng kết nối với lỗi 541), nên `lookup.updates` là queue durable. Message trong ví dụ không persistent:
-khởi động lại broker thì queue còn, message mất (bài tập Mở rộng).
-
-Với autoAck và không giới hạn prefetch, broker giao trước mọi message trong queue cho consumer; consumer chết thì cả message đang xử
-lý lẫn các message đã giao nhưng chưa xử lý đều mất. Prefetch là chủ đề của phần tiếp theo.
+`durable=false` làm broker đóng kết nối với lỗi 541); `task_queue` của bản gốc vốn đã durable. Ba loại exchange ở slide 3 theo các
+ví dụ log của Tutorial 3–5 (`logs` fanout, `direct_logs`, `topic_logs`); phần này không chạy lại các ví dụ đó.

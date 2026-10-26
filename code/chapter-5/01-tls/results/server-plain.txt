@@ -1,1 +1,1 @@
-plain lookup on port 9199
+plain echo server on port 9199

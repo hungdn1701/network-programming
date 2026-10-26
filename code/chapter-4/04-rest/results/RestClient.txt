@@ -1,7 +1,10 @@
-GET    /entries/hanoi    -> 200 {"key":"hanoi","value":"Thủ đô của Việt Nam"}
-GET    /entries/atlantis -> 404 {"error":"not found"}
-PUT    /entries/sapa     -> 201 {"key":"sapa","value":"Thị trấn vùng cao"}
-PUT    /entries/sapa     -> 200 {"key":"sapa","value":"Thị trấn vùng cao"}
-DELETE /entries/sapa     -> 204 
-DELETE /entries/sapa     -> 404 {"error":"not found"}
-POST   /entries/sapa     -> 405 {"error":"method not allowed"}
+GET    /pet/10  -> 200 {"id":10,"name":"doggie","status":"available"}
+GET    /pet/99  -> 404 {"message":"Pet not found"}
+GET    /pet/abc -> 400 {"message":"Invalid input"}
+POST   /pet     -> 201 {"id":11,"name":"kitty","status":"available"}
+POST   /pet     -> 201 {"id":12,"name":"kitty","status":"available"}
+PUT    /pet/11  -> 200 {"id":11,"name":"kitty","status":"sold"}
+PUT    /pet/11  -> 200 {"id":11,"name":"kitty","status":"sold"}
+DELETE /pet/12  -> 204 
+DELETE /pet/12  -> 404 {"message":"Pet not found"}
+PATCH  /pet/11  -> 405 {"message":"Method not allowed"}

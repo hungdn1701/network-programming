@@ -1,0 +1,11 @@
+id 1   web.example      A 192.0.2.10               sends 1
+       dropped datagram: CRC32 mismatch
+       dropped datagram: CRC32 mismatch
+id 2   mail.example     (no reply after 3 sends)   sends 3
+id 3   nothing.example  NXDOMAIN                   sends 2
+       ignored late reply of id 3
+id 4   web.example      A 192.0.2.10               sends 2
+id 5   mail.example     A 198.51.100.25            sends 2
+id 6   web.example      A 192.0.2.10               sends 1
+id 7   nothing.example  NXDOMAIN                   sends 2
+7 queries, 6 answered, 13 datagrams sent

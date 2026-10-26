@@ -1,0 +1,24 @@
+// V26: hợp đồng của RouteGuide, ví dụ mẫu của gRPC (grpc.io, grpc-java examples/routeguide). Phần này chỉ dùng RPC unary
+// GetFeature; ba RPC streaming của bản đầy đủ ở phần sau. protoc sinh lớp message (Point, Feature) và stub (RouteGuideGrpc).
+syntax = "proto3";
+
+package routeguide;
+
+option java_package = "netlab.grpc.routeguide";
+option java_multiple_files = true;
+
+service RouteGuide {
+  rpc GetFeature(Point) returns (Feature) {}  // unary: một request, một response
+}
+
+// Tọa độ tính bằng độ nhân 10^7, lưu thành số nguyên, như bản gốc.
+message Point {
+  int32 latitude = 1;  // số trường 1: định danh trường khi mã hóa, không được đổi
+  int32 longitude = 2;
+}
+
+// Địa danh tại một điểm; name rỗng nghĩa là không có địa danh nào ở điểm đó.
+message Feature {
+  string name = 1;
+  Point location = 2;
+}

@@ -5,20 +5,18 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import com.google.protobuf.Message;
 import com.google.protobuf.util.JsonFormat;
 import java.util.HexFormat;
-import netlab.grpc.lookup.LookupReply;
-import netlab.grpc.lookup.LookupRequest;
 
 /**
- * V26: cùng nội dung, mã hóa bằng Protocol Buffers và bằng JSON. In từng byte của message Protocol Buffers: tag (số trường và
- * kiểu), độ dài, rồi dữ liệu; tên trường không đi trên mạng.
+ * V26: cùng nội dung, mã hóa bằng Protocol Buffers và bằng JSON. In từng byte của message Protocol Buffers: mỗi trường là tag (số
+ * trường và kiểu) rồi giá trị; số nguyên mã hóa varint; tên trường không đi trên mạng.
  *
  * <p>Chạy: {@code java -Dstdout.encoding=UTF-8 -cp "target/classes;target/dependency/*" netlab.grpc.SizeDemo}
  */
 public final class SizeDemo {
 
     public static void main(String[] args) throws Exception {
-        show(LookupRequest.newBuilder().setKey("hanoi").build());
-        show(LookupReply.newBuilder().setFound(true).setValue("Thủ đô của Việt Nam").build());
+        show(Features.PTIT);
+        show(Features.ALL.get(0));
     }
 
     private static void show(Message message) throws Exception {

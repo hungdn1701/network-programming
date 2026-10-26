@@ -1,4 +1,0 @@
-$ UpdatePublisher sapa dalat hue
-published "updated sapa"
-published "updated dalat"
-published "updated hue"

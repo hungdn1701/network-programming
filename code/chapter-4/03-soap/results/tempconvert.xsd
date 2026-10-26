@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by XML-WS Runtime (https://github.com/eclipse-ee4j/metro-jax-ws). Runtime's version is XML-WS Runtime 4.0.5 git-revision#c828e2e. --><xs:schema xmlns:tns="http://netlab/tempconvert" xmlns:xs="http://www.w3.org/2001/XMLSchema" version="1.0" targetNamespace="http://netlab/tempconvert">
+
+<xs:element name="celsiusToFahrenheit" type="tns:celsiusToFahrenheit"/>
+
+<xs:element name="celsiusToFahrenheitResponse" type="tns:celsiusToFahrenheitResponse"/>
+
+<xs:element name="fahrenheitToCelsius" type="tns:fahrenheitToCelsius"/>
+
+<xs:element name="fahrenheitToCelsiusResponse" type="tns:fahrenheitToCelsiusResponse"/>
+
+<xs:complexType name="fahrenheitToCelsius">
+<xs:sequence>
+<xs:element name="fahrenheit" type="xs:double"/>
+</xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="fahrenheitToCelsiusResponse">
+<xs:sequence>
+<xs:element name="return" type="xs:double"/>
+</xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="celsiusToFahrenheit">
+<xs:sequence>
+<xs:element name="celsius" type="xs:double"/>
+</xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="celsiusToFahrenheitResponse">
+<xs:sequence>
+<xs:element name="return" type="xs:double"/>
+</xs:sequence>
+</xs:complexType>
+</xs:schema>

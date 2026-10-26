@@ -1,0 +1,5 @@
+blocking  BestPrice 139.99
+blocking  LetsSaveBig 129.99
+blocking  MyFavoriteShop 124.99
+blocking  best MyFavoriteShop 124.99, total 663 ms
+async     best MyFavoriteShop 124.99, total 324 ms

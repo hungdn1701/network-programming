@@ -1,0 +1,5 @@
+listening on port 9199
+echoed: line 1
+echoed: line 2
+echoed: line 3
+readLine() returned null: client finished sending, closing

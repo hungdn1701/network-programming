@@ -1,6 +1,0 @@
-listening on port 9199
-received: hanoi
-received: hue
-received: danang
-readLine() returned null: client finished sending
-sent: lines: 3

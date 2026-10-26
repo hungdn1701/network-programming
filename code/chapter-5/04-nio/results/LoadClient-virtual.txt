@@ -1,1 +1,1 @@
-virtual   25,291 requests/s   p50 162.7 ms   p99 367.4 ms   0 errors
+virtual   27,988 requests/s   p50 148.3 ms   p99 381.1 ms   0 errors

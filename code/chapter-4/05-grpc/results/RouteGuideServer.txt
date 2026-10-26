@@ -1,0 +1,3 @@
+gRPC server on port 9199, 8 features
+GetFeature(20.9809, 105.7871) on grpc-default-executor-0
+GetFeature(0.0000, 0.0000) on grpc-default-executor-0

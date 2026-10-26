@@ -1,4 +1,4 @@
-lossy UDP lookup on port 9199: loss 30%, late 15%, corrupt 10%
+lossy UDP name server on port 9199: loss 30%, late 15%, corrupt 10%
 id 1: processed (time 1), replied
 id 2: request lost
 id 2: processed (time 1), reply corrupted

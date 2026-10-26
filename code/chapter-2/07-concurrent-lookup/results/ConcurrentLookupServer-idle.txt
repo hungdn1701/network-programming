@@ -1,5 +1,0 @@
-     4 ms  listening on port 9199 with a pool of 8 threads
-  1599 ms  accepted remote port 57266
-  2633 ms  accepted remote port 57267
-  2660 ms  closed remote port 57267, requests: 1
-  6616 ms  connection error, remote port 57266: Read timed out

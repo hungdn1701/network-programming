@@ -1,6 +1,8 @@
-no idempotency key:
+no idempotency key: transfer 1000000 from 1001, balance before 5000000
   attempt 1: UnmarshalException, cause java.net.SocketTimeoutException: Read timed out
-  attempt 2: version 2
-idempotency key f3b9f374:
+  attempt 2: balance 3000000
+  balance after 3000000
+idempotency key 76d6bd39: transfer 1000000 from 1003, balance before 2000000
   attempt 1: UnmarshalException, cause java.net.SocketTimeoutException: Read timed out
-  attempt 2: version 1
+  attempt 2: balance 1000000
+  balance after 1000000

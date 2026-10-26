@@ -1,0 +1,8 @@
+bound Bank, UnsafeBank; object port 9199; --pause
+transfer(1001 -> 1002, no key)
+  applied: 1001 balance 4000000
+transfer(1001 -> 1002, no key)
+  applied: 1001 balance 3000000
+transfer(1003 -> 1004, key 76d6bd39)
+  applied: 1003 balance 1000000
+transfer(1003 -> 1004, key 76d6bd39)

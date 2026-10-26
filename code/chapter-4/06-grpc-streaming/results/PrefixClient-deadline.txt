@@ -1,4 +1,0 @@
-+ 317 ms  hanoi.hoankiem = Hồ Hoàn Kiếm
-+ 626 ms  hanoi.longbien = Cầu Long Biên
-+ 935 ms  hanoi.noibai = Sân bay Nội Bài
-+1011 ms  DEADLINE_EXCEEDED

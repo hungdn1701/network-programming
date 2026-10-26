@@ -1,0 +1,9 @@
+   61 ms  server: accepted remote port 51460
+  100 ms  client: GET /hello.txt -> HTTP/1.1 200 OK, body hello
+ 1118 ms  server: stop 1/3: listening socket closed
+ 1119 ms  server: stopping, accept loop ends: Socket closed
+ 1126 ms  server: stop 2/3: waiting up to 2000 ms for 1 open connection(s)
+ 3133 ms  server: stop 3/3: closing 1 remaining connection(s)
+ 3137 ms  server: connection error, remote port 51460: Socket closed
+ 3138 ms  server: stopped, connections served: 1
+ 3141 ms  client: readLine() -> null (server closed the connection)

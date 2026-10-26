@@ -10,10 +10,11 @@ import java.io.OutputStreamWriter;
 import java.net.Socket;
 
 /**
- * V09: client half-close. Gửi ba dòng, flush, kết thúc chiều gửi bằng shutdownOutput(), rồi vẫn đọc được phản hồi.
- * shutdownOutput() không flush buffer của ứng dụng: bỏ dòng flush thì server nhận 0 dòng.
+ * V09: echo client chế độ batch (Stevens, Unix Network Programming, mục 6.6): gửi hết dữ liệu, flush, kết thúc chiều gửi bằng
+ * shutdownOutput(), rồi vẫn đọc mọi dòng được gửi lại cho tới khi server đóng kết nối. shutdownOutput() không flush buffer
+ * của ứng dụng: bỏ dòng flush thì server nhận 0 dòng.
  *
- * <p>Chạy ở terminal thứ hai, sau LineCountServer: {@code java -cp out netlab.timeout.HalfCloseClient}
+ * <p>Chạy ở terminal thứ hai, sau BatchEchoServer: {@code java -cp out netlab.timeout.HalfCloseClient}
  */
 public final class HalfCloseClient {
 
@@ -21,12 +22,15 @@ public final class HalfCloseClient {
         try (Socket socket = new Socket("127.0.0.1", 9199)) {
             var out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), UTF_8));
             var in = new BufferedReader(new InputStreamReader(socket.getInputStream(), UTF_8));
-            out.write("hanoi\nhue\ndanang\n");
+            out.write("line 1\nline 2\nline 3\n");
             out.flush();  // đẩy dữ liệu khỏi buffer của ứng dụng trước
             socket.shutdownOutput();  // half-close: hết dữ liệu gửi, chiều nhận vẫn mở
             System.out.println("sent 3 lines, output shut down");
-            System.out.println("reply: " + in.readLine());
-            System.out.println("next readLine(): " + in.readLine());  // null: server đã đóng kết nối
+            String line;
+            while ((line = in.readLine()) != null) {  // đọc mọi dòng được gửi lại
+                System.out.println("echoed: " + line);
+            }
+            System.out.println("readLine() returned null: server closed the connection");
         }
     }
 }

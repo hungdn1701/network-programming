@@ -1,3 +1,1 @@
-TLS lookup on port 9199
-connection failed: javax.net.ssl.SSLHandshakeException: (certificate_unknown) Received fatal alert: certificate_unknown
-connection failed: javax.net.ssl.SSLHandshakeException: (certificate_unknown) Received fatal alert: certificate_unknown
+TLS echo server on port 9199

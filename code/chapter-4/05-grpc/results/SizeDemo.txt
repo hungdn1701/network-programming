@@ -1,6 +1,6 @@
-LookupRequest:
-  protobuf 7 bytes: 0a 05 68 61 6e 6f 69
-  JSON     15 bytes: {"key":"hanoi"}
-LookupReply:
-  protobuf 31 bytes: 08 01 12 1b 54 68 e1 bb a7 20 c4 91 c3 b4 20 63 e1 bb a7 61 20 56 69 e1 bb 87 74 20 4e 61 6d
-  JSON     52 bytes: {"found":true,"value":"Thủ đô của Việt Nam"}
+Point:
+  protobuf 11 bytes: 08 e8 dc 85 64 10 98 a9 b7 f8 03
+  JSON     45 bytes: {"latitude":209809000,"longitude":1057871000}
+Feature:
+  protobuf 66 bytes: 0a 33 48 e1 bb 8d 63 20 76 69 e1 bb 87 6e 20 43 c3 b4 6e 67 20 6e 67 68 e1 bb 87 20 42 c6 b0 75 20 63 68 c3 ad 6e 68 20 56 69 e1 bb 85 6e 20 74 68 c3 b4 6e 67 12 0b 08 e8 dc 85 64 10 98 a9 b7 f8 03
+  JSON     119 bytes: {"name":"Học viện Công nghệ Bưu chính Viễn thông","location":{"latitude":209809000,"longitude":1057871000}}

@@ -1,0 +1,6 @@
+$ NewTask First message.
+ [x] Sent 'First message.'
+$ NewTask Second message..
+ [x] Sent 'Second message..'
+$ NewTask Third message...
+ [x] Sent 'Third message...'

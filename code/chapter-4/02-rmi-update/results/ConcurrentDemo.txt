@@ -1,2 +1,2 @@
-UnsafeEntryService: 2000 updates -> version 1938
-EntryService: 2000 updates -> version 2000
+UnsafeBank: 2000000 - 2000 x 1000 -> balance 41000
+Bank: 2000000 - 2000 x 1000 -> balance 0

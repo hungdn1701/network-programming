@@ -1,0 +1,9 @@
+└─ JUnit Jupiter ✔
+   └─ WebServerTest ✔
+      ├─ portZeroGetsEphemeralPort() ✔
+      ├─ existingFile() ✔
+      ├─ rootServesIndex() ✔
+      ├─ missingFile() ✔
+      ├─ pathOutsideRoot() ✔
+      └─ otherMethod() ✔
+Test run finished after 153 ms

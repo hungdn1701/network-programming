@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- V27: gRPC streaming, deadline và mã trạng thái. protoc và plugin grpc-java sinh mã từ src/main/proto/lookup.proto. -->
+<!-- V27: RouteGuide đầy đủ bốn kiểu RPC, deadline và mã trạng thái. protoc và plugin grpc-java sinh mã từ src/main/proto/route_guide.proto. -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">

@@ -1,7 +1,7 @@
-<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:lk="http://netlab/lookup">
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tc="http://netlab/tempconvert">
   <soap:Body>
-    <lk:lookup>
-      <key>hanoi</key>
-    </lk:lookup>
+    <tc:celsiusToFahrenheit>
+      <celsius>100</celsius>
+    </tc:celsiusToFahrenheit>
   </soap:Body>
 </soap:Envelope>

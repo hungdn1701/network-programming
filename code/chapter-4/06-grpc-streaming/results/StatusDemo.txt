@@ -1,2 +1,2 @@
-port 9199, key atlantis: NOT_FOUND (key atlantis)
-port 9198, key hanoi: UNAVAILABLE (io exception)
+port 9199, point 105.7871, 20.9809: INVALID_ARGUMENT (latitude 105.7871 out of [-90, 90])
+port 9198, point 20.9809, 105.7871: UNAVAILABLE (io exception)

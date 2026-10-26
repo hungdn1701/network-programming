@@ -1,3 +1,5 @@
 sent 3 lines, output shut down
-reply: lines: 3
-next readLine(): null
+echoed: line 1
+echoed: line 2
+echoed: line 3
+readLine() returned null: server closed the connection

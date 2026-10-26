@@ -1,0 +1,4 @@
+stub class: jdk.proxy1.$Proxy0
+stub ref: UnicastRef [liveRef: [endpoint:[127.0.0.1:9199](remote),objID:[-27061e4c:1a17302a670:-7fff, -6559209415889670914]]]
+balance(1001) = 5000000
+balance(9999) -> no such account: 9999

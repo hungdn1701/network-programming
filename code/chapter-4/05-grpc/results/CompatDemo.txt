@@ -1,2 +1,2 @@
-server đổi số trường: found=false, value="", 2 unknown field(s)
-server thêm trường 3: found=true, value="Thủ đô của Việt Nam", 1 unknown field(s)
+server đổi số trường: 105.7871, 20.9809, 0 unknown field(s)
+server thêm trường 3: "Học viện Công nghệ Bưu chính Viễn thông" at 20.9809, 105.7871, 1 unknown field(s)

@@ -4,21 +4,21 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * V25: JSON tối thiểu cho ví dụ — chỉ đối tượng phẳng có giá trị chuỗi, như {"key":"hanoi","value":"..."}. JDK 21 không có
- * thư viện JSON; dự án thật dùng Jackson hoặc Gson.
+ * V25: JSON tối thiểu cho ví dụ — chỉ đối tượng phẳng, như {"id":10,"name":"doggie","status":"available"}: ghi giá trị số hoặc
+ * chuỗi, đọc giá trị chuỗi. JDK 21 không có thư viện JSON; dự án thật dùng Jackson hoặc Gson.
  */
 final class Json {
 
     private Json() {
     }
 
-    static String object(Map<String, String> fields) {
+    static String object(Map<String, ?> fields) {
         StringBuilder sb = new StringBuilder("{");
         fields.forEach((k, v) -> {
             if (sb.length() > 1) {
                 sb.append(',');
             }
-            sb.append(quote(k)).append(':').append(quote(v));
+            sb.append(quote(k)).append(':').append(v instanceof Number ? v.toString() : quote(v.toString()));
         });
         return sb.append('}').toString();
     }

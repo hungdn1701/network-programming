@@ -1,0 +1,11 @@
+$ curl -s -o /dev/null -w "%{http_code} %{content_type}\n" http://127.0.0.1:9199/
+200 text/html; charset=utf-8
+$ curl -s -o /dev/null -w "%{http_code} %{content_type}\n" http://127.0.0.1:9199/nothing.html
+404 text/plain; charset=utf-8
+$ curl -i http://127.0.0.1:9199/hello.txt
+HTTP/1.1 200 OK
+Content-Type: text/plain; charset=utf-8
+Content-Length: 6
+
+hello
+

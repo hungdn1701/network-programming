@@ -1,5 +1,5 @@
 sent 3 bytes
 sent 5 bytes
-sent 4 bytes
-reply OK Thủ đô của Việt Nam
-reply OK Cố đô triều Nguyễn
+sent 8 bytes
+echoed: hello
+echoed: xin chào

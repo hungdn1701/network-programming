@@ -1,0 +1,10 @@
+listening on port 9199, serving www/
+accepted local 127.0.0.1:9199, remote 127.0.0.1:52645
+  GET / HTTP/1.1 -> 200 OK
+closed, requests: 1
+accepted local 127.0.0.1:9199, remote 127.0.0.1:52646
+  GET /nothing.html HTTP/1.1 -> 404 Not Found
+closed, requests: 1
+accepted local 127.0.0.1:9199, remote 127.0.0.1:52648
+  GET /hello.txt HTTP/1.1 -> 200 OK
+closed, requests: 1

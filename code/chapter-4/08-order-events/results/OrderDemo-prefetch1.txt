@@ -1,0 +1,7 @@
+$ OrderDemo --prefetch 1
+published 6 orders, email prefetch 1
+  analytics 6: 1001 1002 1003 1004 1005 1006
+  warehouse 4: 1001 1002 1004 1006
+  email-1   1: 1001
+  email-2   5: 1002 1003 1004 1005 1006
+  all email sent after 625 ms

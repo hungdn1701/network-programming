@@ -1,0 +1,3 @@
+gRPC server on port 9199, 8 features
+ListFeatures: completed, 6 features
+ListFeatures: cancelled by client after 3 features

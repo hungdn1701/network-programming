@@ -1,0 +1,7 @@
++ 339 ms  Hồ Hoàn Kiếm
++ 640 ms  Văn Miếu - Quốc Tử Giám
++ 949 ms  Nhà hát Lớn Hà Nội
++1276 ms  Lăng Chủ tịch Hồ Chí Minh
++1584 ms  Chùa Trấn Quốc
++1899 ms  Cầu Long Biên
++1900 ms  completed

@@ -12,7 +12,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * V34: server tra cứu UDP giả lập mạng xấu. Với mỗi yêu cầu nhận được: 30% bỏ (như datagram mất), 15% trả lời trễ 450 ms,
+ * V34: server trả lời truy vấn kiểu DNS (tên miền → địa chỉ IPv4) qua UDP, giả lập mạng xấu. Với mỗi yêu cầu nhận được: 30% bỏ (như datagram mất), 15% trả lời trễ 450 ms,
  * 10% làm hỏng một byte của phản hồi trước khi gửi (lỗi mà checksum 16 bit của UDP không bắt được), còn lại trả lời ngay.
  * Server đếm số lần xử lý mỗi request ID: gửi lại làm server xử lý một yêu cầu nhiều lần (at-least-once).
  *
@@ -20,16 +20,16 @@ import java.util.concurrent.TimeUnit;
  */
 public final class LossyUdpServer {
 
-    private static final Map<String, String> DATA = Map.of(
-            "hanoi", "Thủ đô của Việt Nam",
-            "huế", "Cố đô triều Nguyễn");
+    private static final Map<String, String> RECORDS = Map.of(  // tên dưới TLD .example (RFC 2606), địa chỉ TEST-NET (RFC 5737)
+            "web.example", "192.0.2.10",
+            "mail.example", "198.51.100.25");
 
     public static void main(String[] args) throws IOException {
         Random random = new Random(args.length > 0 ? Long.parseLong(args[0]) : 5);  // seed cố định: chạy lại cho cùng kịch bản
         ScheduledExecutorService late = Executors.newSingleThreadScheduledExecutor();
         Map<Integer, Integer> processed = new HashMap<>();  // request ID → số lần xử lý
         try (DatagramSocket socket = new DatagramSocket(9199)) {
-            System.out.println("lossy UDP lookup on port 9199: loss 30%, late 15%, corrupt 10%");
+            System.out.println("lossy UDP name server on port 9199: loss 30%, late 15%, corrupt 10%");
             byte[] buf = new byte[Message.MAX_DATAGRAM];
             while (true) {
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
@@ -64,9 +64,9 @@ public final class LossyUdpServer {
         }
     }
 
-    static String reply(String key) {
-        String value = DATA.get(key);
-        return value != null ? "OK " + value : "NOTFOUND";
+    static String reply(String name) {
+        String address = RECORDS.get(name);
+        return address != null ? "A " + address : "NXDOMAIN";  // NXDOMAIN: tên không tồn tại, như mã lỗi của DNS
     }
 
     private static void send(DatagramSocket socket, byte[] data, SocketAddress to) {

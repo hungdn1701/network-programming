@@ -1,0 +1,2 @@
+shop BestPrice on port 9201, delay 100 ms
+shop LetsSaveBig on port 9202, delay 200 ms

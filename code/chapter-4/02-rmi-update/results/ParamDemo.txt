@@ -1,3 +1,3 @@
-server returned version 1; client entry.version = 0
-client entry: sapa = sửa ở client (version 0)
-server entry: sapa = Thị trấn vùng cao (version 1)
+server: balance of 1001 = 4000000; client transfer: 1001 -> 1002: 1000000 (PENDING)
+client transfer after edit: 1001 -> 1002: 9999999 (PENDING)
+server: balance of 1001 = 4000000

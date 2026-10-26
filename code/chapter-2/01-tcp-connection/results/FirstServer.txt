@@ -1,2 +1,0 @@
-listening on port 9199
-accepted: local port 9199, client port 49419

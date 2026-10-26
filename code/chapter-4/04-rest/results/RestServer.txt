@@ -1,9 +1,12 @@
-REST on http://127.0.0.1:9199/entries/{key}
-GET /entries/hanoi -> 200
-GET /entries/atlantis -> 404
-PUT /entries/sapa -> 201
-PUT /entries/sapa -> 200
-DELETE /entries/sapa -> 204
-DELETE /entries/sapa -> 404
-POST /entries/sapa -> 405
-GET /entries/hanoi -> 200
+REST on http://127.0.0.1:9199/pet
+GET /pet/10 -> 200
+GET /pet/99 -> 404
+GET /pet/abc -> 400
+POST /pet -> 201
+POST /pet -> 201
+PUT /pet/11 -> 200
+PUT /pet/11 -> 200
+DELETE /pet/12 -> 204
+DELETE /pet/12 -> 404
+PATCH /pet/11 -> 405
+GET /pet/10 -> 200

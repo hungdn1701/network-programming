@@ -1,7 +1,0 @@
-$ NotifyDemo --prefetch 1
-published 6 events, email prefetch 1
-  log      6: hanoi hue tokyo sapa osaka dalat
-  vn-audit 4: hanoi hue sapa dalat
-  email-1  1: hanoi
-  email-2  5: hue tokyo sapa osaka dalat
-  all email sent after 623 ms

@@ -1,0 +1,46 @@
+// V27: hợp đồng đầy đủ của RouteGuide, ví dụ mẫu của gRPC (grpc.io, grpc-java examples/routeguide): bốn RPC ứng với bốn kiểu.
+syntax = "proto3";
+
+package routeguide;
+
+option java_package = "netlab.stream.routeguide";
+option java_multiple_files = true;
+
+service RouteGuide {
+  rpc GetFeature(Point) returns (Feature) {}                     // unary; tọa độ sai: mã INVALID_ARGUMENT
+  rpc ListFeatures(Rectangle) returns (stream Feature) {}        // server streaming: trả địa danh dần
+  rpc RecordRoute(stream Point) returns (RouteSummary) {}        // client streaming: gửi lộ trình, nhận tổng kết
+  rpc RouteChat(stream RouteNote) returns (stream RouteNote) {}  // bidirectional streaming
+}
+
+// Tọa độ tính bằng độ nhân 10^7, lưu thành số nguyên, như bản gốc.
+message Point {
+  int32 latitude = 1;
+  int32 longitude = 2;
+}
+
+// Hình chữ nhật theo vĩ độ, kinh độ, xác định bởi hai góc đối nhau.
+message Rectangle {
+  Point lo = 1;
+  Point hi = 2;
+}
+
+// Địa danh tại một điểm; name rỗng nghĩa là không có địa danh nào ở điểm đó.
+message Feature {
+  string name = 1;
+  Point location = 2;
+}
+
+// Ghi chú gửi tại một điểm.
+message RouteNote {
+  Point location = 1;
+  string message = 2;
+}
+
+// Tổng kết một lộ trình: số điểm, số địa danh đi qua, quãng đường (mét), thời gian (giây).
+message RouteSummary {
+  int32 point_count = 1;
+  int32 feature_count = 2;
+  int32 distance = 3;
+  int32 elapsed_time = 4;
+}

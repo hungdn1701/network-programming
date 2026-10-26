@@ -1,6 +1,0 @@
-+ 334 ms  hanoi.hoankiem = Hồ Hoàn Kiếm
-+ 631 ms  hanoi.longbien = Cầu Long Biên
-+ 938 ms  hanoi.noibai = Sân bay Nội Bài
-+1252 ms  hanoi.tayho = Hồ Tây
-+1559 ms  hanoi.vanmieu = Văn Miếu – Quốc Tử Giám
-+1560 ms  completed

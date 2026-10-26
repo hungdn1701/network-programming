@@ -1,0 +1,20 @@
+// V32: hợp đồng báo giá mà mỗi cửa hàng cung cấp (bài toán best price finder, Modern Java in Action, ch. 16).
+syntax = "proto3";
+
+package shop;
+
+option java_package = "netlab.async.shop";
+option java_multiple_files = true;
+
+service Shop {
+  rpc GetPrice (PriceRequest) returns (PriceReply);  // unary: một request, một response
+}
+
+message PriceRequest {
+  string product = 1;  // số trường 1: định danh trường khi mã hóa, không được đổi
+}
+
+message PriceReply {
+  string shop = 1;
+  double price = 2;
+}

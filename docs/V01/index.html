@@ -1,0 +1,306 @@
+<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 14px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center}.ban-nhap .ngan{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V01 — Giới thiệu học phần Lập trình mạng · xem trước</title>
+<link rel="stylesheet" href="../assets/slide.css"><link rel="stylesheet" href="../assets/player.css"></head>
+<body class="trinh-chieu"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+<header class="dau"><a href="../index.html">← Tổng quan INT1433</a> · <a href="slide.pdf">Slide PDF</a>
+<h1>V01 · Giới thiệu học phần Lập trình mạng</h1>
+<span class="nhan-noi-bo">Bản xem trước nội bộ · giọng TTS vi-VN-NamMinhNeural (không phải giọng sản phẩm)</span></header>
+<div class="bo-cuc">
+  <div class="cot-chinh">
+    <div class="khung-169"><div id="stage"><section class="slide tieu-de" id="S00"><main class=""><div class="chuong">Lập trình mạng</div><div class="ten">Giới thiệu học phần Lập trình mạng</div><div class="gv">TS. Đặng Ngọc Hùng</div><div class="slogan">The best way to learn is to teach, and the best way to teach is to build.</div></main><footer><span>Lập trình mạng · Giới thiệu học phần Lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S01"><header><h1>Mọi hệ thống phần mềm là các tiến trình trao đổi dữ liệu theo giao thức</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 500" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Bốn hệ thống quen thuộc, mỗi hệ thống là hai tiến trình trao đổi dữ liệu theo giao thức. Trình duyệt và web server trao đổi theo HTTP. Ứng dụng di động gọi API của backend qua HTTPS, dữ liệu JSON. Hai dịch vụ trong backend gọi nhau qua gRPC hoặc trao đổi message qua message broker. Cảm biến IoT gửi số liệu đo tới broker qua MQTT.">
+  <defs>
+    <marker id="ht-net" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#1F5FA8"/></marker>
+  </defs>
+
+  <text x="300" y="30" text-anchor="middle" font-size="23" fill="#5B6478">tiến trình</text>
+  <text x="880" y="30" text-anchor="middle" font-size="23" fill="#1F5FA8">giao thức</text>
+  <text x="1460" y="30" text-anchor="middle" font-size="23" fill="#5B6478">tiến trình</text>
+
+  <!-- ① web -->
+  <g data-s="1">
+    <rect x="40" y="50" width="520" height="90" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="300" y="105" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Trình duyệt</text>
+    <line x1="570" y1="95" x2="1190" y2="95" stroke="#1F5FA8" stroke-width="3.5" marker-start="url(#ht-net)" marker-end="url(#ht-net)"/>
+    <text x="880" y="82" text-anchor="middle" font-size="22" fill="#1F5FA8" font-family="Consolas, monospace">HTTP/1.1 · HTTP/2 · HTTP/3</text>
+    <rect x="1200" y="50" width="520" height="90" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1460" y="105" text-anchor="middle" font-size="26" font-weight="500" fill="#22603F">Web server</text>
+  </g>
+
+  <!-- ② mobile -->
+  <g data-s="2">
+    <rect x="40" y="160" width="520" height="90" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="300" y="215" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Ứng dụng di động</text>
+    <line x1="570" y1="205" x2="1190" y2="205" stroke="#1F5FA8" stroke-width="3.5" marker-start="url(#ht-net)" marker-end="url(#ht-net)"/>
+    <text x="880" y="192" text-anchor="middle" font-size="22" fill="#1F5FA8" font-family="Consolas, monospace">HTTPS · REST · JSON</text>
+    <rect x="1200" y="160" width="520" height="90" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1460" y="215" text-anchor="middle" font-size="26" font-weight="500" fill="#22603F">API của backend</text>
+  </g>
+
+  <!-- ③ dịch vụ với dịch vụ -->
+  <g data-s="3">
+    <rect x="40" y="270" width="520" height="90" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="300" y="325" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Dịch vụ đặt hàng</text>
+    <line x1="570" y1="315" x2="1190" y2="315" stroke="#1F5FA8" stroke-width="3.5" marker-start="url(#ht-net)" marker-end="url(#ht-net)"/>
+    <text x="880" y="302" text-anchor="middle" font-size="22" fill="#1F5FA8" font-family="Consolas, monospace">gRPC · message broker</text>
+    <rect x="1200" y="270" width="520" height="90" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1460" y="325" text-anchor="middle" font-size="26" font-weight="500" fill="#22603F">Dịch vụ thanh toán</text>
+  </g>
+
+  <!-- ④ IoT -->
+  <g data-s="4">
+    <rect x="40" y="380" width="520" height="90" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="300" y="435" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Cảm biến IoT</text>
+    <line x1="570" y1="425" x2="1190" y2="425" stroke="#1F5FA8" stroke-width="3.5" marker-start="url(#ht-net)" marker-end="url(#ht-net)"/>
+    <text x="880" y="412" text-anchor="middle" font-size="22" fill="#1F5FA8" font-family="Consolas, monospace">MQTT</text>
+    <rect x="1200" y="380" width="520" height="90" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1460" y="435" text-anchor="middle" font-size="26" font-weight="500" fill="#22603F">Broker, hệ thống giám sát</text>
+  </g>
+</svg></figure><div class="ket-luan" data-s="5"><p><b>Lập trình mạng</b>: viết các tiến trình trao đổi dữ liệu qua mạng, đọc và thiết kế giao thức; làm cho việc trao đổi đúng, an toàn, nhanh, tin cậy.</p></div></main><footer><span>Lập trình mạng · Giới thiệu học phần Lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S02"><header><h1>Môn học đóng góp cho bốn vai trò nghề</h1></header><main class="bo-cuc-tong-ket"><div class="luoi-the"><div class="the" data-s="1"><span class="so">1</span><div><b>Backend developer</b>: server phục vụ nhiều client; gọi dịch vụ khác qua REST, gRPC, message broker; timeout, retry</div></div><div class="the" data-s="2"><span class="so">2</span><div><b>Mobile, web developer</b>: HTTP, WebSocket bên dưới mỗi lời gọi API; bảo vệ dữ liệu bằng TLS, JWT</div></div><div class="the" data-s="3"><span class="so">3</span><div><b>DevOps, SRE, vận hành</b>: đọc trạng thái kết nối, chẩn đoán lỗi mạng, lỗi chứng chỉ; health check, circuit breaker</div></div><div class="the" data-s="4"><span class="so">4</span><div><b>IoT, hệ thống nhúng</b>: UDP, multicast, MQTT cho thiết bị nhỏ, trên mạng không ổn định</div></div></div></main><footer><span>Lập trình mạng · Giới thiệu học phần Lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S03"><header><h1>Năm chương, từ một kết nối đến các hệ thống phân tán</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Năm chương của học phần, mỗi chương một bậc. Chương 1, tổng quan lập trình mạng: định danh, TCP và UDP, stream, nói HTTP bằng tay. Chương 2, lập trình socket TCP và đa luồng: echo server, web server phục vụ nhiều client. Chương 3, lập trình UDP và giao thức ứng dụng hiện đại: UDP, multicast, WebSocket, HTTP/2, HTTP/3. Chương 4, kỹ thuật lập trình phân tán: RMI, SOAP, REST, gRPC, message broker. Chương 5, các chủ đề nâng cao: bảo mật, hiệu năng, độ tin cậy, IoT.">
+
+  <!-- ① Chương 1 -->
+  <g data-s="1">
+    <rect x="40" y="200" width="320" height="300" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="200" y="244" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Chương 1</text>
+    <text x="200" y="284" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">Tổng quan</text>
+    <text x="200" y="312" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">lập trình mạng</text>
+    <g font-size="21" fill="#373D4E" text-anchor="middle">
+      <text x="200" y="360">định danh, TCP và UDP</text>
+      <text x="200" y="392">stream, charset, framing</text>
+      <text x="200" y="424">nói HTTP bằng tay</text>
+    </g>
+  </g>
+
+  <!-- ② Chương 2 -->
+  <g data-s="2">
+    <rect x="380" y="160" width="320" height="340" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="540" y="204" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Chương 2</text>
+    <text x="540" y="244" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">Socket TCP</text>
+    <text x="540" y="272" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">và đa luồng</text>
+    <g font-size="21" fill="#373D4E" text-anchor="middle">
+      <text x="540" y="320">echo server, timeout</text>
+      <text x="540" y="352">web server phục vụ</text>
+      <text x="540" y="384">nhiều client</text>
+    </g>
+  </g>
+
+  <!-- ③ Chương 3 -->
+  <g data-s="3">
+    <rect x="720" y="120" width="320" height="380" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="880" y="164" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Chương 3</text>
+    <text x="880" y="204" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">UDP và giao thức</text>
+    <text x="880" y="232" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">ứng dụng hiện đại</text>
+    <g font-size="21" fill="#373D4E" text-anchor="middle">
+      <text x="880" y="280">UDP, multicast</text>
+      <text x="880" y="312">WebSocket</text>
+      <text x="880" y="344">HTTP/2, HTTP/3</text>
+    </g>
+  </g>
+
+  <!-- ④ Chương 4 -->
+  <g data-s="4">
+    <rect x="1060" y="80" width="320" height="420" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="1220" y="124" text-anchor="middle" font-size="26" font-weight="500" fill="#051A53">Chương 4</text>
+    <text x="1220" y="164" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">Kỹ thuật lập trình</text>
+    <text x="1220" y="192" text-anchor="middle" font-size="22" font-weight="500" fill="#051A53">phân tán</text>
+    <g font-size="21" fill="#373D4E" text-anchor="middle">
+      <text x="1220" y="240">RMI, SOAP, REST</text>
+      <text x="1220" y="272">gRPC</text>
+      <text x="1220" y="304">message broker</text>
+    </g>
+  </g>
+
+  <!-- ⑤ Chương 5 -->
+  <g data-s="5">
+    <rect x="1400" y="40" width="320" height="460" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1560" y="84" text-anchor="middle" font-size="26" font-weight="500" fill="#22603F">Chương 5</text>
+    <text x="1560" y="124" text-anchor="middle" font-size="22" font-weight="500" fill="#22603F">Các chủ đề</text>
+    <text x="1560" y="152" text-anchor="middle" font-size="22" font-weight="500" fill="#22603F">nâng cao</text>
+    <g font-size="21" fill="#22603F" text-anchor="middle">
+      <text x="1560" y="200">bảo mật: TLS, JWT</text>
+      <text x="1560" y="232">hiệu năng: NIO</text>
+      <text x="1560" y="264">độ tin cậy: retry</text>
+      <text x="1560" y="296">IoT: MQTT</text>
+    </g>
+  </g>
+</svg></figure><div class="ket-luan" data-s="6"><p>Mỗi chương xây trên chương trước: từ <b>một kết nối</b> giữa hai chương trình đến <b>các hệ thống phân tán</b> an toàn, tin cậy.</p></div></main><footer><span>Lập trình mạng · Giới thiệu học phần Lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide noi-dung" id="S04"><header><h1>Cách học và cách đánh giá</h1></header><main class="bo-cuc-hinh"><figure><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 520" role="img" font-family="Roboto, 'Segoe UI', sans-serif" aria-label="Cách học và cách đánh giá. Mỗi phần: xem phần học, chạy lại mã đi kèm học liệu, trả lời câu hỏi ôn tập. Dự án cá nhân, bắt đầu từ repo mẫu đồ án: chọn một bài toán thật, thiết kế giao thức, hiện thực và kiểm thử, bảo vệ. Công cụ AI là trợ lý; mọi dòng mã nộp phải giải thích và chạy lại được khi bảo vệ.">
+  <defs>
+    <marker id="hd-navy" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#051A53"/></marker>
+    <marker id="hd-ok" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 z" fill="#2F855A"/></marker>
+  </defs>
+
+  <!-- ① mỗi phần -->
+  <g data-s="1">
+    <text x="40" y="40" font-size="26" font-weight="500" fill="#051A53">Mỗi phần</text>
+    <rect x="40" y="64" width="240" height="90" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="160" y="118" text-anchor="middle" font-size="24" fill="#051A53">xem phần học</text>
+    <line x1="284" y1="109" x2="322" y2="109" stroke="#051A53" stroke-width="3" marker-end="url(#hd-navy)"/>
+    <rect x="330" y="64" width="250" height="90" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="455" y="104" text-anchor="middle" font-size="24" fill="#051A53">chạy lại mã</text>
+    <text x="455" y="136" text-anchor="middle" font-size="20" fill="#5B6478">đi kèm học liệu</text>
+    <line x1="584" y1="109" x2="622" y2="109" stroke="#051A53" stroke-width="3" marker-end="url(#hd-navy)"/>
+    <rect x="630" y="64" width="250" height="90" rx="6" fill="#EEF2FB" stroke="#051A53" stroke-width="2.5"/>
+    <text x="755" y="104" text-anchor="middle" font-size="24" fill="#051A53">trả lời câu hỏi</text>
+    <text x="755" y="136" text-anchor="middle" font-size="20" fill="#5B6478">ôn tập</text>
+  </g>
+
+  <!-- ② dự án cá nhân -->
+  <g data-s="2">
+    <text x="40" y="224" font-size="26" font-weight="500" fill="#22603F">Dự án cá nhân · bắt đầu từ repo mẫu đồ án</text>
+    <rect x="40" y="248" width="380" height="90" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="230" y="302" text-anchor="middle" font-size="24" fill="#22603F">chọn một bài toán thật</text>
+    <line x1="424" y1="293" x2="462" y2="293" stroke="#2F855A" stroke-width="3" marker-end="url(#hd-ok)"/>
+    <rect x="470" y="248" width="380" height="90" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="660" y="302" text-anchor="middle" font-size="24" fill="#22603F">thiết kế giao thức</text>
+    <line x1="854" y1="293" x2="892" y2="293" stroke="#2F855A" stroke-width="3" marker-end="url(#hd-ok)"/>
+    <rect x="900" y="248" width="380" height="90" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1090" y="302" text-anchor="middle" font-size="24" fill="#22603F">hiện thực, kiểm thử</text>
+    <line x1="1284" y1="293" x2="1322" y2="293" stroke="#2F855A" stroke-width="3" marker-end="url(#hd-ok)"/>
+    <rect x="1330" y="248" width="390" height="90" rx="6" fill="#EEF9F0" stroke="#2F855A" stroke-width="2.5"/>
+    <text x="1525" y="302" text-anchor="middle" font-size="24" fill="#22603F">bảo vệ</text>
+  </g>
+
+  <!-- ③ công cụ AI -->
+  <g data-s="3">
+    <rect x="40" y="390" width="1680" height="100" rx="6" fill="#FFF6DD" stroke="#8A6508" stroke-width="2.5"/>
+    <text x="70" y="432" font-size="24" font-weight="500" fill="#6B4E06">Công cụ AI là trợ lý</text>
+    <text x="70" y="470" font-size="23" fill="#6B4E06">mọi dòng mã nộp phải giải thích được và chạy lại được khi bảo vệ</text>
+  </g>
+</svg></figure></main><footer><span>Lập trình mạng · Giới thiệu học phần Lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
+<section class="slide tiep-theo" id="KET"><main class=""><div class="nhan-tt">Tiếp theo</div><div class="ten-tt">Định danh: địa chỉ IP, tên miền, port và endpoint</div></main><footer><span>Lập trình mạng · Giới thiệu học phần Lập trình mạng</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section></div>
+      <div id="the-gv" hidden>Giảng viên xuất hiện · quay thật, ≤ 20 giây</div>
+      <div id="h5p" hidden><span>Câu hỏi tương tác (H5P): chọn một đáp án trên slide</span><button id="bo-qua">Bỏ qua →</button></div>
+      <button id="bat-dau">▶ Bắt đầu xem</button>
+      <button id="thoat-tm" title="Thoát toàn màn hình (F)">✕</button>
+    </div>
+    <div id="phu-de"></div>
+    <div class="dieu-khien">
+      <button id="lui" title="Phân cảnh trước (←)">⏮</button><button id="chay" title="Chạy/dừng (Space)">▶</button><button id="toi" title="Phân cảnh sau (→)">⏭</button>
+      <div id="thanh"><div id="da-chay"></div></div>
+      <span id="gio">0:00 / 0:00</span>
+      <select id="toc"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.15">1.15×</option><option value="1.3">1.3×</option></select>
+      <button id="toan-man" title="Toàn màn hình (F)">⛶</button>
+    </div>
+    <details id="dung" open><summary>Lưu ý dựng của phân cảnh</summary><div></div></details>
+  </div>
+  <aside><h2>Phân cảnh</h2><ol id="ds-canh"></ol></aside>
+  <section id="toan-van-kb" class="toan-van-kb">
+  <div class="kb-thanh-cong-cu">
+    <div>
+      <h2>Toàn văn kịch bản &amp; Lời thoại (Transcript)</h2>
+      <p class="kb-huong-dan">Đọc liền mạch toàn bộ nội dung. Bấm <b>▶ Nghe</b> để nhảy tới phân cảnh, hoặc <b>📋 Sao chép</b> để lấy nội dung gửi góp ý.</p>
+    </div>
+    <button type="button" id="btn-copy-toan-bo" class="btn-kb-chinh">📋 Sao chép toàn bộ kịch bản</button>
+  </div>
+  <div class="kb-danh-sach">
+    <article class="canh-kb" id="kb-canh-0" data-index="0">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:00</span>
+      <h3>Lời mở đầu</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(0)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(0, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Chào các bạn. Mình là Đặng Ngọc Hùng, giảng viên Khoa Công nghệ Thông tin 1, Học viện Công nghệ Bưu chính Viễn thông. Chào mừng các bạn đến với học phần Lập trình mạng.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề. Slide tiêu đề có slogan tiếng Anh dưới tên giảng viên; slogan chỉ hiện, không đọc, không thuyết minh.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-1" data-index="1">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">0:11</span>
+      <h3>Slide 1. Mọi hệ thống phần mềm là các tiến trình trao đổi dữ liệu theo giao thức</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(1)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(1, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>**Lập trình mạng**: viết các tiến trình trao đổi dữ liệu qua mạng, đọc và thiết kế giao thức; làm cho việc trao đổi đúng, an toàn, nhanh, tin cậy.</li></ul></div></div>
+    <div class="kb-thoai"><p>Mình bắt đầu từ thực tế của nghề phần mềm. Xét đến cùng, mọi hệ thống phần mềm là các tiến trình trao đổi dữ liệu với nhau theo những quy tắc đã thỏa thuận, gọi là giao thức. Khi các bạn mở một trang web, trình duyệt trao đổi với web server theo HTTP. Còn ứng dụng trên điện thoại gọi API của backend qua HTTPS, với dữ liệu dạng JSON. Bên trong backend, dịch vụ đặt hàng gọi dịch vụ thanh toán qua gRPC, hoặc gửi message qua message broker. Cũng vậy, một cảm biến gửi số liệu đo về hệ thống giám sát qua MQTT. Các hệ thống này khác công nghệ, nhưng có chung một mô hình: hai tiến trình, một kênh truyền, và một giao thức mà cả hai cùng hiểu. Lập trình mạng học chính mô hình đó: viết các tiến trình trao đổi dữ liệu qua mạng, đọc và thiết kế giao thức, và làm cho việc trao đổi đúng, an toàn, nhanh và tin cậy.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình he-thong: bốn bước của hình, bước 5 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Khi các bạn mở một trang web”; bước 2 khi đọc “ứng dụng trên điện thoại”; bước 3 khi đọc “Bên trong backend”; bước 4 khi đọc “một cảm biến”; bước 5 khi đọc “Lập trình mạng học”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-2" data-index="2">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:06</span>
+      <h3>Slide 2. Môn học đóng góp cho bốn vai trò nghề</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(2)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(2, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><ul class="kb-slide-y"><li>**Backend developer**: server phục vụ nhiều client; gọi dịch vụ khác qua REST, gRPC, message broker; timeout, retry</li><li>**Mobile, web developer**: HTTP, WebSocket bên dưới mỗi lời gọi API; bảo vệ dữ liệu bằng TLS, JWT</li><li>**DevOps, SRE, vận hành**: đọc trạng thái kết nối, chẩn đoán lỗi mạng, lỗi chứng chỉ; health check, circuit breaker</li><li>**IoT, hệ thống nhúng**: UDP, multicast, MQTT cho thiết bị nhỏ, trên mạng không ổn định</li></ul></div>
+    <div class="kb-thoai"><p>Vì mọi hệ thống đều xây trên mô hình này, môn học đóng góp trực tiếp cho bốn vai trò nghề. Backend developer viết server phục vụ nhiều client cùng lúc, gọi các dịch vụ khác qua REST, gRPC hay message broker, và xử lý timeout, retry khi dịch vụ phía sau chậm hoặc lỗi. Mobile và web developer cần hiểu HTTP và WebSocket bên dưới mỗi lời gọi API, và bảo vệ dữ liệu bằng TLS, JWT. Người làm DevOps, SRE và vận hành hệ thống đọc trạng thái kết nối, chẩn đoán lỗi mạng, lỗi chứng chỉ, và thiết kế health check, circuit breaker. Còn người làm IoT và hệ thống nhúng lập trình UDP, multicast và MQTT cho thiết bị nhỏ, trên mạng không ổn định. Ở vai trò nào, kiến thức cũng đi kèm kỹ năng: viết được mã chạy thật, và giải thích được vì sao mã chạy như vậy.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Infographic bốn thẻ, hiện lần lượt theo lời đọc.
+Hiện dần: bước 1 khi đọc “Backend developer viết”; bước 2 khi đọc “Mobile và web developer”; bước 3 khi đọc “Người làm DevOps”; bước 4 khi đọc “người làm IoT”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-3" data-index="3">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">1:58</span>
+      <h3>Slide 3. Năm chương, từ một kết nối đến các hệ thống phân tán</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(3)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(3, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    <div class="kb-slide-box"><div class="kb-slide-kl"><b>Kết luận:</b><ul><li>Mỗi chương xây trên chương trước: từ **một kết nối** giữa hai chương trình đến **các hệ thống phân tán** an toàn, tin cậy.</li></ul></div></div>
+    <div class="kb-thoai"><p>Để có những năng lực đó, học phần đi qua năm chương, mỗi chương một bậc. Chương 1 đặt nền: định danh trên mạng, hai dịch vụ TCP và UDP, đọc ghi dữ liệu bằng stream của Java, và kết thúc bằng việc nói HTTP bằng tay. Chương 2 viết chương trình socket TCP, từ echo server đến một web server phục vụ nhiều client nhờ đa luồng. Chương 3 đi ra ngoài mô hình một kết nối TCP: UDP và multicast, WebSocket cho giao tiếp hai chiều, rồi HTTP/2 và HTTP/3. Chương 4 theo dòng tiến hóa của lời gọi từ xa, từ RMI, SOAP, REST đến gRPC, và giao tiếp bất đồng bộ qua message broker. Chương 5 gồm các chủ đề nâng cao: bảo mật với TLS và JWT, hiệu năng với lời gọi không chặn và NIO, độ tin cậy với retry và circuit breaker, và IoT với MQTT. Mỗi chương xây trên chương trước, vì vậy các bạn nên học theo thứ tự.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình nam-chuong: năm bậc hiện lần lượt, bước 6 là ô kết luận.
+Hiện dần: bước 1 khi đọc “Chương 1 đặt nền”; bước 2 khi đọc “Chương 2 viết”; bước 3 khi đọc “Chương 3 đi ra”; bước 4 khi đọc “Chương 4 theo”; bước 5 khi đọc “Chương 5 gồm”; bước 6 khi đọc “Mỗi chương xây”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-4" data-index="4">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">2:58</span>
+      <h3>Slide 4. Cách học và cách đánh giá</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(4)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(4, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Ở từng phần, các bạn xem bài giảng, chạy lại mã đi kèm học liệu, rồi trả lời câu hỏi ôn tập. Địa chỉ của mã, cùng tỷ lệ điểm, có trong Tài liệu học phần. Kết quả học phần được đánh giá chủ yếu qua một dự án cá nhân, bắt đầu từ repo mẫu đồ án của môn. Các bạn chọn một bài toán thật, thiết kế giao thức cho bài toán đó, hiện thực, kiểm thử, rồi bảo vệ. Công cụ AI được khuyến khích dùng như một trợ lý, và repo mẫu đồ án có sẵn cấu hình cho các công cụ này. Nhưng mọi dòng mã nộp phải giải thích được và chạy lại được khi bảo vệ, vì hiểu giao thức là việc AI không làm thay các bạn.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Hình hoc-va-du-an: ba bước hiện lần lượt theo lời đọc.
+Hiện dần: bước 1 khi đọc “Ở từng phần”; bước 2 khi đọc “Kết quả học phần”; bước 3 khi đọc “Công cụ AI”.</div>
+  </div>
+</article><article class="canh-kb" id="kb-canh-5" data-index="5">
+  <header class="canh-kb-head">
+    <div class="canh-kb-tieu-de">
+      <span class="canh-tg">3:39</span>
+      <h3>Lời kết</h3>
+    </div>
+    <div class="canh-kb-nut">
+      <button type="button" class="btn-kb-phat" onclick="window.playerNap(5)" title="Chuyển video đến phân cảnh này">▶ Nghe</button>
+      <button type="button" class="btn-kb-copy" onclick="window.copyCanh(5, this)" title="Sao chép lời thoại phân cảnh này">📋 Sao chép</button>
+    </div>
+  </header>
+  <div class="canh-kb-noi-dung">
+    
+    <div class="kb-thoai"><p>Học phần đi từ một kết nối giữa hai chương trình tới các hệ thống phân tán an toàn và tin cậy. Phần đầu tiên của Chương 1 bắt đầu từ câu hỏi cơ bản nhất: dữ liệu được gửi tới đâu, qua địa chỉ IP, tên miền, port và endpoint.</p></div>
+    <div class="kb-dung"><b>Lưu ý dựng:</b> Không có hình giảng viên. Slide Cách học và cách đánh giá mờ dần, hiện slide &quot;Tiếp theo&quot; (sinh từ kế hoạch).</div>
+  </div>
+</article>
+  </div>
+</section>
+</div>
+<script>const DATA = {"ma": "INT1433_V01", "tieu_de": "Giới thiệu học phần Lập trình mạng", "giong": "vi-VN-NamMinhNeural", "tong": 233.79, "scenes": [{"ten": "Lời mở đầu", "loai": "mo-dau", "slide": "S00", "dung": "Hình giảng viên, tối đa 20 giây, trên nền slide tiêu đề. Slide tiêu đề có slogan tiếng Anh dưới tên giảng viên; slogan chỉ hiện, không đọc, không thuyết minh.", "start": 0.0, "audio": "audio/aa1103660d76c66e.mp3", "dur": 11.14, "words": [[0.1, "Chào", 0], [0.4, "các", 0], [0.613, "bạn.", 0], [1.85, "Mình", 1], [2.25, "là", 1], [2.45, "Đặng", 1], [2.675, "Ngọc", 1], [2.875, "Hùng,", 1], [3.337, "giảng", 1], [3.612, "viên", 1], [3.812, "Khoa", 1], [3.987, "Công", 1], [4.162, "nghệ", 1], [4.35, "Thông", 1], [4.562, "tin", 1], [4.75, "1,", 1], [5.2, "Học", 1], [5.388, "viện", 1], [5.625, "Công", 1], [5.838, "nghệ", 1], [6.05, "Bưu", 1], [6.25, "chính", 1], [6.525, "Viễn", 1], [6.713, "thông.", 1], [7.862, "Chào", 2], [8.15, "mừng", 2], [8.363, "các", 2], [8.525, "bạn", 2], [8.75, "đến", 2], [8.975, "với", 2], [9.075, "học", 2], [9.262, "phần", 2], [9.525, "Lập", 2], [9.725, "trình", 2], [9.938, "mạng.", 2]], "cues": [], "lang": 0.6}, {"ten": "Slide 1. Mọi hệ thống phần mềm là các tiến trình trao đổi dữ liệu theo giao thức", "loai": "slide", "slide": "S01", "dung": "Hình he-thong: bốn bước của hình, bước 5 là ô kết luận.\nHiện dần: bước 1 khi đọc “Khi các bạn mở một trang web”; bước 2 khi đọc “ứng dụng trên điện thoại”; bước 3 khi đọc “Bên trong backend”; bước 4 khi đọc “một cảm biến”; bước 5 khi đọc “Lập trình mạng học”.", "start": 11.74, "audio": "audio/c40be62bca0e9971.mp3", "dur": 51.91, "words": [[0.1, "Mình", 0], [0.487, "bắt", 0], [0.65, "đầu", 0], [0.875, "từ", 0], [1.087, "thực", 0], [1.3, "tế", 0], [1.538, "của", 0], [1.675, "nghề", 0], [1.887, "phần", 0], [2.125, "mềm.", 0], [3.237, "Xét", 1], [3.538, "đến", 1], [3.75, "cùng,", 1], [4.2, "mọi", 1], [4.438, "hệ", 1], [4.575, "thống", 1], [4.8, "phần", 1], [4.987, "mềm", 1], [5.287, "là", 1], [5.4, "các", 1], [5.588, "tiến", 1], [5.825, "trình", 1], [6.037, "trao", 1], [6.2, "đổi", 1], [6.412, "dữ", 1], [6.6, "liệu", 1], [6.862, "với", 1], [6.975, "nhau", 1], [7.213, "theo", 1], [7.388, "những", 1], [7.638, "quy", 1], [7.8, "tắc", 1], [8.0, "đã", 1], [8.125, "thỏa", 1], [8.325, "thuận,", 1], [8.812, "gọi", 1], [9.137, "là", 1], [9.287, "giao", 1], [9.5, "thức.", 1], [10.562, "Khi", 2], [10.812, "các", 2], [10.975, "bạn", 2], [11.188, "mở", 2], [11.325, "một", 2], [11.537, "trang", 2], [11.762, "web,", 2], [12.188, "trình", 2], [12.412, "duyệt", 2], [12.637, "trao", 2], [12.8, "đổi", 2], [13.025, "với", 2], [13.137, "web", 2], [13.3, "server", 2], [13.725, "theo", 2], [14.681, "HTTP.", 2], [15.637, "Còn", 3], [15.925, "ứng", 3], [16.075, "dụng", 3], [16.3, "trên", 3], [16.462, "điện", 3], [16.625, "thoại", 3], [16.825, "gọi", 3], [17.244, "API", 3], [17.663, "của", 3], [17.788, "backend", 3], [18.212, "qua", 3], [18.919, "HTTPS,", 3], [19.625, "với", 3], [19.812, "dữ", 3], [20.0, "liệu", 3], [20.225, "dạng", 3], [21.05, "JSON.", 3], [21.875, "Bên", 4], [22.2, "trong", 4], [22.413, "backend,", 4], [23.038, "dịch", 4], [23.238, "vụ", 4], [23.45, "đặt", 4], [23.625, "hàng", 4], [23.875, "gọi", 4], [24.025, "dịch", 4], [24.212, "vụ", 4], [24.413, "thanh", 4], [24.625, "toán", 4], [24.875, "qua", 4], [25.538, "gRPC,", 4], [26.2, "hoặc", 4], [26.425, "gửi", 4], [26.637, "message", 4], [27.05, "qua", 4], [27.262, "message", 4], [27.637, "broker.", 4], [29.0, "Cũng", 5], [29.238, "vậy,", 5], [29.675, "một", 5], [29.9, "cảm", 5], [30.1, "biến", 5], [30.325, "gửi", 5], [30.5, "số", 5], [30.712, "liệu", 5], [30.95, "đo", 5], [31.113, "về", 5], [31.275, "hệ", 5], [31.438, "thống", 5], [31.688, "giám", 5], [31.913, "sát", 5], [32.175, "qua", 5], [33.138, "MQTT.", 5], [34.1, "Các", 6], [34.3, "hệ", 6], [34.438, "thống", 6], [34.65, "này", 6], [34.812, "khác", 6], [35.025, "công", 6], [35.188, "nghệ,", 6], [35.725, "nhưng", 6], [36.013, "có", 6], [36.125, "chung", 6], [36.3, "một", 6], [36.475, "mô", 6], [36.675, "hình:", 6], [37.188, "hai", 6], [37.4, "tiến", 6], [37.675, "trình,", 6], [38.15, "một", 6], [38.388, "kênh", 6], [38.587, "truyền,", 6], [39.062, "và", 6], [39.237, "một", 6], [39.438, "giao", 6], [39.625, "thức", 6], [39.888, "mà", 6], [40.15, "cả", 6], [40.337, "hai", 6], [40.513, "cùng", 6], [40.737, "hiểu.", 6], [41.925, "Lập", 7], [42.288, "trình", 7], [42.487, "mạng", 7], [42.725, "học", 7], [42.9, "chính", 7], [43.112, "mô", 7], [43.263, "hình", 7], [43.462, "đó:", 7], [43.987, "viết", 7], [44.237, "các", 7], [44.388, "tiến", 7], [44.625, "trình", 7], [44.837, "trao", 7], [45.0, "đổi", 7], [45.212, "dữ", 7], [45.388, "liệu", 7], [45.6, "qua", 7], [45.812, "mạng,", 7], [46.35, "đọc", 7], [46.587, "và", 7], [46.737, "thiết", 7], [46.925, "kế", 7], [47.112, "giao", 7], [47.312, "thức,", 7], [47.75, "và", 7], [47.938, "làm", 7], [48.163, "cho", 7], [48.288, "việc", 7], [48.475, "trao", 7], [48.663, "đổi", 7], [48.85, "đúng,", 7], [49.35, "an", 7], [49.55, "toàn,", 7], [50.087, "nhanh", 7], [50.388, "và", 7], [50.5, "tin", 7], [50.75, "cậy.", 7]], "cues": [10.562, 15.925, 21.875, 29.675, 41.925], "lang": 2.6}, {"ten": "Slide 2. Môn học đóng góp cho bốn vai trò nghề", "loai": "slide", "slide": "S02", "dung": "Infographic bốn thẻ, hiện lần lượt theo lời đọc.\nHiện dần: bước 1 khi đọc “Backend developer viết”; bước 2 khi đọc “Mobile và web developer”; bước 3 khi đọc “Người làm DevOps”; bước 4 khi đọc “người làm IoT”.", "start": 66.25, "audio": "audio/b615487726afd3e3.mp3", "dur": 51.72, "words": [[0.1, "Vì", 0], [0.362, "mọi", 0], [0.575, "hệ", 0], [0.738, "thống", 0], [1.025, "đều", 0], [1.175, "xây", 0], [1.363, "trên", 0], [1.55, "mô", 0], [1.738, "hình", 0], [1.913, "này,", 0], [2.362, "môn", 0], [2.625, "học", 0], [2.837, "đóng", 0], [3.062, "góp", 0], [3.263, "trực", 0], [3.462, "tiếp", 0], [3.725, "cho", 0], [3.85, "bốn", 0], [4.15, "vai", 0], [4.325, "trò", 0], [4.537, "nghề.", 0], [5.675, "Backend", 1], [6.162, "developer", 1], [6.8, "viết", 1], [6.975, "server", 1], [7.35, "phục", 1], [7.575, "vụ", 1], [7.8, "nhiều", 1], [8.025, "client", 1], [8.375, "cùng", 1], [8.6, "lúc,", 1], [9.012, "gọi", 1], [9.25, "các", 1], [9.425, "dịch", 1], [9.588, "vụ", 1], [9.787, "khác", 1], [10.012, "qua", 1], [10.516, "REST,", 1], [11.021, "gRPC", 1], [11.525, "hay", 1], [11.662, "message", 1], [12.062, "broker,", 1], [12.838, "và", 1], [13.075, "xử", 1], [13.238, "lý", 1], [13.438, "timeout,", 1], [14.125, "retry", 1], [14.625, "khi", 1], [14.812, "dịch", 1], [14.988, "vụ", 1], [15.175, "phía", 1], [15.4, "sau", 1], [15.625, "chậm", 1], [15.912, "hoặc", 1], [16.113, "lỗi.", 1], [17.35, "Mobile", 2], [17.938, "và", 2], [18.062, "web", 2], [18.3, "developer", 2], [19.0, "cần", 2], [19.462, "hiểu", 2], [19.938, "HTTP", 2], [20.413, "và", 2], [20.55, "WebSocket", 2], [21.188, "bên", 2], [21.387, "dưới", 2], [21.55, "mỗi", 2], [21.762, "lời", 2], [21.95, "gọi", 2], [22.525, "API,", 2], [23.1, "và", 2], [23.312, "bảo", 2], [23.538, "vệ", 2], [23.712, "dữ", 2], [23.9, "liệu", 2], [24.137, "bằng", 2], [24.137, "TLS,", 2], [24.137, "JWT.", 2], [24.137, "Người", 3], [24.137, "làm", 3], [24.137, "DevOps,", 3], [24.137, "SRE", 3], [24.137, "và", 3], [24.137, "vận", 3], [24.137, "hành", 3], [24.137, "hệ", 3], [24.137, "thống", 3], [24.137, "đọc", 3], [24.137, "trạng", 3], [24.137, "thái", 3], [24.137, "kết", 3], [24.137, "nối,", 3], [24.137, "chẩn", 3], [24.137, "đoán", 3], [24.137, "lỗi", 3], [24.137, "mạng,", 3], [24.137, "lỗi", 3], [24.137, "chứng", 3], [24.137, "chỉ,", 3], [24.137, "và", 3], [24.137, "thiết", 3], [24.137, "kế", 3], [24.137, "health", 3], [24.137, "check,", 3], [24.137, "circuit", 3], [24.137, "breaker.", 3], [24.137, "Còn", 4], [24.137, "người", 4], [24.137, "làm", 4], [24.137, "IoT", 4], [24.137, "và", 4], [24.137, "hệ", 4], [24.137, "thống", 4], [24.137, "nhúng", 4], [24.137, "lập", 4], [24.137, "trình", 4], [24.137, "UDP,", 4], [24.137, "multicast", 4], [24.137, "và", 4], [24.137, "MQTT", 4], [24.137, "cho", 4], [24.137, "thiết", 4], [24.137, "bị", 4], [24.137, "nhỏ,", 4], [24.137, "trên", 4], [24.137, "mạng", 4], [24.137, "không", 4], [24.137, "ổn", 4], [24.137, "định.", 4], [24.137, "Ở", 5], [24.137, "vai", 5], [24.137, "trò", 5], [24.137, "nào,", 5], [24.137, "kiến", 5], [24.137, "thức", 5], [24.137, "cũng", 5], [24.137, "đi", 5], [24.137, "kèm", 5], [24.137, "kỹ", 5], [24.137, "năng:", 5], [24.137, "viết", 5], [24.137, "được", 5], [24.137, "mã", 5], [24.137, "chạy", 5], [24.137, "thật,", 5], [24.137, "và", 5], [24.137, "giải", 5], [24.137, "thích", 5], [24.137, "được", 5], [24.137, "vì", 5], [24.137, "sao", 5], [24.137, "mã", 5], [24.137, "chạy", 5], [24.137, "như", 5], [24.137, "vậy.", 5]], "cues": [5.675, 17.35, 24.137, 24.137], "lang": 0.6}, {"ten": "Slide 3. Năm chương, từ một kết nối đến các hệ thống phân tán", "loai": "slide", "slide": "S03", "dung": "Hình nam-chuong: năm bậc hiện lần lượt, bước 6 là ô kết luận.\nHiện dần: bước 1 khi đọc “Chương 1 đặt nền”; bước 2 khi đọc “Chương 2 viết”; bước 3 khi đọc “Chương 3 đi ra”; bước 4 khi đọc “Chương 4 theo”; bước 5 khi đọc “Chương 5 gồm”; bước 6 khi đọc “Mỗi chương xây”.", "start": 118.57, "audio": "audio/eb791d906fcd82e3.mp3", "dur": 57.53, "words": [[0.1, "Để", 0], [0.35, "có", 0], [0.475, "những", 0], [0.7, "năng", 0], [0.887, "lực", 0], [1.05, "đó,", 0], [1.6, "học", 0], [1.8, "phần", 0], [2.062, "đi", 0], [2.2, "qua", 0], [2.438, "năm", 0], [2.65, "chương,", 0], [3.175, "mỗi", 0], [3.438, "chương", 0], [3.712, "một", 0], [3.862, "bậc.", 0], [4.912, "Chương", 1], [5.213, "1", 1], [5.362, "đặt", 1], [5.55, "nền:", 1], [6.0, "định", 1], [6.25, "danh", 1], [6.463, "trên", 1], [6.638, "mạng,", 1], [7.138, "hai", 1], [7.312, "dịch", 1], [7.5, "vụ", 1], [7.919, "TCP", 1], [8.338, "và", 1], [8.851, "UDP,", 1], [9.363, "đọc", 1], [9.588, "ghi", 1], [9.762, "dữ", 1], [9.938, "liệu", 1], [10.162, "bằng", 1], [10.363, "stream", 1], [10.675, "của", 1], [10.825, "Java,", 1], [11.488, "và", 1], [11.75, "kết", 1], [11.938, "thúc", 1], [12.1, "bằng", 1], [12.312, "việc", 1], [12.488, "nói", 1], [12.963, "HTTP", 1], [13.438, "bằng", 1], [13.65, "tay.", 1], [14.775, "Chương", 2], [15.125, "2", 2], [15.3, "viết", 2], [15.5, "chương", 2], [15.713, "trình", 2], [15.9, "socket", 2], [16.544, "TCP,", 2], [17.188, "từ", 2], [17.438, "echo", 2], [17.775, "server", 2], [18.2, "đến", 2], [18.4, "một", 2], [18.562, "web", 2], [18.75, "server", 2], [19.113, "phục", 2], [19.325, "vụ", 2], [19.55, "nhiều", 2], [19.8, "client", 2], [20.125, "nhờ", 2], [20.363, "đa", 2], [20.562, "luồng.", 2], [21.712, "Chương", 3], [22.075, "3", 3], [22.262, "đi", 3], [22.387, "ra", 3], [22.525, "ngoài", 3], [22.75, "mô", 3], [22.938, "hình", 3], [23.113, "một", 3], [23.262, "kết", 3], [23.45, "nối", 3], [23.472, "TCP:", 3], [23.494, "UDP", 3], [23.516, "và", 3], [23.538, "multicast,", 3], [23.559, "WebSocket", 3], [23.581, "cho", 3], [23.603, "giao", 3], [23.625, "tiếp", 3], [23.915, "hai", 3], [24.205, "chiều,", 3], [24.495, "rồi", 3], [24.785, "HTTP/2", 3], [25.075, "và", 3], [25.166, "HTTP/3.", 3], [25.256, "Chương", 4], [25.347, "4", 4], [25.437, "theo", 4], [25.528, "dòng", 4], [25.619, "tiến", 4], [25.709, "hóa", 4], [25.8, "của", 4], [25.89, "lời", 4], [25.981, "gọi", 4], [26.072, "từ", 4], [26.162, "xa,", 4], [26.253, "từ", 4], [26.343, "RMI,", 4], [26.434, "SOAP,", 4], [26.525, "REST", 4], [26.615, "đến", 4], [26.706, "gRPC,", 4], [26.796, "và", 4], [26.887, "giao", 4], [27.075, "tiếp", 4], [27.075, "bất", 4], [27.075, "đồng", 4], [27.075, "bộ", 4], [27.075, "qua", 4], [27.075, "message", 4], [27.075, "broker.", 4], [27.075, "Chương", 5], [27.075, "5", 5], [27.075, "gồm", 5], [27.075, "các", 5], [27.075, "chủ", 5], [27.075, "đề", 5], [27.075, "nâng", 5], [27.075, "cao:", 5], [27.075, "bảo", 5], [27.075, "mật", 5], [27.075, "với", 5], [27.075, "TLS", 5], [27.075, "và", 5], [27.075, "JWT,", 5], [27.075, "hiệu", 5], [27.075, "năng", 5], [27.075, "với", 5], [27.075, "lời", 5], [27.075, "gọi", 5], [27.075, "không", 5], [27.075, "chặn", 5], [27.075, "và", 5], [27.075, "NIO,", 5], [27.075, "độ", 5], [27.075, "tin", 5], [27.075, "cậy", 5], [27.075, "với", 5], [27.075, "retry", 5], [27.075, "và", 5], [27.075, "circuit", 5], [27.075, "breaker,", 5], [27.075, "và", 5], [27.075, "IoT", 5], [27.075, "với", 5], [27.075, "MQTT.", 5], [27.075, "Mỗi", 6], [27.075, "chương", 6], [27.075, "xây", 6], [27.075, "trên", 6], [27.075, "chương", 6], [27.075, "trước,", 6], [27.075, "vì", 6], [27.075, "vậy", 6], [27.075, "các", 6], [27.075, "bạn", 6], [27.075, "nên", 6], [27.075, "học", 6], [27.075, "theo", 6], [27.075, "thứ", 6], [27.075, "tự.", 6]], "cues": [4.912, 14.775, 21.712, 25.256, 27.075, 27.075], "lang": 2.6}, {"ten": "Slide 4. Cách học và cách đánh giá", "loai": "slide", "slide": "S04", "dung": "Hình hoc-va-du-an: ba bước hiện lần lượt theo lời đọc.\nHiện dần: bước 1 khi đọc “Ở từng phần”; bước 2 khi đọc “Kết quả học phần”; bước 3 khi đọc “Công cụ AI”.", "start": 178.7, "audio": "audio/4f8216f87c2c54f6.mp3", "dur": 37.92, "words": [[0.1, "Ở", 0], [0.3, "từng", 0], [0.537, "phần,", 0], [1.0, "các", 0], [1.163, "bạn", 0], [1.35, "xem", 0], [1.613, "bài", 0], [1.762, "giảng,", 0], [2.337, "chạy", 0], [2.562, "lại", 0], [2.737, "mã", 0], [2.987, "đi", 0], [3.125, "kèm", 0], [3.362, "học", 0], [3.525, "liệu,", 0], [4.037, "rồi", 0], [4.3, "trả", 0], [4.487, "lời", 0], [4.688, "câu", 0], [4.9, "hỏi", 0], [5.125, "ôn", 0], [5.325, "tập.", 0], [6.4, "Địa", 1], [6.662, "chỉ", 1], [6.95, "của", 1], [7.1, "mã,", 1], [7.688, "cùng", 1], [7.938, "tỷ", 1], [8.125, "lệ", 1], [8.325, "điểm,", 1], [8.863, "có", 1], [9.037, "trong", 1], [9.262, "Tài", 1], [9.475, "liệu", 1], [9.675, "học", 1], [9.838, "phần.", 1], [10.988, "Kết", 2], [11.238, "quả", 2], [11.438, "học", 2], [11.637, "phần", 2], [11.863, "được", 2], [12.0, "đánh", 2], [12.2, "giá", 2], [12.412, "chủ", 2], [12.637, "yếu", 2], [12.85, "qua", 2], [13.075, "một", 2], [13.25, "dự", 2], [13.463, "án", 2], [13.662, "cá", 2], [13.838, "nhân,", 2], [14.387, "bắt", 2], [14.575, "đầu", 2], [14.812, "từ", 2], [15.025, "repo", 2], [15.438, "mẫu", 2], [15.7, "đồ", 2], [15.912, "án", 2], [16.15, "của", 2], [16.275, "môn.", 2], [17.462, "Các", 3], [17.663, "bạn", 3], [17.875, "chọn", 3], [18.125, "một", 3], [18.288, "bài", 3], [18.45, "toán", 3], [18.7, "thật,", 3], [19.163, "thiết", 3], [19.35, "kế", 3], [19.55, "giao", 3], [19.75, "thức", 3], [19.95, "cho", 3], [20.062, "bài", 3], [20.25, "toán", 3], [20.5, "đó,", 3], [21.012, "hiện", 3], [21.275, "thực,", 3], [21.762, "kiểm", 3], [22.0, "thử,", 3], [22.6, "rồi", 3], [22.875, "bảo", 3], [23.125, "vệ.", 3], [24.312, "Công", 4], [24.55, "cụ", 4], [24.988, "AI", 4], [25.238, "được", 4], [25.387, "khuyến", 4], [25.575, "khích", 4], [25.775, "dùng", 4], [26.038, "như", 4], [26.212, "một", 4], [26.4, "trợ", 4], [26.613, "lý,", 4], [27.15, "và", 4], [27.35, "repo", 4], [27.712, "mẫu", 4], [27.962, "đồ", 4], [28.15, "án", 4], [28.4, "có", 4], [28.512, "sẵn", 4], [28.738, "cấu", 4], [28.925, "hình", 4], [29.137, "cho", 4], [29.262, "các", 4], [29.45, "công", 4], [29.637, "cụ", 4], [29.812, "này.", 4], [30.9, "Nhưng", 5], [31.163, "mọi", 5], [31.325, "dòng", 5], [31.55, "mã", 5], [31.712, "nộp", 5], [31.913, "phải", 5], [32.062, "giải", 5], [32.25, "thích", 5], [32.438, "được", 5], [32.638, "và", 5], [32.775, "chạy", 5], [33.013, "lại", 5], [33.212, "được", 5], [33.375, "khi", 5], [33.538, "bảo", 5], [33.75, "vệ,", 5], [34.3, "vì", 5], [34.513, "hiểu", 5], [34.725, "giao", 5], [34.9, "thức", 5], [35.15, "là", 5], [35.3, "việc", 5], [35.75, "AI", 5], [35.938, "không", 5], [36.175, "làm", 5], [36.388, "thay", 5], [36.525, "các", 5], [36.712, "bạn.", 5]], "cues": [0.1, 10.988, 24.312], "lang": 2.6}, {"ten": "Lời kết", "loai": "loi-ket", "slide": "KET", "dung": "Không có hình giảng viên. Slide Cách học và cách đánh giá mờ dần, hiện slide \"Tiếp theo\" (sinh từ kế hoạch).", "start": 219.22, "audio": "audio/34138885b2f7db8c.mp3", "dur": 13.97, "words": [[0.1, "Học", 0], [0.338, "phần", 0], [0.525, "đi", 0], [0.65, "từ", 0], [0.8, "một", 0], [0.975, "kết", 0], [1.163, "nối", 0], [1.387, "giữa", 0], [1.613, "hai", 0], [1.812, "chương", 0], [2.062, "trình", 0], [2.3, "tới", 0], [2.487, "các", 0], [2.65, "hệ", 0], [2.812, "thống", 0], [3.05, "phân", 0], [3.25, "tán", 0], [3.525, "an", 0], [3.7, "toàn", 0], [3.987, "và", 0], [4.112, "tin", 0], [4.35, "cậy.", 0], [5.487, "Phần", 1], [5.75, "đầu", 1], [5.9, "tiên", 1], [6.138, "của", 1], [6.25, "Chương", 1], [6.537, "1", 1], [6.675, "bắt", 1], [6.825, "đầu", 1], [7.05, "từ", 1], [7.225, "câu", 1], [7.412, "hỏi", 1], [7.612, "cơ", 1], [7.775, "bản", 1], [7.975, "nhất:", 1], [8.45, "dữ", 1], [8.662, "liệu", 1], [8.912, "được", 1], [9.075, "gửi", 1], [9.287, "tới", 1], [9.488, "đâu,", 1], [9.95, "qua", 1], [10.137, "địa", 1], [10.338, "chỉ", 1], [10.838, "IP,", 1], [11.338, "tên", 1], [11.55, "miền,", 1], [12.05, "port", 1], [12.338, "và", 1], [12.6, "endpoint.", 1]], "cues": [], "lang": 0.6}], "video_sau": "Định danh: địa chỉ IP, tên miền, port và endpoint"};</script>
+<script src="../assets/player.js"></script>
+</body></html>

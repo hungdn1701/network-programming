@@ -7,6 +7,12 @@ TS. Đặng Ngọc Hùng · 3 tín chỉ · Tiếng Việt · Java 21
 - Trang học phần: <https://hungdn1701.github.io/network-programming/> — khung nội dung, bản xem trước từng phần, slide
 - Mã chạy được: thư mục [`code/`](code/), mỗi phần một thư mục `chapter-<chương>/<thứ tự>-<tên>`
 
+## Mở đầu học phần
+
+| Phần | Phút | |
+|---|---|---|
+| Giới thiệu học phần Lập trình mạng | 5′ | [xem trước](https://hungdn1701.github.io/network-programming/V01/) · [slide](https://hungdn1701.github.io/network-programming/V01/slide.pdf) |
+
 ## Chương 1. Tổng quan lập trình mạng
 
 | | Phần | Phút | |
@@ -66,6 +72,12 @@ TS. Đặng Ngọc Hùng · 3 tín chỉ · Tiếng Việt · Java 21
 | 5 | Độ tin cậy: retry, request ID và checksum trên UDP | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V34/) · [slide](https://hungdn1701.github.io/network-programming/V34/slide.pdf) · [mã](code/chapter-5/05-udp-reliable/) |
 | 6 | Độ tin cậy: backoff, circuit breaker và health check | 7′ | [xem trước](https://hungdn1701.github.io/network-programming/V35/) · [slide](https://hungdn1701.github.io/network-programming/V35/slide.pdf) · [mã](code/chapter-5/06-resilience/) |
 | 7 | Bài toán ứng dụng: giám sát cảm biến với MQTT và CoAP | 8′ | [xem trước](https://hungdn1701.github.io/network-programming/V36/) · [slide](https://hungdn1701.github.io/network-programming/V36/slide.pdf) · [mã](code/chapter-5/07-mqtt/) |
+
+## Kết thúc học phần
+
+| Phần | Phút | |
+|---|---|---|
+| Tổng kết học phần | 5′ | [xem trước](https://hungdn1701.github.io/network-programming/V37/) · [slide](https://hungdn1701.github.io/network-programming/V37/slide.pdf) |
 
 ---
 

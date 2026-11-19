@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="vi">
+<head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 13.5px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center;box-shadow:0 2px 6px rgba(5,26,83,0.14)}.ban-nhap .ngan{display:none}body.toan-man .ban-nhap{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>INT1433 — Phòng mô phỏng tương tác 2.5D · Lập trình mạng</title>
+  <link rel="stylesheet" href="workbench.css">
+</head>
+<body class="wb-app"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+  <div class="wb-window">
+    <header class="wb-topbar">
+      <button type="button" class="wb-menu-btn" id="wb-menu-btn" aria-label="Mở danh mục bài mô phỏng" title="Danh mục bài mô phỏng">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <a class="wb-back-pill" href="../index.html" title="Quay lại trang tổng quan học phần">← <span>Tổng quan INT1433</span></a>
+      <div class="wb-brand">
+        <span class="wb-brand__code">INT1433</span>
+        <span class="wb-brand__name">Lập trình mạng</span>
+        <span class="wb-brand__tag">⚡ 12 mô phỏng 2.5D</span>
+      </div>
+      <div class="wb-topbar-spacer"></div>
+      <button type="button" class="wb-search-btn" id="wb-search-btn" aria-label="Tìm bài mô phỏng, bước (Ctrl+K)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>
+        <span class="wb-search-btn__hint">Tìm mô phỏng, cơ chế...</span>
+        <kbd class="wb-kbd">Ctrl K</kbd>
+      </button>
+      <div class="wb-top-actions">
+        <a class="wb-icon-btn" href="../frame.html" title="Bản khung &amp; Thuật ngữ học phần" aria-label="Bản khung và Thuật ngữ">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </a>
+        <button type="button" class="wb-icon-btn" id="wb-theme-btn" aria-label="Đổi giao diện Sáng / Tối" title="Chuyển sang giao diện Tối"></button>
+      </div>
+    </header>
+
+    <div class="wb-body">
+      <div class="wb-drawer-backdrop" id="wb-drawer-backdrop" hidden></div>
+      <aside class="wb-sidebar" id="wb-sidebar" aria-label="Danh mục bài mô phỏng">
+        <div class="wb-sidebar__head">
+          <div class="wb-sidebar__title-row">
+            <span class="wb-sidebar__title">Mô phỏng 2.5D</span>
+            <span class="wb-sidebar__count" id="wb-progress-count">0/12 xong</span>
+          </div>
+          <div class="wb-progress-bar"><div class="wb-progress-fill" id="wb-progress-fill"></div></div>
+          <input type="search" class="wb-filter-input" id="wb-filter-input" placeholder="Lọc theo chủ đề, giao thức..." aria-label="Lọc bài mô phỏng">
+        </div>
+        <div class="wb-sidebar__scroll" id="wb-sidebar-list"></div>
+        <div class="wb-sidebar__foot">
+          <a class="wb-foot-link" href="../index.html">← Bài giảng số</a>
+          <a class="wb-foot-link" href="../frame.html">Thuật ngữ →</a>
+        </div>
+      </aside>
+
+      <main class="wb-sheet">
+        <div class="wb-lesson-head">
+          <div class="wb-lesson-head__left">
+            <div class="wb-lesson-crumb" id="wb-lesson-crumb"></div>
+            <h1 class="wb-lesson-title" id="wb-lesson-title"></h1>
+          </div>
+          <div class="wb-lesson-head__right">
+            <span class="wb-badge" id="wb-lesson-level"></span>
+            <a class="wb-video-btn" id="wb-video-btn" href="#" hidden></a>
+          </div>
+        </div>
+
+        <div class="wb-hud" id="wb-hud" aria-label="Chỉ số hệ thống"></div>
+
+        <div class="wb-stage-wrap">
+          <div class="wb-stage-host" id="wb-stage-host" aria-label="Sân khấu mô phỏng 2.5D"></div>
+          <div class="wb-stage-bar">
+            <div class="wb-legend" id="wb-legend"></div>
+            <div class="wb-stage-tools">
+              <button type="button" class="wb-tool-btn" id="wb-pause-btn" title="Tạm dừng / tiếp tục hoạt ảnh gói tin (Space)">⏸ Tạm dừng</button>
+              <button type="button" class="wb-tool-btn" id="wb-reset-view" hidden title="Đưa khung hình về mặc định">⟲ Căn lại</button>
+            </div>
+          </div>
+        </div>
+
+        <nav class="wb-timeline" id="wb-timeline" aria-label="Các bước mô phỏng"></nav>
+      </main>
+
+      <aside class="wb-rail" aria-label="Giải thích chi tiết từng bước">
+        <div class="wb-rail__scroll" id="wb-rail-scroll">
+          <div class="wb-step-head-row">
+            <span class="wb-phase-pill" id="wb-phase-pill"></span>
+            <button type="button" class="wb-tts-btn" id="wb-tts-btn" title="Nghe đọc thuyết minh bước này">🔊 Đọc bước này</button>
+          </div>
+          <h2 class="wb-step-title" id="wb-step-title"></h2>
+          <div class="wb-step-body" id="wb-step-body"></div>
+          <div class="wb-callout" id="wb-callout" hidden></div>
+          <div class="wb-changes" id="wb-changes" hidden></div>
+          <div class="wb-goals" id="wb-goals" hidden></div>
+        </div>
+        <div class="wb-rail__foot">
+          <button type="button" class="wb-nav-btn" id="wb-prev-step">← Bước trước</button>
+          <button type="button" class="wb-nav-btn wb-nav-btn--primary" id="wb-next-step">Bước tiếp →</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="wb-modal-backdrop" id="wb-search-modal" hidden>
+    <div class="wb-modal" role="dialog" aria-modal="true" aria-label="Tìm nhanh bài mô phỏng">
+      <div class="wb-modal__head">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>
+        <input type="search" class="wb-modal__input" id="wb-search-input" placeholder="Nhập từ khóa (ví dụ: TCP, TLS, cache, con trỏ, GCC...)" aria-label="Từ khóa tìm kiếm">
+        <kbd class="wb-kbd">Esc</kbd>
+      </div>
+      <div class="wb-modal__results" id="wb-search-results"></div>
+    </div>
+  </div>
+
+  <script src="iso-stage.js"></script>
+  <script src="lessons.js"></script>
+  <script src="workbench.js"></script>
+</body>
+</html>

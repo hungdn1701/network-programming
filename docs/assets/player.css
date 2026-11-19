@@ -952,6 +952,40 @@ aside h2 {
   background: var(--xanh);
   border-color: var(--xanh);
 }
+.nav-pill-wb {
+  background: #FFF6E0;
+  color: #6B3D00;
+  border-color: #E5B95C;
+  font-weight: 600;
+}
+.nav-pill-wb:hover {
+  background: #FDE9BA;
+  border-color: #C78A1A;
+  color: #4A2900;
+}
+.dau-wb { display: inline-flex; }
+.dau-wb:empty { display: none; }
+.nut-wb {
+  background: #FFF6E0;
+  color: #6B3D00;
+  border-color: #E5B95C;
+  font-weight: 600;
+}
+.nut-wb:hover {
+  background: #FDE9BA;
+  border-color: #C78A1A;
+  color: #4A2900;
+}
+.lk a.lk-wb {
+  background: #FFF6E0;
+  color: #6B3D00;
+  border-color: #E5B95C;
+  font-weight: 600;
+}
+.lk a.lk-wb:hover {
+  background: #FDE9BA;
+  border-color: #C78A1A;
+}
 
 .trang { max-width: 1280px; margin: 0 auto; padding: 22px 24px 56px; }
 

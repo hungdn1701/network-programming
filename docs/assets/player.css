@@ -1471,3 +1471,100 @@ details.qa-section[open] > summary::after {
   .chuong table.dinh-muc,
   .qa-section table.dinh-muc { display: block; overflow-x: auto; font-size: 13px; }
 }
+
+/* ==========================================================================
+   CHẾ ĐỘ NHÚNG TRONG COURSE WORKBENCH (embed-mode)
+   ========================================================================== */
+body.embed-mode {
+  background: #f7efe2;
+  min-height: 0;
+}
+body.embed-mode > .ban-nhap,
+body.embed-mode > .dau {
+  display: none !important;
+}
+body.embed-mode .bo-cuc {
+  padding: 14px 18px 28px;
+  max-width: 1440px;
+}
+body.embed-mode .dieu-khien,
+body.embed-mode .muc-luc,
+body.embed-mode .toan-van-kb {
+  background: #fffaf1;
+  border-color: #d8cebf;
+}
+body.embed-mode .canh-kb {
+  background: #fbf6ef;
+  border-color: #e4dbcd;
+}
+body.embed-mode .canh-kb.dang {
+  background: #fffaf1;
+  border-color: #1d1b18;
+  box-shadow: 0 0 0 1.5px #1d1b18;
+}
+:root[data-theme="dark"] body.embed-mode {
+  background: #171411;
+  color: #efe6d6;
+}
+:root[data-theme="dark"] body.embed-mode .dieu-khien,
+:root[data-theme="dark"] body.embed-mode .muc-luc,
+:root[data-theme="dark"] body.embed-mode .toan-van-kb {
+  background: #221e19;
+  border-color: #3a342c;
+  color: #efe6d6;
+}
+:root[data-theme="dark"] body.embed-mode .muc-luc h2,
+:root[data-theme="dark"] body.embed-mode .kb-dau-trai h2,
+:root[data-theme="dark"] body.embed-mode .canh-kb-tieu-de h3,
+:root[data-theme="dark"] body.embed-mode #phu-de {
+  color: #efe6d6;
+}
+:root[data-theme="dark"] body.embed-mode #phu-de {
+  background: #221e19;
+  border-color: #3a342c;
+}
+:root[data-theme="dark"] body.embed-mode .canh-kb {
+  background: #29241e;
+  border-color: #3a342c;
+}
+:root[data-theme="dark"] body.embed-mode .canh-kb.dang {
+  background: #302a22;
+  border-color: #a6d495;
+  box-shadow: 0 0 0 1.5px #a6d495;
+}
+:root[data-theme="dark"] body.embed-mode .canh-kb-noi-dung,
+:root[data-theme="dark"] body.embed-mode .kb-thoai,
+:root[data-theme="dark"] body.embed-mode .kb-huong-dan,
+:root[data-theme="dark"] body.embed-mode .kb-dung {
+  color: #d8ccb8;
+}
+:root[data-theme="dark"] body.embed-mode .kb-slide-box {
+  background: #221e19;
+  border-color: #3a342c;
+  border-left-color: #7eb0e8;
+  color: #d8ccb8;
+}
+:root[data-theme="dark"] body.embed-mode .canh-tg {
+  background: #363028;
+  color: #efe6d6;
+}
+:root[data-theme="dark"] body.embed-mode .btn-kb-phat,
+:root[data-theme="dark"] body.embed-mode .btn-kb-copy,
+:root[data-theme="dark"] body.embed-mode .btn-kb-copy-ma,
+:root[data-theme="dark"] body.embed-mode .kb-tu-cuon-nhan,
+:root[data-theme="dark"] body.embed-mode #kb-tim-kiem {
+  background: #2a241e;
+  border-color: #4a4238;
+  color: #efe6d6;
+}
+:root[data-theme="dark"] body.embed-mode .ds-canh li {
+  color: #d8ccb8;
+  border-color: #322c25;
+}
+:root[data-theme="dark"] body.embed-mode .ds-canh li.dang {
+  background: #334f32;
+  color: #e2f5da;
+}
+:root[data-theme="dark"] body.embed-mode .ds-canh li:hover:not(.dang) {
+  background: #2c2721;
+}

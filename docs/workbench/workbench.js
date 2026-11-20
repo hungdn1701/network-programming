@@ -12,7 +12,7 @@
     return;
   }
 
-  const STORAGE_THEME = 'bgs_wb_theme';
+  const STORAGE_THEME = 'ide-theme';
   const STORAGE_DONE = `bgs_wb_done_${COURSE.courseId}`;
   const STORAGE_LAST = `bgs_wb_last_${COURSE.courseId}`;
 

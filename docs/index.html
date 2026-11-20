@@ -1,161 +1,291 @@
-<!doctype html><html lang="vi"><head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 13.5px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center;box-shadow:0 2px 6px rgba(5,26,83,0.14)}.ban-nhap .ngan{display:none}body.toan-man .ban-nhap{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>INT1433 — tổng quan bài giảng số</title>
-<link rel="stylesheet" href="assets/slide.css"><link rel="stylesheet" href="assets/player.css"></head>
-<body class="tong-quan"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
-<header class="dau"><div class="dau-hero">
-  <div class="hero-badges"><a class="hub-brand" href="https://hungdn1701.github.io/teaching/" title="Hung N. Dang · Tất cả học phần (Teaching)" aria-label="Hung N. Dang · Tất cả học phần (Teaching)"><img src="assets/avatar.jpg" alt="Hung N. Dang" class="hub-avatar"><span>Hung N. Dang · Teaching</span></a><span class="hub-sep" aria-hidden="true">/</span><span class="ma-hp-badge">INT1433</span><span class="nhan-noi-bo nhan-cong-khai">Bản xem trước công khai · Học liệu mở</span></div>
-  <h1>Lập trình mạng</h1>
-  <p class="ten-en">Network Programming</p>
-  <div class="hp-meta"><span>Giảng viên: <b>TS. Đặng Ngọc Hùng</b></span><span>Khối lượng: <b>3 tín chỉ</b></span><span>Nền tảng: <b>JDK 21 (Temurin 21.0.12)</b></span><span>Ngôn ngữ: <b>Tiếng Việt</b></span></div>
-  <p class="hp-slogan">“The best way to learn is to teach, and the best way to teach is to build.”</p>
-  <nav class="hero-nav" aria-label="Điều hướng nhanh">
-    <a class="nav-pill nav-pill-primary" href="frame.html">Bản khung &amp; Thuật ngữ →</a>
-    <a class="nav-pill nav-pill-wb" href="workbench/index.html">⚡ Mô phỏng tương tác 2.5D (12 bài) →</a>
-    <a class="nav-pill" href="#chuong-1" title="Chương 1. Tổng quan lập trình mạng">Ch.1</a><a class="nav-pill" href="#chuong-2" title="Chương 2. Lập trình socket TCP và đa luồng">Ch.2</a><a class="nav-pill" href="#chuong-3" title="Chương 3. Lập trình UDP và giao thức ứng dụng hiện đại">Ch.3</a><a class="nav-pill" href="#chuong-4" title="Chương 4. Kỹ thuật lập trình phân tán">Ch.4</a><a class="nav-pill" href="#chuong-5" title="Chương 5. Các chủ đề nâng cao">Ch.5</a>
-  </nav>
-</div></header>
-<main class="trang">
-<div class="so-lieu">
-  <div class="kpi-card"><span class="kpi-head">Số lượng bài giảng</span><b>37</b><span>phần trong học phần</span></div>
-  <div class="kpi-card kpi-xanh"><span class="kpi-head">Thời lượng kế hoạch</span><b>275′</b><span>định mức 270′</span></div>
-  <div class="kpi-card kpi-xanh"><span class="kpi-head">Thời lượng đo (TTS + lặng)</span><b>295.3′</b><span>đã đo 37 phần</span></div>
-  <div class="kpi-card kpi-ok"><span class="kpi-head">Kịch bản sẵn sàng</span><b>37</b><span>trên tổng 37 phần</span></div>
-</div>
-
-<div class="tien-do-box" id="tien-do-box">
-  <div class="tien-do-trai">
-    <div class="tien-do-chu"><span>Tiến độ tự xem: <b id="td-da-xem">0</b> / <b id="td-tong">37</b> phần</span><b id="td-phan-tram">0%</b></div>
-    <div class="tien-do-thanh"><div class="tien-do-muc" id="td-muc"></div></div>
-  </div>
-  <div class="tien-do-nut">
-    <a id="btn-tiep-tuc" class="btn-tiep-tuc" href="#" hidden></a>
-    <button type="button" id="btn-dat-lai" class="btn-dat-lai" hidden>Đặt lại tiến độ</button>
-  </div>
-</div>
-
-<p class="cau-hoi-lon"><b>Câu hỏi lớn của học phần.</b> Viết các chương trình trao đổi dữ liệu qua mạng sao cho đúng (message nguyên vẹn, đúng định dạng), chịu được lỗi (timeout, mất gói, đầu kia của kết nối không phản hồi) và mở rộng được (nhiều client, giao thức hiện đại, hệ phân tán).</p>
-
-<div class="thanh-loc" role="search" aria-label="Tìm kiếm và lọc bài giảng">
-  <div class="loc-input-wrap">
-    <input id="loc-phan-input" type="search" placeholder="Tìm theo tên phần, mục tiêu, hoặc mã (V08)..." aria-label="Tìm phần học">
-    <button type="button" id="loc-xoa" hidden title="Xóa bộ lọc">✕</button>
-  </div>
-  <select id="loc-chuong-select" aria-label="Lọc theo chương"><option value="">Tất cả chương</option><option value="mo-dau">Mở đầu học phần</option><option value="chuong-1">Chương 1. Tổng quan lập trình mạng</option><option value="chuong-2">Chương 2. Lập trình socket TCP và đa luồng</option><option value="chuong-3">Chương 3. Lập trình UDP và giao thức ứng dụng hiện đại</option><option value="chuong-4">Chương 4. Kỹ thuật lập trình phân tán</option><option value="chuong-5">Chương 5. Các chủ đề nâng cao</option><option value="ket-thuc">Kết thúc học phần</option></select>
-  <select id="loc-trang-thai-select" aria-label="Lọc theo trạng thái xem">
-    <option value="">Tất cả phần</option>
-    <option value="co-xem">Có bản xem trước</option>
-    <option value="chua-xem">Chưa xem</option>
-    <option value="da-xem">Đã xem</option>
-  </select>
-  <span id="loc-dem" class="loc-dem"></span>
-</div>
-
-<section class="chuong" id="mo-dau" data-nhom="mo-dau"><div class="chuong-dau"><h2><span>Mở đầu học phần</span><span class="chuong-badges"><span class="chuong-tien-do" data-nhom-td="mo-dau">1 phần</span><span class="chuong-phut">5′</span></span></h2></div><table><thead><tr><th>Mã</th><th>Phần</th><th>Kế hoạch</th><th>Đo</th><th>Trạng thái</th><th></th></tr></thead><tbody><tr class="tt-cho-duyet" data-ma="V01" data-nhom="mo-dau" data-co-xem="1"><td class="ma">V01</td><td><span class="ten-phan">Giới thiệu học phần Lập trình mạng</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Nêu được luận điểm của môn (mọi hệ thống là các tiến trình trao đổi dữ liệu theo giao thức), đóng góp của môn cho bốn vai trò nghề, năm chương, cách học và cách đánh giá qua dự án cá nhân.</div></td><td>5′</td><td>3.9′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V01/index.html">▶ Xem trước</a> <a href="V01/slides.pdf">Slide PDF</a></td></tr></tbody></table></section><section class="chuong" id="chuong-1" data-nhom="chuong-1"><div class="chuong-dau"><h2><span>Chương 1. Tổng quan lập trình mạng</span><span class="chuong-badges"><span class="chuong-tien-do" data-nhom-td="chuong-1">6 phần</span><span class="chuong-phut">46′</span></span></h2><p class="nang-luc">Nền tảng: định danh trên mạng (địa chỉ IP, port, endpoint); dịch vụ của TCP và UDP; bốn họ stream trong Java; framing và charset; đặc tả một giao thức và thử bằng NetCat, curl.</p></div><table><thead><tr><th>Mã</th><th>Phần</th><th>Kế hoạch</th><th>Đo</th><th>Trạng thái</th><th></th></tr></thead><tbody><tr class="tt-cho-duyet" data-ma="V02" data-nhom="chuong-1" data-co-xem="1"><td class="ma">V02</td><td><span class="ten-phan">Định danh: địa chỉ IP, tên miền, port và endpoint</span> <em>mở chương</em><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Xác định endpoint của một dịch vụ từ tên miền và port; dùng InetAddress, InetSocketAddress để phân giải tên và biểu diễn endpoint.</div></td><td>8′</td><td>9.0′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V02/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#dns-endpoint" title="Mô phỏng 2.5D: Phân giải tên DNS &amp; Endpoint">⚡ Mô phỏng</a> <a href="V02/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-1/01-endpoint">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V03" data-nhom="chuong-1" data-co-xem="1"><td class="ma">V03</td><td><span class="ten-phan">Giao vận: TCP, UDP và mô hình ứng dụng mạng</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">So sánh dịch vụ của TCP và UDP; chọn giao thức giao vận và mô hình client–server hay P2P cho một yêu cầu cụ thể.</div></td><td>7′</td><td>7.9′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V03/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#dns-endpoint" title="Mô phỏng 2.5D: Phân giải tên DNS &amp; Endpoint">⚡ Mô phỏng</a> <a href="V03/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-1/02-transport">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V04" data-nhom="chuong-1" data-co-xem="1"><td class="ma">V04</td><td><span class="ten-phan">Stream: byte stream, contract của read/write, decorator và buffer</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Đọc và ghi byte stream đúng contract: dùng số byte read() trả về, nhận biết −1; bọc stream bằng buffer; phân biệt flush và close.</div></td><td>8′</td><td>8.5′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V04/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#stream-framing" title="Mô phỏng 2.5D: Byte Stream &amp; Framing Message">⚡ Mô phỏng</a> <a href="V04/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-1/03-byte-stream">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V05" data-nhom="chuong-1" data-co-xem="1"><td class="ma">V05</td><td><span class="ten-phan">Stream: dữ liệu có kiểu với DataStream và ObjectStream</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Ghi và đọc giá trị kiểu nguyên thủy bằng DataOutputStream, DataInputStream; gửi đối tượng bằng serialization; nêu giới hạn của serialization khi hai đầu khác phiên bản hoặc dữ liệu không tin cậy.</div></td><td>7′</td><td>8.7′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V05/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#stream-framing" title="Mô phỏng 2.5D: Byte Stream &amp; Framing Message">⚡ Mô phỏng</a> <a href="V05/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-1/04-typed-stream">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V06" data-nhom="chuong-1" data-co-xem="1"><td class="ma">V06</td><td><span class="ten-phan">Stream: character stream, charset và framing message</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Định nghĩa framing (ký tự phân cách hoặc tiền tố độ dài) và charset cho một giao thức; đọc ghi văn bản qua Reader, Writer với charset chỉ định rõ.</div></td><td>8′</td><td>8.9′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V06/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#stream-framing" title="Mô phỏng 2.5D: Byte Stream &amp; Framing Message">⚡ Mô phỏng</a> <a href="V06/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-1/05-charset-framing">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V07" data-nhom="chuong-1" data-co-xem="1"><td class="ma">V07</td><td><span class="ten-phan">Bài toán ứng dụng: nói HTTP bằng tay với NetCat</span> <em>kết chương</em><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Đọc định dạng message HTTP/1.1 theo RFC 9112 (request line, status line, header, dòng trống, body theo Content-Length, CRLF); nói HTTP bằng tay với NetCat ở vai client (web server thật) và vai server (curl trên loopback); đối chiếu với curl -v; nhận ra lỗi thiếu header Host.</div></td><td>8′</td><td>9.1′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V07/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#stream-framing" title="Mô phỏng 2.5D: Byte Stream &amp; Framing Message">⚡ Mô phỏng</a> <a href="V07/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-1/06-protocol-spec">Mã</a></td></tr></tbody></table></section><section class="chuong" id="chuong-2" data-nhom="chuong-2"><div class="chuong-dau"><h2><span>Chương 2. Lập trình socket TCP và đa luồng</span><span class="chuong-badges"><span class="chuong-tien-do" data-nhom-td="chuong-2">7 phần</span><span class="chuong-phut">55′</span></span></h2><p class="nang-luc">Socket TCP: từ kết nối đến dịch vụ hoàn chỉnh; đa luồng để một server phục vụ nhiều client.</p></div><table><thead><tr><th>Mã</th><th>Phần</th><th>Kế hoạch</th><th>Đo</th><th>Trạng thái</th><th></th></tr></thead><tbody><tr class="tt-cho-duyet" data-ma="V08" data-nhom="chuong-2" data-co-xem="1"><td class="ma">V08</td><td><span class="ten-phan">TCP: kết nối giữa client và server</span> <em>mở chương</em><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Giải thích bắt tay ba bước qua active open và passive open; viết echo server và client Java tối thiểu trao đổi một dòng; chẩn đoán lỗi connection refused.</div></td><td>8′</td><td>8.8′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V08/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#tcp-handshake" title="Mô phỏng 2.5D: Bắt tay 3 bước TCP, Timeout &amp; Half-Close">⚡ Mô phỏng</a> <a href="V08/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-2/01-tcp-connection">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V09" data-nhom="chuong-2" data-co-xem="1"><td class="ma">V09</td><td><span class="ten-phan">TCP: timeout, half-close và lỗi kết nối</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Đặt connect timeout và read timeout cho từng thao tác chặn; kết thúc chiều gửi bằng half-close; phân loại lỗi refused, timed out, reset theo giai đoạn.</div></td><td>8′</td><td>8.5′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V09/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#tcp-handshake" title="Mô phỏng 2.5D: Bắt tay 3 bước TCP, Timeout &amp; Half-Close">⚡ Mô phỏng</a> <a href="V09/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-2/02-timeout-halfclose">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V10" data-nhom="chuong-2" data-co-xem="1"><td class="ma">V10</td><td><span class="ten-phan">Bài toán ứng dụng: web server tối giản trên TCP</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Viết web server tối giản tuần tự (GET, 200, 404, 400, 501, persistent connection); kiểm thử tích hợp với port 0; chỉ ra giới hạn của server tuần tự khi có client chậm.</div></td><td>8′</td><td>8.7′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V10/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#tcp-concurrency" title="Mô phỏng 2.5D: Web Server: Tuần tự → Thread Pool → Virtual Thread">⚡ Mô phỏng</a> <a href="V10/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-2/03-web-server">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V11" data-nhom="chuong-2" data-co-xem="1"><td class="ma">V11</td><td><span class="ten-phan">Đa luồng: thread và race condition</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Tạo, khởi động và dừng thread đúng cách; nhận ra race condition ở thao tác đọc – sửa – ghi trên dữ liệu dùng chung.</div></td><td>7′</td><td>7.4′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V11/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#tcp-concurrency" title="Mô phỏng 2.5D: Web Server: Tuần tự → Thread Pool → Virtual Thread">⚡ Mô phỏng</a> <a href="V11/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-2/04-thread-race">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V12" data-nhom="chuong-2" data-co-xem="1"><td class="ma">V12</td><td><span class="ten-phan">Đa luồng: synchronized, happens-before và wait/notify</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Bảo vệ critical section bằng synchronized; nhận biết vì sao thay đổi của thread này cần đồng bộ hóa mới nhìn thấy được ở thread khác; chờ điều kiện đúng cách bằng wait và notifyAll.</div></td><td>8′</td><td>8.4′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V12/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#tcp-concurrency" title="Mô phỏng 2.5D: Web Server: Tuần tự → Thread Pool → Virtual Thread">⚡ Mô phỏng</a> <a href="V12/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-2/05-sync">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V13" data-nhom="chuong-2" data-co-xem="1"><td class="ma">V13</td><td><span class="ten-phan">Đa luồng: Executor, thread pool và virtual thread</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Dùng ExecutorService với thread pool có giới hạn và saturation policy; dùng virtual thread cho tác vụ chủ yếu chờ I/O.</div></td><td>8′</td><td>7.4′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V13/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#tcp-concurrency" title="Mô phỏng 2.5D: Web Server: Tuần tự → Thread Pool → Virtual Thread">⚡ Mô phỏng</a> <a href="V13/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-2/06-executor">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V14" data-nhom="chuong-2" data-co-xem="1"><td class="ma">V14</td><td><span class="ten-phan">Bài toán ứng dụng: web server phục vụ nhiều client</span> <em>kết chương</em><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Viết web server phục vụ nhiều client theo mô hình thread-per-connection; xử lý quá tải và dừng server theo graceful shutdown.</div></td><td>8′</td><td>8.6′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V14/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#tcp-concurrency" title="Mô phỏng 2.5D: Web Server: Tuần tự → Thread Pool → Virtual Thread">⚡ Mô phỏng</a> <a href="V14/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-2/07-concurrent-web-server">Mã</a></td></tr></tbody></table></section><section class="chuong" id="chuong-3" data-nhom="chuong-3"><div class="chuong-dau"><h2><span>Chương 3. Lập trình UDP và giao thức ứng dụng hiện đại</span><span class="chuong-badges"><span class="chuong-tien-do" data-nhom-td="chuong-3">7 phần</span><span class="chuong-phut">54′</span></span></h2><p class="nang-luc">Ngoài mô hình một kết nối TCP, một yêu cầu: UDP và multicast; WebSocket cho giao tiếp hai chiều; HTTP/2 với multiplexing; QUIC và HTTP/3 — tin cậy trên UDP.</p></div><table><thead><tr><th>Mã</th><th>Phần</th><th>Kế hoạch</th><th>Đo</th><th>Trạng thái</th><th></th></tr></thead><tbody><tr class="tt-cho-duyet" data-ma="V15" data-nhom="chuong-3" data-co-xem="1"><td class="ma">V15</td><td><span class="ten-phan">UDP: datagram và DatagramSocket</span> <em>mở chương</em><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Gửi và nhận datagram bằng DatagramSocket; chọn kích thước buffer nhận phù hợp; dùng connected UDP socket để chỉ trao đổi với một endpoint.</div></td><td>8′</td><td>9.1′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V15/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#udp-multicast" title="Mô phỏng 2.5D: UDP Datagram, Pinger &amp; Multicast">⚡ Mô phỏng</a> <a href="V15/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-3/01-udp-datagram">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V16" data-nhom="chuong-3" data-co-xem="1"><td class="ma">V16</td><td><span class="ten-phan">Multicast: nhóm multicast, network interface và TTL</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Gửi và nhận multicast trên đúng network interface; giải thích việc tham gia nhóm và phạm vi TTL.</div></td><td>7′</td><td>7.0′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V16/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#udp-multicast" title="Mô phỏng 2.5D: UDP Datagram, Pinger &amp; Multicast">⚡ Mô phỏng</a> <a href="V16/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-3/02-multicast">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V17" data-nhom="chuong-3" data-co-xem="1"><td class="ma">V17</td><td><span class="ten-phan">Bài toán ứng dụng: truyền video theo nhóm multicast</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Đóng gói khung hình thành datagram có số thứ tự; phát hiện mất gói và bỏ qua khung hình thiếu ở máy nhận; cho máy nhận tham gia khi đang phát.</div></td><td>8′</td><td>7.7′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V17/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#udp-multicast" title="Mô phỏng 2.5D: UDP Datagram, Pinger &amp; Multicast">⚡ Mô phỏng</a> <a href="V17/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-3/03-video-multicast">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V18" data-nhom="chuong-3" data-co-xem="1"><td class="ma">V18</td><td><span class="ten-phan">WebSocket: nâng cấp từ HTTP và giao tiếp hai chiều</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Giải thích cách WebSocket nâng cấp một kết nối HTTP và trao đổi frame theo hai chiều đồng thời.</div></td><td>8′</td><td>8.5′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V18/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#websocket-realtime" title="Mô phỏng 2.5D: WebSocket: Nâng cấp từ HTTP &amp; Chat Hai Chiều">⚡ Mô phỏng</a> <a href="V18/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-3/04-websocket">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V19" data-nhom="chuong-3" data-co-xem="1"><td class="ma">V19</td><td><span class="ten-phan">Bài toán ứng dụng: chat thời gian thực bằng WebSocket</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Viết WebSocket endpoint phía server và client bằng API của JDK cho phòng chat; quản lý tập phiên an toàn khi nhiều thread truy cập.</div></td><td>8′</td><td>6.7′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V19/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#websocket-realtime" title="Mô phỏng 2.5D: WebSocket: Nâng cấp từ HTTP &amp; Chat Hai Chiều">⚡ Mô phỏng</a> <a href="V19/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-3/05-websocket-chat">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V20" data-nhom="chuong-3" data-co-xem="1"><td class="ma">V20</td><td><span class="ten-phan">HTTP/2: binary framing và multiplexing</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Giải thích binary framing và multiplexing của HTTP/2; chỉ ra giới hạn head-of-line blocking còn lại ở tầng TCP.</div></td><td>7′</td><td>6.8′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V20/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#http2-http3-quic" title="Mô phỏng 2.5D: Tiến hóa HTTP: HTTP/1.1 → HTTP/2 → HTTP/3 (QUIC)">⚡ Mô phỏng</a> <a href="V20/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-3/06-http2">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V21" data-nhom="chuong-3" data-co-xem="1"><td class="ma">V21</td><td><span class="ten-phan">HTTP/3: QUIC và giao thức trên UDP</span> <em>kết chương</em><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Giải thích vì sao QUIC chạy trên UDP, cách stream độc lập loại bỏ head-of-line blocking, và lợi ích của handshake 1-RTT, 0-RTT, connection migration.</div></td><td>8′</td><td>8.1′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V21/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#http2-http3-quic" title="Mô phỏng 2.5D: Tiến hóa HTTP: HTTP/1.1 → HTTP/2 → HTTP/3 (QUIC)">⚡ Mô phỏng</a> <a href="V21/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-3/07-http3">Mã</a></td></tr></tbody></table></section><section class="chuong" id="chuong-4" data-nhom="chuong-4"><div class="chuong-dau"><h2><span>Chương 4. Kỹ thuật lập trình phân tán</span><span class="chuong-badges"><span class="chuong-tien-do" data-nhom-td="chuong-4">8 phần</span><span class="chuong-phut">57′</span></span></h2><p class="nang-luc">Dòng tiến hóa của lời gọi từ xa: RPC và RMI → SOAP → REST → gRPC; giao tiếp bất đồng bộ qua message broker.</p></div><table><thead><tr><th>Mã</th><th>Phần</th><th>Kế hoạch</th><th>Đo</th><th>Trạng thái</th><th></th></tr></thead><tbody><tr class="tt-cho-duyet" data-ma="V22" data-nhom="chuong-4" data-co-xem="1"><td class="ma">V22</td><td><span class="ten-phan">RPC: lời gọi thủ tục từ xa và Java RMI</span> <em>mở chương</em><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Giải thích cơ chế stub trong RPC; viết ngân hàng (xem số dư) bằng Java RMI, phân biệt lỗi nghiệp vụ với lỗi mạng và chỉ ra ranh giới lỗi của lời gọi từ xa.</div></td><td>8′</td><td>8.8′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V22/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#rpc-rest-grpc" title="Mô phỏng 2.5D: Lời gọi từ xa: RMI → REST → gRPC Streaming">⚡ Mô phỏng</a> <a href="V22/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-4/01-rmi">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V23" data-nhom="chuong-4" data-co-xem="1"><td class="ma">V23</td><td><span class="ten-phan">RPC: truyền tham số, idempotency và truy cập đồng thời trong RMI</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Phân biệt truyền theo giá trị và remote reference; dùng idempotency key để gọi lại an toàn; viết remote object an toàn khi nhiều client gọi đồng thời.</div></td><td>7′</td><td>8.6′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V23/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#rpc-rest-grpc" title="Mô phỏng 2.5D: Lời gọi từ xa: RMI → REST → gRPC Streaming">⚡ Mô phỏng</a> <a href="V23/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-4/02-rmi-update">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V24" data-nhom="chuong-4" data-co-xem="1"><td class="ma">V24</td><td><span class="ten-phan">Web service: SOAP, hợp đồng WSDL và message XML</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Mô tả cấu trúc SOAP message và vai trò của WSDL; gọi dịch vụ TempConvert qua SOAP và đọc request, response XML.</div></td><td>6′</td><td>8.2′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V24/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#rpc-rest-grpc" title="Mô phỏng 2.5D: Lời gọi từ xa: RMI → REST → gRPC Streaming">⚡ Mô phỏng</a> <a href="V24/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-4/03-soap">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V25" data-nhom="chuong-4" data-co-xem="1"><td class="ma">V25</td><td><span class="ten-phan">Web service: REST, tài nguyên, phương thức HTTP và JSON</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Thiết kế API REST theo tài nguyên (Petstore); gọi API bằng HttpClient của JDK và xử lý mã trạng thái.</div></td><td>6′</td><td>8.2′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V25/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#rpc-rest-grpc" title="Mô phỏng 2.5D: Lời gọi từ xa: RMI → REST → gRPC Streaming">⚡ Mô phỏng</a> <a href="V25/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-4/04-rest">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V26" data-nhom="chuong-4" data-co-xem="1"><td class="ma">V26</td><td><span class="ten-phan">gRPC: Protocol Buffers và lời gọi unary</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Đọc hợp đồng RouteGuide trong file .proto, sinh mã và gọi một RPC unary; giải thích cách Protocol Buffers mã hóa theo số trường.</div></td><td>8′</td><td>8.3′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V26/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#rpc-rest-grpc" title="Mô phỏng 2.5D: Lời gọi từ xa: RMI → REST → gRPC Streaming">⚡ Mô phỏng</a> <a href="V26/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-4/05-grpc">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V27" data-nhom="chuong-4" data-co-xem="1"><td class="ma">V27</td><td><span class="ten-phan">gRPC: streaming, deadline và mã trạng thái</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Phân biệt bốn kiểu RPC qua RouteGuide; dùng server streaming, client streaming và bidirectional streaming; đặt deadline cho lời gọi và xử lý mã trạng thái gRPC.</div></td><td>7′</td><td>8.5′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V27/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#rpc-rest-grpc" title="Mô phỏng 2.5D: Lời gọi từ xa: RMI → REST → gRPC Streaming">⚡ Mô phỏng</a> <a href="V27/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-4/06-grpc-streaming">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V28" data-nhom="chuong-4" data-co-xem="1"><td class="ma">V28</td><td><span class="ten-phan">Message broker: RabbitMQ, exchange, queue và binding</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Mô tả đường đi của message qua exchange, binding, queue tới consumer; dùng acknowledgement để không mất message.</div></td><td>7′</td><td>8.8′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V28/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#rabbitmq-broker" title="Mô phỏng 2.5D: Message Broker: RabbitMQ Exchange, Queue &amp; Ack">⚡ Mô phỏng</a> <a href="V28/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-4/07-rabbitmq">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V29" data-nhom="chuong-4" data-co-xem="1"><td class="ma">V29</td><td><span class="ten-phan">Bài toán ứng dụng: xử lý đơn hàng qua message broker</span> <em>kết chương</em><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Chọn mẫu work queue, publish/subscribe hoặc routing theo topic cho từng nhu cầu; hiện thực work queue và publish/subscribe bằng RabbitMQ.</div></td><td>8′</td><td>7.9′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V29/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#rabbitmq-broker" title="Mô phỏng 2.5D: Message Broker: RabbitMQ Exchange, Queue &amp; Ack">⚡ Mô phỏng</a> <a href="V29/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-4/08-order-events">Mã</a></td></tr></tbody></table></section><section class="chuong" id="chuong-5" data-nhom="chuong-5"><div class="chuong-dau"><h2><span>Chương 5. Các chủ đề nâng cao</span><span class="chuong-badges"><span class="chuong-tien-do" data-nhom-td="chuong-5">7 phần</span><span class="chuong-phut">53′</span></span></h2><p class="nang-luc">Chủ đề nâng cao: bảo mật (TLS, OAuth 2.0, JWT); hiệu năng (lời gọi không chặn, NIO); độ tin cậy (UDP ở tầng ứng dụng, retry, circuit breaker); IoT (MQTT, CoAP).</p></div><table><thead><tr><th>Mã</th><th>Phần</th><th>Kế hoạch</th><th>Đo</th><th>Trạng thái</th><th></th></tr></thead><tbody><tr class="tt-cho-duyet" data-ma="V30" data-nhom="chuong-5" data-co-xem="1"><td class="ma">V30</td><td><span class="ten-phan">Bảo mật: TLS và secure socket trong Java</span> <em>mở chương</em><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Bật TLS cho echo server bằng keystore và truststore; giải thích handshake TLS và kiểm tra hostname; nhận ra các lỗi chứng chỉ thường gặp trên server HTTPS thật.</div></td><td>8′</td><td>8.7′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V30/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#tls-security" title="Mô phỏng 2.5D: TLS 1.3 Handshake, Chuỗi Chứng Chỉ &amp; OAuth 2.0/JWT">⚡ Mô phỏng</a> <a href="V30/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-5/01-tls">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V31" data-nhom="chuong-5" data-co-xem="1"><td class="ma">V31</td><td><span class="ten-phan">Bảo mật: xác thực và phân quyền với OAuth 2.0 và JWT</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Phân biệt xác thực và phân quyền; kiểm tra JWT (chữ ký, thời hạn, scope) trước khi tin các claim.</div></td><td>7′</td><td>7.6′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V31/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#tls-security" title="Mô phỏng 2.5D: TLS 1.3 Handshake, Chuỗi Chứng Chỉ &amp; OAuth 2.0/JWT">⚡ Mô phỏng</a> <a href="V31/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-5/02-jwt">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V32" data-nhom="chuong-5" data-co-xem="1"><td class="ma">V32</td><td><span class="ten-phan">Hiệu năng: lời gọi không chặn với CompletableFuture và gRPC async stub</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Chuyển lời gọi chặn thành lời gọi không chặn bằng CompletableFuture và gRPC async stub; kết hợp kết quả và xử lý lỗi của nhiều lời gọi song song.</div></td><td>7′</td><td>8.1′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V32/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#nio-selector-c10k" title="Mô phỏng 2.5D: NIO Selector, Non-Blocking I/O &amp; Bài toán C10K">⚡ Mô phỏng</a> <a href="V32/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-5/03-async">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V33" data-nhom="chuong-5" data-co-xem="1"><td class="ma">V33</td><td><span class="ten-phan">Hiệu năng: NIO, Selector và mẫu Reactor</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Viết echo server một thread phục vụ nhiều kết nối bằng Selector; đo thông lượng và độ trễ so với bản thread-per-connection.</div></td><td>8′</td><td>8.1′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V33/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#nio-selector-c10k" title="Mô phỏng 2.5D: NIO Selector, Non-Blocking I/O &amp; Bài toán C10K">⚡ Mô phỏng</a> <a href="V33/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-5/04-nio">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V34" data-nhom="chuong-5" data-co-xem="1"><td class="ma">V34</td><td><span class="ten-phan">Độ tin cậy: retry, request ID và checksum trên UDP</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Thêm timeout, retry có request ID, kiểm tra toàn vẹn bằng checksum cho truy vấn kiểu DNS qua UDP; giải thích vì sao datagram lớn dễ mất hơn.</div></td><td>8′</td><td>7.8′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V34/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#reliability-mqtt" title="Mô phỏng 2.5D: Độ tin cậy: Retry, Backoff/Jitter, Circuit Breaker &amp; MQTT">⚡ Mô phỏng</a> <a href="V34/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-5/05-udp-reliable">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V35" data-nhom="chuong-5" data-co-xem="1"><td class="ma">V35</td><td><span class="ten-phan">Độ tin cậy: backoff, circuit breaker và health check</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Thêm retry có backoff và jitter, circuit breaker và health check cho client và dịch vụ thanh toán.</div></td><td>7′</td><td>7.7′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V35/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#reliability-mqtt" title="Mô phỏng 2.5D: Độ tin cậy: Retry, Backoff/Jitter, Circuit Breaker &amp; MQTT">⚡ Mô phỏng</a> <a href="V35/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-5/06-resilience">Mã</a></td></tr><tr class="tt-cho-duyet" data-ma="V36" data-nhom="chuong-5" data-co-xem="1"><td class="ma">V36</td><td><span class="ten-phan">Bài toán ứng dụng: giám sát cảm biến với MQTT và CoAP</span> <em>kết chương</em><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Dựng hệ thống giám sát cảm biến bằng MQTT và chọn mức QoS phù hợp; nêu được khi nào dùng CoAP thay cho HTTP trên thiết bị nhỏ.</div></td><td>8′</td><td>8.1′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V36/index.html">▶ Xem trước</a> <a class="lk-wb" href="workbench/index.html#reliability-mqtt" title="Mô phỏng 2.5D: Độ tin cậy: Retry, Backoff/Jitter, Circuit Breaker &amp; MQTT">⚡ Mô phỏng</a> <a href="V36/slides.pdf">Slide PDF</a> <a href="https://github.com/hungdn1701/network-programming/tree/main/code/chapter-5/07-mqtt">Mã</a></td></tr></tbody></table></section><section class="chuong" id="ket-thuc" data-nhom="ket-thuc"><div class="chuong-dau"><h2><span>Kết thúc học phần</span><span class="chuong-badges"><span class="chuong-tien-do" data-nhom-td="ket-thuc">1 phần</span><span class="chuong-phut">5′</span></span></h2></div><table><thead><tr><th>Mã</th><th>Phần</th><th>Kế hoạch</th><th>Đo</th><th>Trạng thái</th><th></th></tr></thead><tbody><tr class="tt-cho-duyet" data-ma="V37" data-nhom="ket-thuc" data-co-xem="1"><td class="ma">V37</td><td><span class="ten-phan">Tổng kết học phần</span><span class="badge-da-xem" hidden>✓ Đã xem</span><div class="muc-tieu">Nêu được năng lực đạt được sau năm chương, theo chương và theo vai trò nghề, và các hướng chuyên sâu theo thực tế nghề.</div></td><td>5′</td><td>4.1′</td><td><span class="tinh-trang">chờ duyệt</span></td><td class="lk"><a class="xem" href="V37/index.html">▶ Xem trước</a> <a href="V37/slides.pdf">Slide PDF</a></td></tr></tbody></table></section>
-<p id="loc-rong" class="loc-rong" hidden>Không có phần học nào khớp điều kiện lọc.</p>
-
-<details class="qa-section">
-  <summary>Hồ sơ bàn giao (16 hạng mục)</summary>
-  <table class="dinh-muc"><thead><tr><th>Mã</th><th>Hạng mục</th><th>Định dạng</th><th>Trạng thái</th></tr></thead><tbody><tr><td>D01</td><td>Đoạn giới thiệu môn học (mô tả, kết quả đầu ra, kỹ năng)</td><td>docx</td><td>Đủ (kỹ năng: giảng viên duyệt)</td></tr><tr><td>D02</td><td>Ảnh đại diện môn học 1200×1200</td><td>jpg/png</td><td>Chưa có — có thể nhờ đội hỗ trợ</td></tr><tr><td>D03</td><td>Đề cương môn học (bản chính thức mới nhất)</td><td>pdf/docx</td><td>Đủ (giảng viên xác nhận bản chính thức)</td></tr><tr><td>D04</td><td>File cấu trúc bài giảng (BM_01)</td><td>xlsx</td><td>Đủ</td></tr><tr><td>D05</td><td>Slide bài giảng theo chương (≥ 60 trang/tín chỉ)</td><td>pdf</td><td>Chương 1, 2, 3, 4, 5 (chỉ gồm phần đã có)</td></tr><tr><td>D06</td><td>Tài liệu tham khảo: danh mục + slide/transcript tự soạn</td><td>pdf</td><td>Chưa có</td></tr><tr><td>D07</td><td>Bộ câu hỏi tương tác (BM_02)</td><td>xlsx</td><td>Đủ file</td></tr><tr><td>D08</td><td>Bộ câu hỏi ôn tập chương (BM_02)</td><td>xlsx</td><td>Đủ file (số câu: xem định mức R08)</td></tr><tr><td>D09</td><td>Ảnh chân dung giảng viên</td><td>jpg/png</td><td>Việc của giảng viên (làm sau)</td></tr><tr><td>D10</td><td>Bản thu âm giọng giảng viên 2′</td><td>mp3</td><td>Việc của giảng viên (làm sau)</td></tr><tr><td>D11</td><td>Đăng ký hình thức: 100% AI</td><td>—</td><td>Việc của giảng viên (đã chốt hình thức)</td></tr><tr><td>D12</td><td>Mỗi video: Slide video (PDF)</td><td>pdf</td><td>37/37 video (37 đã có kịch bản)</td></tr><tr><td>D13</td><td>Mỗi video: Slide video (PPTX sửa được, notes = lời thoại)</td><td>pptx</td><td>37/37 video (37 đã có kịch bản)</td></tr><tr><td>D14</td><td>Mỗi video: Kịch bản lời giảng (BM_03, comment dựng)</td><td>docx</td><td>37/37 video (37 đã có kịch bản)</td></tr><tr><td>D15</td><td>Mỗi video: Kịch bản dựng</td><td>docx</td><td>37/37 video (37 đã có kịch bản)</td></tr><tr><td>D16</td><td>Mỗi video: Folder ảnh của video</td><td>jpg/png</td><td>37/37 video (37 đã có kịch bản)</td></tr></tbody></table>
-</details>
-<details class="qa-section">
-  <summary>Định mức chất lượng (12 chỉ tiêu)</summary>
-  <table class="dinh-muc"><thead><tr><th>Mã</th><th>Yêu cầu</th><th>Định mức</th><th>Kế hoạch</th><th>Hiện có</th><th>Kết quả</th></tr></thead><tbody><tr><td>R01</td><td>Thời lượng mỗi video</td><td>≤ 10′</td><td>dài nhất 8′</td><td>dài nhất 9.1′ (37 kịch bản; 37 đo bằng TTS, 0 ước tính)</td><td>Đạt</td></tr><tr><td>R02</td><td>Thời lượng mỗi phần (khuyến nghị)</td><td>6–8′ (cảnh báo ngoài 6–9′)</td><td>—</td><td>V01 3.9′, V02 9.0′, V03 7.9′, V04 8.5′, V05 8.7′, V06 8.9′, V07 9.1′, V08 8.8′, V09 8.5′, V10 8.7′, V11 7.4′, V12 8.4′, V13 7.4′, V14 8.6′, V15 9.1′, V16 7.0′, V17 7.7′, V18 8.5′, V19 6.7′, V20 6.8′, V21 8.1′, V22 8.8′, V23 8.6′, V24 8.2′, V25 8.2′, V26 8.3′, V27 8.5′, V28 8.8′, V29 7.9′, V30 8.7′, V31 7.6′, V32 8.1′, V33 8.1′, V34 7.8′, V35 7.7′, V36 8.1′, V37 4.1′</td><td>Cảnh báo: V01 3.9′, V07 9.1′, V15 9.1′, V37 4.1′</td></tr><tr><td>R03</td><td>Tổng thời lượng video</td><td>≥ 270′</td><td>275′</td><td>295′ từ 37/37 kịch bản (37 đo bằng TTS, 0 ước tính)</td><td>Đạt</td></tr><tr><td>R04</td><td>Số video (khuyến nghị)</td><td>≤ 30</td><td>37</td><td>—</td><td>Vượt — đã chấp nhận</td></tr><tr><td>R07</td><td>Câu hỏi tương tác mỗi video</td><td>1–3</td><td>37 video</td><td>70 câu / 37 kịch bản</td><td>Đạt</td></tr><tr><td>R08</td><td>Câu hỏi ôn tập mỗi chương</td><td>≥ 20</td><td>20 × 5 chương</td><td>C1: 21 · C2: 21 · C3: 21 · C4: 24 · C5: 21</td><td>Đạt</td></tr><tr><td>R09</td><td>Tổng câu hỏi học phần</td><td>≥ 100</td><td>≥ 137 (37 tương tác + 100 ôn tập)</td><td>178</td><td>Đạt</td></tr><tr><td>R10</td><td>Slide</td><td>≥ 180</td><td>sàn 5/video × 37 = 185</td><td>280 (37 video)</td><td>Đạt</td></tr><tr><td>R12</td><td>Tranh, ảnh</td><td>≥ 180</td><td>sàn 5/video × 37 = 185</td><td>329 (37 video)</td><td>Đạt</td></tr><tr><td>R13</td><td>Infographic</td><td>≥ 18</td><td>25</td><td>—</td><td>Đạt</td></tr><tr><td>R14</td><td>Hình vẽ, sơ đồ</td><td>≥ 18</td><td>68</td><td>—</td><td>Đạt</td></tr><tr><td>R18</td><td>Phủ đề cương</td><td>44 mục</td><td>43/44 mục</td><td>—</td><td>1 mục lệch có chủ đích (xem mục 3)</td></tr></tbody></table>
-</details>
-</main>
-<script>
-(() => {
-  const maHp = "INT1433";
-  const key = `bgs_watched_${maHp}`;
-  const rows = [...document.querySelectorAll('tr[data-ma]')];
-  const sections = [...document.querySelectorAll('section.chuong[data-nhom]')];
-  const qInput = document.getElementById('loc-phan-input');
-  const qClear = document.getElementById('loc-xoa');
-  const chSelect = document.getElementById('loc-chuong-select');
-  const ttSelect = document.getElementById('loc-trang-thai-select');
-  const demEl = document.getElementById('loc-dem');
-  const rongEl = document.getElementById('loc-rong');
-
-  function docTienDo() {
+<!doctype html>
+<html lang="vi">
+<head><meta name="robots" content="noindex, nofollow"><style>.ban-nhap{position:sticky;top:0;z-index:99;background:#BC2626;color:#fff;font:500 13.5px/1.4 Roboto,Arial,sans-serif;padding:6px 16px;text-align:center;box-shadow:0 2px 6px rgba(5,26,83,0.14)}.ban-nhap .ngan{display:none}body.toan-man .ban-nhap{display:none}@media (max-width:640px){.ban-nhap{position:static;font-size:12px;padding:4px 12px}.ban-nhap .dai{display:none}.ban-nhap .ngan{display:inline}}</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>INT1433 · Lập trình mạng — Học liệu &amp; Phòng mô phỏng 2.5D</title>
+  <meta name="description" content="Lập trình mạng (Network Programming) — 37 bài giảng số, 12 mô phỏng tương tác 2.5D, 83 sơ đồ cơ chế và 35 bài mã nguồn chạy được.">
+  <script>
     try {
-      const raw = localStorage.getItem(key);
-      const d = raw ? JSON.parse(raw) : null;
-      return (d && typeof d === 'object' && d.watched) ? d : { watched: {} };
-    } catch (_) { return { watched: {} }; }
-  }
+      var t = localStorage.getItem('ide-theme');
+      if (t === 'dark') document.documentElement.dataset.theme = 'dark';
+    } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="workbench/workbench.css">
+  <link rel="stylesheet" href="portal/portal.css">
+</head>
+<body class="wb-app cp-app"><div class="ban-nhap"><b>BẢN NHÁP</b><span class="dai"> — đang biên soạn, chưa nghiệm thu. Giọng đọc là giọng máy (TTS) để xem thử, không phải giọng sản phẩm.</span><span class="ngan"> · chưa nghiệm thu · giọng máy (TTS)</span></div>
+  <div class="wb-window cp-window">
+    <!-- ── Topbar (chuẩn SOA Tactile Workbench) ── -->
+    <header class="wb-topbar cp-topbar">
+      <button type="button" class="wb-menu-btn cp-mobile-menu-btn" id="cp-menu-btn" aria-label="Mở danh mục học phần" title="Mở danh mục">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
 
-  function capNhatTienDo() {
-    const state = docTienDo();
-    const watched = state.watched || {};
-    let count = 0;
-    const byNhom = {};
-    rows.forEach(tr => {
-      const ma = tr.dataset.ma, nhom = tr.dataset.nhom;
-      if (!byNhom[nhom]) byNhom[nhom] = { total: 0, done: 0 };
-      byNhom[nhom].total++;
-      const isDone = Boolean(watched[ma]);
-      tr.dataset.daXem = isDone ? '1' : '0';
-      const badge = tr.querySelector('.badge-da-xem');
-      if (badge) badge.hidden = !isDone;
-      if (isDone) { count++; byNhom[nhom].done++; }
-    });
-    document.querySelectorAll('[data-nhom-td]').forEach(el => {
-      const g = byNhom[el.dataset.nhomTd];
-      if (!g) return;
-      el.textContent = g.done > 0 ? `${g.done}/${g.total} đã xem` : `${g.total} phần`;
-      el.classList.toggle('xong-het', g.done > 0 && g.done === g.total);
-    });
-    const total = rows.length || 1;
-    const pct = Math.round(100 * count / total);
-    document.getElementById('td-da-xem').textContent = count;
-    document.getElementById('td-phan-tram').textContent = `${pct}%`;
-    document.getElementById('td-muc').style.width = `${pct}%`;
-    document.getElementById('btn-dat-lai').hidden = count === 0;
-    const btnNext = document.getElementById('btn-tiep-tuc');
-    if (state.last && state.last.ma) {
-      const targetRow = rows.find(r => r.dataset.ma === state.last.ma && r.querySelector('a.xem'));
-      if (targetRow) {
-        btnNext.href = targetRow.querySelector('a.xem').getAttribute('href');
-        btnNext.textContent = `▶ Tiếp tục: ${state.last.tieu_de || state.last.ma}`;
-        btnNext.hidden = false;
-      } else { btnNext.hidden = true; }
-    } else { btnNext.hidden = true; }
-  }
+      <div class="cp-brand">
+        <a href="https://hungdn1701.github.io/teaching/" class="wb-hub-avatar" title="Hung N. Dang · Tất cả học phần (Teaching)" aria-label="Hung N. Dang · Tất cả học phần (Teaching)">
+          <img src="portal/avatar.jpg" alt="Hung N. Dang">
+        </a>
+        <span class="wb-hub-sep" aria-hidden="true">/</span>
+        <a href="#lectures" class="cp-brand__home" id="cp-brand-home" title="Về trang chủ học phần INT1433">
+          <span class="wb-brand__code">INT1433</span>
+          <span class="cp-brand__name">Lập trình mạng</span>
+        </a>
+      </div>
 
-  function loc() {
-    const q = (qInput.value || '').trim().toLowerCase();
-    const ch = chSelect.value;
-    const tt = ttSelect.value;
-    qClear.hidden = !q;
-    let shown = 0;
-    const visByNhom = {};
-    rows.forEach(tr => {
-      const nhom = tr.dataset.nhom;
-      const okQ = !q || tr.textContent.toLowerCase().includes(q);
-      const okCh = !ch || nhom === ch;
-      const okTt = !tt || (tt === 'co-xem' && tr.dataset.coXem === '1') ||
-                   (tt === 'da-xem' && tr.dataset.daXem === '1') ||
-                   (tt === 'chua-xem' && tr.dataset.daXem !== '1');
-      const show = okQ && okCh && okTt;
-      tr.hidden = !show;
-      if (show) { shown++; visByNhom[nhom] = (visByNhom[nhom] || 0) + 1; }
-    });
-    sections.forEach(sec => { sec.hidden = !visByNhom[sec.dataset.nhom]; });
-    demEl.textContent = `Hiện ${shown} / ${rows.length} phần`;
-    rongEl.hidden = shown > 0;
-  }
+      <nav class="cp-nav" aria-label="Chế độ học">
+        <button type="button" class="cp-nav__item is-active" data-mode="lectures">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <span>Bài giảng</span>
+          <span class="cp-nav__count">37</span>
+        </button>
+        <button type="button" class="cp-nav__item" data-mode="simulations">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+          <span>Mô phỏng</span>
+          <span class="cp-nav__count">12</span>
+        </button>
+        <button type="button" class="cp-nav__item" data-mode="diagrams">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><path d="M10 6.5h4M17.5 10v4"/></svg>
+          <span>Sơ đồ</span>
+          <span class="cp-nav__count">83</span>
+        </button>
+        <button type="button" class="cp-nav__item" data-mode="code">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          <span>Mã &amp; Ôn tập</span>
+          <span class="cp-nav__count">35</span>
+        </button>
+      </nav>
 
-  document.getElementById('btn-dat-lai').onclick = () => {
-    try { localStorage.removeItem(key); } catch (_) {}
-    capNhatTienDo();
-    loc();
-  };
-  qInput.addEventListener('input', loc);
-  qClear.onclick = () => { qInput.value = ''; loc(); qInput.focus(); };
-  chSelect.addEventListener('change', loc);
-  ttSelect.addEventListener('change', loc);
-  capNhatTienDo();
-  loc();
-})();
-</script>
-</body></html>
+      <button type="button" class="wb-search-btn cp-search-btn" id="cp-search-btn" aria-label="Tìm bài giảng, mô phỏng, sơ đồ, mã nguồn, thuật ngữ (Ctrl+K)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>
+        <span class="wb-search-btn__hint">Tìm bài, mô phỏng, sơ đồ, mã...</span>
+        <kbd class="wb-kbd">Ctrl K</kbd>
+      </button>
+
+      <div class="wb-top-actions">
+        
+        <button type="button" class="wb-icon-btn" id="cp-theme-btn" aria-label="Đổi giao diện Sáng / Tối" title="Đổi giao diện Sáng / Tối"></button>
+        <a class="wb-icon-btn" href="https://github.com/hungdn1701/network-programming" target="_blank" rel="noopener" title="Kho mã nguồn trên GitHub" aria-label="Kho mã nguồn trên GitHub"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3c3-.6 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 4.9 6 5.5-.8.6-1.2 1.5-1.2 2.7V22"/><path d="M9 20c-4 1-5-2.5-7-3"/></svg></a>
+      </div>
+    </header>
+
+    <!-- ── Unified Body (Switches smoothly across 4 Modes) ── -->
+    <div class="cp-body" id="cp-body" data-mode="lectures">
+      <div class="wb-drawer-backdrop" id="cp-drawer-backdrop" hidden></div>
+
+      <!-- LEFT SIDEBAR -->
+      <aside class="wb-sidebar cp-sidebar" id="cp-sidebar" aria-label="Danh mục điều hướng">
+        <div class="cp-sidebar__mobile-bar">
+          <span class="cp-sidebar__mobile-title">INT1433 · Lập trình mạng</span>
+          <button type="button" class="wb-icon-btn" id="cp-sidebar-close" aria-label="Đóng danh mục">✕</button>
+        </div>
+
+        <!-- Mode 1 Sidebar: Bài giảng & Slides -->
+        <div class="cp-side-pane" data-side-mode="lectures">
+          <div class="wb-sidebar__head">
+            <div class="wb-sidebar__title-row">
+              <span class="wb-sidebar__title">Bài giảng &amp; Slides</span>
+              <span class="wb-sidebar__count" id="cp-lec-progress">0/37 đã xem</span>
+            </div>
+            <div class="wb-progress-bar"><div class="wb-progress-fill" id="cp-lec-bar"></div></div>
+            <input type="search" class="wb-filter-input" id="cp-lec-filter" placeholder="Lọc bài giảng theo tên, mục tiêu..." aria-label="Lọc bài giảng">
+          </div>
+          <div class="wb-sidebar__scroll" id="cp-lec-tree"></div>
+          <div class="wb-sidebar__foot">
+            <button type="button" class="wb-foot-link" id="cp-open-overview">📋 Tổng quan</button>
+            <a class="wb-foot-link" href="frame.html" target="_blank" rel="noopener">Khung &amp; Thuật ngữ ↗</a>
+          </div>
+        </div>
+
+        <!-- Mode 2 Sidebar: Mô phỏng 2.5D -->
+        <div class="cp-side-pane" data-side-mode="simulations" hidden>
+          <div class="wb-sidebar__head">
+            <div class="wb-sidebar__title-row">
+              <span class="wb-sidebar__title">Mô phỏng 2.5D</span>
+              <span class="wb-sidebar__count" id="wb-progress-count">0/12 xong</span>
+            </div>
+            <div class="wb-progress-bar"><div class="wb-progress-fill" id="wb-progress-fill"></div></div>
+            <input type="search" class="wb-filter-input" id="wb-filter-input" placeholder="Lọc mô phỏng theo chủ đề..." aria-label="Lọc bài mô phỏng">
+          </div>
+          <div class="wb-sidebar__scroll" id="wb-sidebar-list"></div>
+          <div class="wb-sidebar__foot">
+            <a class="wb-foot-link" href="workbench/index.html" target="_blank" rel="noopener">Mở độc lập ↗</a>
+            <button type="button" class="wb-foot-link" data-jump-mode="lectures">← Bài giảng</button>
+          </div>
+        </div>
+
+        <!-- Mode 3 Sidebar: Sơ đồ cơ chế & Thuật ngữ -->
+        <div class="cp-side-pane" data-side-mode="diagrams" hidden>
+          <div class="wb-sidebar__head">
+            <div class="cp-sub-switch" role="tablist" aria-label="Chế độ xem sơ đồ hoặc thuật ngữ">
+              <button type="button" class="cp-sub-btn is-active" data-diag-view="svg">Sơ đồ (83)</button>
+              <button type="button" class="cp-sub-btn" data-diag-view="glossary">Thuật ngữ (246)</button>
+            </div>
+            <input type="search" class="wb-filter-input" id="cp-diag-filter" placeholder="Lọc sơ đồ hoặc thuật ngữ..." aria-label="Lọc sơ đồ và thuật ngữ">
+          </div>
+          <div class="wb-sidebar__scroll" id="cp-diag-tree"></div>
+          <div class="wb-sidebar__foot">
+            <a class="wb-foot-link" href="frame.html" target="_blank" rel="noopener">Mở bản khung đầy đủ ↗</a>
+          </div>
+        </div>
+
+        <!-- Mode 4 Sidebar: Mã nguồn & Ôn tập -->
+        <div class="cp-side-pane" data-side-mode="code" hidden>
+          <div class="wb-sidebar__head">
+            <div class="cp-sub-switch" role="tablist" aria-label="Chế độ xem mã nguồn hoặc ôn tập">
+              <button type="button" class="cp-sub-btn is-active" data-code-view="labs">Mã nguồn (35)</button>
+              <button type="button" class="cp-sub-btn" data-code-view="quiz">Ôn tập (108)</button>
+            </div>
+            <input type="search" class="wb-filter-input" id="cp-code-filter" placeholder="Lọc thư mục mã, tệp nguồn..." aria-label="Lọc mã nguồn">
+          </div>
+          <div class="wb-sidebar__scroll" id="cp-code-tree"></div>
+          <div class="wb-sidebar__foot">
+            <a class="wb-foot-link" href="https://github.com/hungdn1701/network-programming" target="_blank" rel="noopener">GitHub Repo ↗</a>
+          </div>
+        </div>
+      </aside>
+
+      <!-- MAIN WORKSPACE -->
+      <div class="cp-main-wrap" id="cp-main-wrap">
+
+        <!-- ========== MODE 1: BÀI GIẢNG & SLIDES ========== -->
+        <section class="cp-pane cp-pane--lectures" data-main-mode="lectures">
+          <div class="cp-toolbar" id="cp-lec-bar-top">
+            <div class="cp-toolbar__left">
+              <span class="cp-crumb" id="cp-lec-crumb"></span>
+              <h1 class="cp-toolbar__title" id="cp-lec-title"></h1>
+            </div>
+            <div class="cp-toolbar__actions" id="cp-lec-actions"></div>
+          </div>
+          <div class="cp-lecture-stage" id="cp-lecture-stage">
+            <div class="cp-overview" id="cp-overview" hidden></div>
+            <iframe class="cp-lecture-frame" id="cp-lecture-frame" title="Trình chiếu bài giảng &amp; Slides" hidden></iframe>
+          </div>
+        </section>
+
+        <!-- ========== MODE 2: MÔ PHỎNG 2.5D (3-CỘT NATIVE) ========== -->
+        <section class="cp-pane cp-pane--simulations" data-main-mode="simulations" hidden>
+          <div class="cp-sim-grid">
+            <main class="wb-sheet">
+              <div class="wb-lesson-head">
+                <div class="wb-lesson-head__left">
+                  <div class="wb-lesson-crumb" id="wb-lesson-crumb"></div>
+                  <h2 class="wb-lesson-title" id="wb-lesson-title"></h2>
+                </div>
+                <div class="wb-lesson-head__right">
+                  <span class="wb-badge" id="wb-lesson-level"></span>
+                  <button type="button" class="wb-video-btn" id="wb-video-btn" hidden></button>
+                </div>
+              </div>
+              <div class="wb-hud" id="wb-hud" aria-label="Chỉ số hệ thống"></div>
+              <div class="wb-stage-wrap">
+                <div class="wb-stage-host" id="wb-stage-host" aria-label="Sân khấu mô phỏng 2.5D"></div>
+                <div class="wb-stage-bar">
+                  <div class="wb-legend" id="wb-legend"></div>
+                  <div class="wb-stage-tools">
+                    <button type="button" class="wb-tool-btn" id="wb-replay-btn" title="Phát lại hoạt ảnh gói tin (R)">↻ Phát lại</button>
+                    <button type="button" class="wb-tool-btn" id="wb-pause-btn" title="Tạm dừng / tiếp tục hoạt ảnh gói tin (Space)">⏸ Tạm dừng</button>
+                    <button type="button" class="wb-tool-btn" id="wb-reset-view" hidden title="Đưa khung hình về mặc định">⟲ Căn lại</button>
+                  </div>
+                </div>
+              </div>
+              <nav class="wb-timeline" id="wb-timeline" aria-label="Các bước mô phỏng"></nav>
+            </main>
+
+            <aside class="wb-rail" aria-label="Giải thích chi tiết từng bước">
+              <div class="wb-rail__scroll" id="wb-rail-scroll">
+                <div class="wb-step-head-row">
+                  <span class="wb-phase-pill" id="wb-phase-pill"></span>
+                  <button type="button" class="wb-tts-btn" id="wb-tts-btn" title="Nghe đọc thuyết minh bước này">🔊 Đọc bước này</button>
+                </div>
+                <h2 class="wb-step-title" id="wb-step-title"></h2>
+                <div class="wb-step-body" id="wb-step-body"></div>
+                <div class="wb-callout" id="wb-callout" hidden></div>
+                <div class="wb-changes" id="wb-changes" hidden></div>
+                <div class="wb-goals" id="wb-goals" hidden></div>
+              </div>
+              <div class="wb-rail__foot">
+                <button type="button" class="wb-nav-btn" id="wb-prev-step">← Bước trước</button>
+                <button type="button" class="wb-nav-btn wb-nav-btn--primary" id="wb-next-step">Bước tiếp →</button>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ========== MODE 3: SƠ ĐỒ CƠ CHẾ & THUẬT NGỮ ========== -->
+        <section class="cp-pane cp-pane--diagrams" data-main-mode="diagrams" hidden>
+          <div class="cp-diag-grid" id="cp-diag-svg-view">
+            <div class="cp-diag-main">
+              <div class="cp-toolbar">
+                <div class="cp-toolbar__left">
+                  <span class="cp-crumb" id="cp-diag-crumb"></span>
+                  <h2 class="cp-toolbar__title" id="cp-diag-title"></h2>
+                </div>
+                <div class="cp-toolbar__actions" id="cp-diag-actions"></div>
+              </div>
+              <div class="cp-diag-canvas-wrap">
+                <div class="cp-svg-card" id="cp-svg-card"></div>
+              </div>
+              <div class="cp-diag-steps" id="cp-diag-steps" hidden></div>
+            </div>
+            <aside class="wb-rail cp-diag-rail" aria-label="Chi tiết sơ đồ">
+              <div class="wb-rail__scroll" id="cp-diag-info"></div>
+              <div class="wb-rail__foot">
+                <button type="button" class="wb-nav-btn" id="cp-prev-diag">← Sơ đồ trước</button>
+                <button type="button" class="wb-nav-btn wb-nav-btn--primary" id="cp-next-diag">Sơ đồ tiếp →</button>
+              </div>
+            </aside>
+          </div>
+          <div class="cp-glossary-view" id="cp-glossary-view" hidden></div>
+        </section>
+
+        <!-- ========== MODE 4: MÃ NGUỒN & ÔN TẬP ========== -->
+        <section class="cp-pane cp-pane--code" data-main-mode="code" hidden>
+          <div class="cp-code-view" id="cp-code-labs-view">
+            <div class="cp-toolbar">
+              <div class="cp-toolbar__left">
+                <span class="cp-crumb" id="cp-code-crumb"></span>
+                <h2 class="cp-toolbar__title" id="cp-code-title"></h2>
+              </div>
+              <div class="cp-toolbar__actions" id="cp-code-actions"></div>
+            </div>
+            <div class="cp-code-banner" id="cp-code-banner"></div>
+            <div class="cp-code-tabs" id="cp-code-tabs" role="tablist"></div>
+            <div class="cp-code-body" id="cp-code-body"></div>
+          </div>
+          <div class="cp-quiz-view" id="cp-quiz-view" hidden></div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- UNIFIED CTRL+K COMMAND PALETTE -->
+  <div class="wb-modal-backdrop" id="cp-search-modal" hidden>
+    <div class="wb-modal" role="dialog" aria-modal="true" aria-label="Tìm nhanh toàn học phần">
+      <div class="wb-modal__head">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>
+        <input type="search" class="wb-modal__input" id="cp-search-input" placeholder="Tìm bài giảng, mô phỏng, sơ đồ, mã nguồn, thuật ngữ..." aria-label="Từ khóa tìm kiếm">
+        <kbd class="wb-kbd">Esc</kbd>
+      </div>
+      <div class="wb-modal__results" id="cp-search-results"></div>
+    </div>
+  </div>
+
+  <!-- INTERNAL QA MODAL (chỉ có trong dist/debug/) -->
+  <div class="wb-modal-backdrop" id="cp-qa-modal" hidden>
+    <div class="wb-modal cp-qa-modal" role="dialog" aria-modal="true" aria-label="Hồ sơ bàn giao và Định mức QĐ 2830">
+      <div class="wb-modal__head">
+        <strong style="font-size:14px">Định mức QĐ 2830 &amp; Hồ sơ bàn giao (Nội bộ)</strong>
+        <button type="button" class="wb-icon-btn" id="cp-qa-close" style="margin-left:auto" aria-label="Đóng">✕</button>
+      </div>
+      <div class="cp-qa-body" id="cp-qa-body"></div>
+    </div>
+  </div>
+
+  <script src="portal/course-data.js"></script>
+  <script src="workbench/iso-stage.js"></script>
+  <script src="workbench/lessons.js"></script>
+  <script src="portal/portal.js"></script>
+</body>
+</html>

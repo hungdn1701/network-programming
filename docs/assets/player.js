@@ -30,7 +30,28 @@
       };
       data.last = { ma: maV, tieu_de: D.tieu_de || maV, ts: Date.now() };
       localStorage.setItem(storageKey, JSON.stringify(data));
+      if (window.parent && window.parent !== window) {
+        try { window.parent.postMessage({ type: 'PROGRESS_UPDATE', maHp, maV, done }, '*'); } catch (_) {}
+      }
     } catch (_) {}
+  }
+
+  // Chế độ nhúng trong Course Workbench (ẩn thanh đầu lặp + đồng bộ giao diện Sáng/Tối)
+  const isEmbedded = window.self !== window.top || /(?:^|[?&])embed=1(?:&|$)/.test(location.search);
+  if (isEmbedded) {
+    document.body.classList.add('embed-mode');
+    const applyEmbedTheme = (th) => {
+      document.documentElement.dataset.theme = th === 'dark' ? 'dark' : 'light';
+    };
+    try {
+      const m = location.search.match(/(?:^|[?&])theme=(dark|light)/);
+      applyEmbedTheme(m ? m[1] : localStorage.getItem('ide-theme') || 'light');
+    } catch (_) {}
+    window.addEventListener('message', (ev) => {
+      if (ev.data && ev.data.type === 'SET_THEME') {
+        applyEmbedTheme(ev.data.theme);
+      }
+    });
   }
 
   try {

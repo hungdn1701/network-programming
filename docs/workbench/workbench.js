@@ -32,14 +32,14 @@
   };
 
   const LEGEND_META = {
-    req:    { label: 'Yêu cầu / Dữ liệu đi', color: '#3b82f6', sq: false },
-    res:    { label: 'Phản hồi / Kết quả',   color: '#22c55e', sq: false },
-    msg:    { label: 'Gói tin / Sự kiện',    color: '#f59e0b', sq: true  },
-    heavy:  { label: 'Tải nặng / Nghẽn',     color: '#ef4444', sq: true  },
-    write:  { label: 'Ghi bộ nhớ / Lưu trữ', color: '#a855f7', sq: true  },
-    ping:   { label: 'Thăm dò / Keep-alive', color: '#14b8a6', sq: false },
-    kill:   { label: 'Mất gói / Lỗi kết nối', color: '#dc2626', sq: false },
-    poison: { label: 'Gói lỗi / Quá tải',    color: '#dc2626', sq: true  }
+    req:    { label: 'Yêu cầu',       color: '#3b82f6', sq: false },
+    res:    { label: 'Phản hồi',      color: '#22c55e', sq: false },
+    msg:    { label: 'Gói tin',       color: '#f59e0b', sq: true  },
+    heavy:  { label: 'Tải nặng',      color: '#ef4444', sq: true  },
+    write:  { label: 'Ghi bộ nhớ',    color: '#a855f7', sq: true  },
+    ping:   { label: 'Thăm dò',       color: '#14b8a6', sq: false },
+    kill:   { label: 'Mất gói / Lỗi', color: '#dc2626', sq: false },
+    poison: { label: 'Gói lỗi',       color: '#dc2626', sq: true  }
   };
 
   const state = {
@@ -299,10 +299,12 @@
       stage.renderScene(step.scene);
     }
 
-    // Timeline stepper
+    // Timeline stepper (numbered circular node rail — Designed to Scale / SOA style)
     const tlEl = document.getElementById('wb-timeline');
     if (tlEl) {
-      tlEl.innerHTML = lesson.steps
+      const n = lesson.steps.length;
+      const pct = n > 1 ? Math.round((state.stepIdx / (n - 1)) * 100) : 100;
+      const btns = lesson.steps
         .map((st, i) => {
           const active = i === state.stepIdx;
           const visited = i < state.stepIdx || state.visitedSteps.has(i);
@@ -312,6 +314,15 @@
           </button>`;
         })
         .join('');
+      tlEl.innerHTML = `
+        <div class="wb-timeline__head">
+          <span class="wb-timeline__eyebrow">Trong bài này</span>
+          <span class="wb-timeline__count">Bước ${state.stepIdx + 1} / ${n}<span class="wb-timeline__hint"> · phím ← → · R phát lại · Space tạm dừng</span></span>
+        </div>
+        <div class="wb-timeline__track" style="--n:${n}">
+          <div class="wb-timeline__rail"><div class="wb-timeline__rail-fill" style="width:${pct}%"></div></div>
+          <div class="wb-timeline__steps">${btns}</div>
+        </div>`;
     }
 
     // Right rail narrative
@@ -534,6 +545,13 @@
     if (prevBtn) prevBtn.addEventListener('click', () => goStep(-1));
     if (nextBtn) nextBtn.addEventListener('click', () => goStep(1));
 
+    const replayBtn = document.getElementById('wb-replay-btn');
+    if (replayBtn) {
+      replayBtn.addEventListener('click', () => {
+        if (stage) stage.replay();
+      });
+    }
+
     const pauseBtn = document.getElementById('wb-pause-btn');
     if (pauseBtn) {
       pauseBtn.addEventListener('click', () => {
@@ -621,6 +639,10 @@
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.key === 'ArrowRight') { e.preventDefault(); goStep(1); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); goStep(-1); }
+      else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        if (stage) stage.replay();
+      }
       else if (e.key === ' ') {
         e.preventDefault();
         if (pauseBtn) pauseBtn.click();

@@ -638,20 +638,34 @@ body.wb-app > .ban-nhap {
   background: var(--wb-surface);
   border: 1.3px solid var(--wb-line-strong);
   border-radius: 10px;
-  padding: 7px 10px;
+  padding: 6px 10px 6px 13px;
   box-shadow: var(--wb-card-shadow);
   transition: border-color 0.2s, background 0.2s;
   min-width: 0;
+  position: relative;
 }
+.wb-hud-card::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 6px;
+  bottom: 6px;
+  width: 3.5px;
+  border-radius: 0 3px 3px 0;
+  background: var(--wb-muted-2);
+}
+.wb-hud-card--good::before { background: #4caf50; }
+.wb-hud-card--warn::before { background: #e8a33a; }
+.wb-hud-card--bad::before  { background: #e5534b; }
 .wb-hud-card.is-flash {
   border-color: var(--wb-edge);
   background: var(--wb-amber-tile);
 }
 .wb-hud-card__label {
   font-family: var(--wb-font-mono);
-  font-size: 9.8px;
+  font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
   color: var(--wb-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -659,7 +673,7 @@ body.wb-app > .ban-nhap {
 }
 .wb-hud-card__val {
   font-family: var(--wb-font-mono);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   margin-top: 2px;
   color: var(--wb-ink);
@@ -701,8 +715,22 @@ body.wb-app > .ban-nhap {
 .wb-stage-host.is-zoomed { cursor: grab; }
 .wb-stage-host.is-dragging { cursor: grabbing; }
 
-/* Stage Packet & FX styles (consumed by iso-stage.js) */
+/* Stage Links, Packets & FX styles (consumed by iso-stage.js) */
 .stage-svg text { font-family: var(--wb-font-mono); user-select: none; }
+.stage-svg .link {
+  fill: none;
+  stroke: var(--wb-ink);
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.stage-svg .link--dashed { stroke-dasharray: 6 4.5; }
+.stage-svg .link--off    { stroke: var(--wb-muted-2); stroke-width: 1.65px; stroke-dasharray: 4 5; opacity: 0.68; }
+.stage-svg .link--beat   { stroke: #2f8a43; stroke-width: 2.1px; stroke-dasharray: 2.5 5; }
+.stage-svg .link--cut    { stroke: #c0392b; stroke-width: 2.2px; stroke-dasharray: 7 5; }
+:root[data-theme="dark"] .stage-svg .link--beat { stroke: #6ee7b7; }
+:root[data-theme="dark"] .stage-svg .link--cut  { stroke: #f87171; }
+
 .stage-svg .pkt circle,
 .stage-svg .pkt rect { stroke: var(--wb-ink); stroke-width: 1.5; }
 .stage-svg .pkt--req circle, .stage-svg .pkt--req rect     { fill: #3b82f6; }
@@ -713,14 +741,20 @@ body.wb-app > .ban-nhap {
 .stage-svg .pkt--ping circle, .stage-svg .pkt--ping rect   { fill: #14b8a6; }
 .stage-svg .pkt--kill circle, .stage-svg .pkt--kill rect,
 .stage-svg .pkt--poison circle, .stage-svg .pkt--poison rect { fill: #dc2626; }
+
+.stage-svg .fx-ring,
+.stage-svg .fx-x {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
 .stage-svg .fx-ring { fill: none; stroke-width: 2; animation: wbFxPop 0.65s ease-out forwards; }
-.stage-svg .fx--fail .fx-ring { stroke: #dc2626; }
-.stage-svg .fx--ok .fx-ring   { stroke: #16a34a; }
-.stage-svg .fx-x { stroke: #dc2626; stroke-width: 2.2; stroke-linecap: round; }
+.stage-svg .fx--fail .fx-ring { fill: #e5534b; stroke: #8f2a22; }
+.stage-svg .fx--ok .fx-ring   { fill: none; stroke: #16a34a; }
+.stage-svg .fx-x { fill: none; stroke: #ffffff; stroke-width: 2.2; stroke-linecap: round; }
 .stage-svg .pulse { animation: wbPulse 1.6s ease-in-out infinite; }
 @keyframes wbFxPop {
-  from { transform: scale(0.5); opacity: 0.95; }
-  to   { transform: scale(2.1); opacity: 0; }
+  from { transform: scale(0.55); opacity: 0.95; }
+  to   { transform: scale(2.15); opacity: 0; }
 }
 @keyframes wbPulse {
   0%, 100% { opacity: 0.55; }
@@ -774,72 +808,122 @@ body.wb-app > .ban-nhap {
   font-size: 11px;
   font-weight: 700;
   color: var(--wb-ink);
+  transition: transform 0.1s, border-color 0.12s, background 0.12s;
 }
-.wb-tool-btn:hover { border-color: var(--wb-edge); }
+.wb-tool-btn:hover { border-color: var(--wb-edge); transform: translateY(-1px); }
 .wb-tool-btn.is-active {
   background: var(--wb-amber);
   border-color: var(--wb-drop);
 }
 
-/* Horizontal Step Timeline */
+/* Horizontal Step Timeline (Numbered Node Rail — Designed to Scale / SOA style) */
 .wb-timeline {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 2px;
+  background: var(--wb-card);
+  border: 1.2px solid var(--wb-line-strong);
+  border-radius: var(--wb-radius);
+  box-shadow: var(--wb-card-shadow);
+  padding: 7px 12px 8px;
   flex-shrink: 0;
 }
-.wb-step-pill {
-  flex: 1 1 0;
-  min-width: 112px;
+.wb-timeline__head {
   display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+.wb-timeline__eyebrow {
+  font-family: var(--wb-font-mono);
+  font-size: 10.2px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--wb-ink);
+}
+.wb-timeline__count {
+  font-family: var(--wb-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--wb-muted);
+}
+.wb-timeline__track {
+  position: relative;
+}
+.wb-timeline__rail {
+  position: absolute;
+  top: 11px;
+  height: 2px;
+  background: var(--wb-line-strong);
+  left: calc(100% / var(--n, 4) / 2);
+  right: calc(100% / var(--n, 4) / 2);
+  border-radius: 2px;
+}
+.wb-timeline__rail-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--wb-ink);
+  border-radius: 2px;
+  transition: width 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.wb-timeline__steps {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr));
+  position: relative;
+  gap: 4px;
+}
+.wb-step-pill {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 7px;
-  padding: 7px 9px;
-  border-radius: 9px;
-  border: 1.3px solid var(--wb-line-strong);
-  background: var(--wb-surface);
-  text-align: left;
-  transition: transform 0.12s, border-color 0.12s, background 0.12s;
-}
-.wb-step-pill:hover { border-color: var(--wb-edge); }
-.wb-step-pill.is-active {
-  background: var(--wb-green);
-  border-color: var(--wb-drop);
-  box-shadow: var(--wb-pop-shadow);
-}
-.wb-step-pill.is-visited:not(.is-active) {
-  background: var(--wb-green-tile);
-  border-color: var(--wb-green-line);
+  text-align: center;
+  padding: 0 4px;
+  background: transparent;
+  border: 0;
+  color: var(--wb-muted);
 }
 .wb-step-pill__idx {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  background: var(--wb-paper);
-  border: 1.2px solid var(--wb-line-strong);
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: var(--wb-surface);
+  border: 1.4px solid var(--wb-edge);
   font-family: var(--wb-font-mono);
   font-size: 11px;
   font-weight: 800;
+  color: var(--wb-ink);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: transform 0.16s, background 0.16s, box-shadow 0.16s;
+}
+.wb-step-pill:hover .wb-step-pill__idx {
+  transform: translateY(-1px);
+  background: var(--wb-paper);
+}
+.wb-step-pill.is-visited:not(.is-active) .wb-step-pill__idx {
+  background: var(--wb-green-tile);
+  border-color: var(--wb-ink-2);
 }
 .wb-step-pill.is-active .wb-step-pill__idx {
-  background: var(--wb-ink);
-  color: var(--wb-surface);
-  border-color: var(--wb-ink);
+  background: var(--wb-green);
+  border: 1.7px solid var(--wb-ink);
+  color: var(--wb-ink);
+  box-shadow: 1.2px 1.8px 0 var(--wb-drop);
+  transform: scale(1.06);
 }
 .wb-step-pill__label {
-  font-size: 11.8px;
+  margin-top: 4px;
+  font-size: 11.2px;
   font-weight: 600;
-  line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.22;
+  color: var(--wb-muted);
+  white-space: normal;
+  word-break: break-word;
 }
+.wb-step-pill.is-visited .wb-step-pill__label { color: var(--wb-ink-2); }
+.wb-step-pill.is-active .wb-step-pill__label  { color: var(--wb-ink); font-weight: 800; }
 
 /* ── Right Narrative Rail ── */
 .wb-rail {
@@ -1199,6 +1283,7 @@ body.wb-app > .ban-nhap {
   .wb-hud { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .wb-brand__name { font-size: 13px; }
   .wb-back-pill span { display: none; }
+  .wb-timeline__hint { display: none; }
   .wb-stage-wrap { height: 320px; min-height: 280px; }
   .wb-video-btn { max-width: 100%; }
 }

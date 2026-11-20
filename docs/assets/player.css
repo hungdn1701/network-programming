@@ -871,6 +871,39 @@ aside h2 {
   gap: 8px;
   margin-bottom: 10px;
 }
+.hub-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 10px 2px 3px;
+  border-radius: 999px;
+  border: 1px solid var(--vien);
+  background: #F8FAFC;
+  color: var(--chu);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s, transform 0.12s;
+}
+.hub-brand:hover {
+  border-color: var(--xanh);
+  background: #EEF4FC;
+  transform: translateY(-1px);
+}
+.hub-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  border: 1px solid rgba(5, 26, 83, 0.25);
+}
+.hub-sep {
+  color: var(--phu);
+  font-family: Consolas, monospace;
+  font-size: 13px;
+  user-select: none;
+}
 .ma-hp-badge {
   font-family: Consolas, monospace;
   font-size: 13px;

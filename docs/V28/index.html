@@ -146,7 +146,6 @@ channel.<span class="hl-m">basicPublish</span>(<span class="hl-s">"</span><span 
 </pre></div><ul class="y-nho"><li data-s="1">Producer và worker đều gọi <code>queueDeclare</code>: khai báo lại với cùng tham số không đổi gì</li><li data-s="2">Queue <b>durable</b>, message <b>persistent</b>: việc còn sau khi broker khởi động lại</li><li data-s="3">Producer chỉ gọi <code>basicPublish(exchange, routingKey, ...)</code>, không biết consumer nào nhận</li></ul></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
 <section class="slide noi-dung" id="S05"><header><h1>Worker tắt, việc vẫn chờ trong queue</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span>channel.<span class="hl-m">basicQos</span>(<span class="hl-n">1</span>);  <span class="hl-c">// ack thủ công: mỗi lần chỉ nhận một việc chưa ack</span>
 <span class="hl-m">doWork</span>(message);
-<span class="hl-t">System</span>.out.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s"> [x] Done</span><span class="hl-s">"</span>);
 channel.<span class="hl-m">basicAck</span>(delivery.<span class="hl-m">getEnvelope</span>().<span class="hl-m">getDeliveryTag</span>(), <span class="hl-k">false</span>);  <span class="hl-c">// làm xong mới ack</span>
 channel.<span class="hl-m">basicConsume</span>(<span class="hl-t">NewTask</span>.<span class="hl-t">TASK_QUEUE_NAME</span>, autoAck, deliverCallback, consumerTag -&gt; { });
 </pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>$ NewTask First message.
@@ -359,7 +358,6 @@ Hiện dần: bước 1 khi đọc “Phương thức queueDeclare”; bước 2
   <div class="canh-kb-noi-dung">
     <div class="kb-slide-box"><div class="kb-slide-ma"><div class="kb-ma-head"><span class="kb-ma-tep">src/main/java/netlab/broker/Worker.java</span><button type="button" class="btn-kb-copy-ma" onclick="window.copyMa(this)" title="Sao chép đoạn mã">📋 Sao chép mã</button></div><pre><code>channel.basicQos(1);  // ack thủ công: mỗi lần chỉ nhận một việc chưa ack
 doWork(message);
-System.out.println(&quot; [x] Done&quot;);
 channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);  // làm xong mới ack
 channel.basicConsume(NewTask.TASK_QUEUE_NAME, autoAck, deliverCallback, consumerTag -&gt; { });</code></pre></div></div>
     <div class="kb-thoai"><p>Phía worker, lời gọi basicQos với tham số 1 bảo broker chỉ giao cho worker một việc chưa ack tại mỗi thời điểm. Mỗi message đến sẽ kích hoạt một callback. Callback làm việc, mỗi dấu chấm một giây, rồi gọi phương thức basicAck để báo đã xong. Phương thức basicConsume đăng ký callback đó để nhận message từ queue. Trong thử nghiệm đầu tiên, mình chưa chạy worker, cho producer giao hai việc, rồi xem queue bằng rabbitmqctl, công cụ quản trị của RabbitMQ. Kết quả: producer giao xong mà không gặp lỗi nào, và queue task_queue giữ 2 message sẵn sàng giao. Khi mình chạy worker, cả hai việc được nhận đủ, và queue trở về 0.</p></div>

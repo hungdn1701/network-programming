@@ -129,9 +129,8 @@
         <span class="hl-t">DatagramPacket</span> request = <span class="hl-k">new</span> <span class="hl-m">DatagramPacket</span>(buf, buf.length);
         socket.<span class="hl-m">receive</span>(request);  <span class="hl-c">// chờ và nhận đúng một datagram</span>
         <span class="hl-t">String</span> message = <span class="hl-k">new</span> <span class="hl-m">String</span>(request.<span class="hl-m">getData</span>(), <span class="hl-n">0</span>, request.<span class="hl-m">getLength</span>(), <span class="hl-t">UTF_8</span>);
-        <span class="hl-k">if</span> (random.<span class="hl-m">nextInt</span>(<span class="hl-n">11</span>) &lt; <span class="hl-n">4</span>) {  <span class="hl-c">// mô phỏng mất datagram, như bản gốc của bài</span>
-            <span class="hl-k">continue</span>;
-        }
+        <span class="hl-k">boolean</span> dropped = random.<span class="hl-m">nextInt</span>(<span class="hl-n">11</span>) &lt; <span class="hl-n">4</span>;  <span class="hl-c">// mô phỏng mất datagram, như bản gốc của bài</span>
+        <span class="hl-k">if</span> (dropped) <span class="hl-k">continue</span>;
         <span class="hl-k">byte</span>[] reply = message.<span class="hl-m">toUpperCase</span>().<span class="hl-m">getBytes</span>(<span class="hl-t">UTF_8</span>);
         socket.<span class="hl-m">send</span>(<span class="hl-k">new</span> <span class="hl-m">DatagramPacket</span>(reply, reply.length, request.<span class="hl-m">getSocketAddress</span>()));  <span class="hl-c">// trả về nơi gửi</span>
 </pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>UDP ping server on port 12000
@@ -351,9 +350,8 @@ Hiện dần: bước 1 khi đọc “Bên trái là cắt ngắn datagram”; b
         DatagramPacket request = new DatagramPacket(buf, buf.length);
         socket.receive(request);  // chờ và nhận đúng một datagram
         String message = new String(request.getData(), 0, request.getLength(), UTF_8);
-        if (random.nextInt(11) &lt; 4) {  // mô phỏng mất datagram, như bản gốc của bài
-            continue;
-        }
+        boolean dropped = random.nextInt(11) &lt; 4;  // mô phỏng mất datagram, như bản gốc của bài
+        if (dropped) continue;
         byte[] reply = message.toUpperCase().getBytes(UTF_8);
         socket.send(new DatagramPacket(reply, reply.length, request.getSocketAddress()));  // trả về nơi gửi</code></pre></div></div>
     <div class="kb-thoai"><p>Ví dụ đo độ trễ bằng ping ở đầu phần chính là bài UDP Pinger trong sách của Kurose và Ross: client gửi ping, server trả lại, client đo thời gian khứ hồi, tức RTT. Server chỉ có một DatagramSocket gắn với port 12000: không có listening socket, không có lời gọi accept, cũng không có connected socket cho từng client. Mỗi vòng lặp, server gọi phương thức receive để chờ đúng một datagram, rồi trả lại message viết hoa về endpoint của client, lấy từ datagram yêu cầu vừa nhận. Như bản gốc của bài, server cố ý bỏ khoảng một phần ba số datagram để mô phỏng mạng mất gói. Log cho thấy Ping 1 và Ping 4 bị bỏ.</p></div>

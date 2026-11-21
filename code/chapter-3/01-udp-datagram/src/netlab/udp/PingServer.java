@@ -26,13 +26,11 @@ public final class PingServer {
                 DatagramPacket request = new DatagramPacket(buf, buf.length);
                 socket.receive(request);  // chờ và nhận đúng một datagram
                 String message = new String(request.getData(), 0, request.getLength(), UTF_8);
-                if (random.nextInt(11) < 4) {  // mô phỏng mất datagram, như bản gốc của bài
-                    System.out.println("from " + request.getSocketAddress() + ": " + message + " -> dropped");
-                    continue;
-                }
+                boolean dropped = random.nextInt(11) < 4;  // mô phỏng mất datagram, như bản gốc của bài
+                System.out.println("from " + request.getSocketAddress() + ": " + message + (dropped ? " -> dropped" : " -> replied"));
+                if (dropped) continue;
                 byte[] reply = message.toUpperCase().getBytes(UTF_8);
                 socket.send(new DatagramPacket(reply, reply.length, request.getSocketAddress()));  // trả về nơi gửi
-                System.out.println("from " + request.getSocketAddress() + ": " + message + " -> replied");
             }
         }
     }

@@ -140,13 +140,11 @@
     <text x="1136" y="430" font-size="20" fill="#9B1C1C">B bị hủy, dừng</text>
   </g>
 </svg></figure><div class="ket-luan" data-s="4"><p><b>Deadline</b> là một mốc thời gian; gRPC mang mốc đó theo các lời gọi tiếp theo và hủy cả chuỗi khi hết giờ (<b>DEADLINE_EXCEEDED</b>).</p></div></main><footer><span>Chương 4 · Kỹ thuật lập trình phân tán</span><span>Học viện Công nghệ Bưu chính Viễn thông</span></footer></section>
-<section class="slide noi-dung" id="S04"><header><h1>Bốn RPC trong một dịch vụ; stream phía client qua async stub</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Protobuf</span><span class="hl-k">service</span> <span class="hl-t">RouteGuide</span> {
-  <span class="hl-k">rpc</span> <span class="hl-m">GetFeature</span>(<span class="hl-t">Point</span>) <span class="hl-k">returns</span> (<span class="hl-t">Feature</span>) {}                     <span class="hl-c">// unary; tọa độ sai: mã INVALID_ARGUMENT
-</span>  <span class="hl-k">rpc</span> <span class="hl-m">ListFeatures</span>(<span class="hl-t">Rectangle</span>) <span class="hl-k">returns</span> (stream <span class="hl-t">Feature</span>) {}        <span class="hl-c">// server streaming: trả địa danh dần
-</span>  <span class="hl-k">rpc</span> <span class="hl-m">RecordRoute</span>(stream <span class="hl-t">Point</span>) <span class="hl-k">returns</span> (<span class="hl-t">RouteSummary</span>) {}        <span class="hl-c">// client streaming: gửi lộ trình, nhận tổng kết
-</span>  <span class="hl-k">rpc</span> <span class="hl-m">RouteChat</span>(stream <span class="hl-t">RouteNote</span>) <span class="hl-k">returns</span> (stream <span class="hl-t">RouteNote</span>) {}  <span class="hl-c">// bidirectional streaming
-</span>}
-</pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>RecordRoute (client streaming):
+<section class="slide noi-dung" id="S04"><header><h1>Bốn RPC trong một dịch vụ; stream phía client qua async stub</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Protobuf</span><span class="hl-k">rpc</span> <span class="hl-m">GetFeature</span>(<span class="hl-t">Point</span>) <span class="hl-k">returns</span> (<span class="hl-t">Feature</span>) {}                     <span class="hl-c">// unary; tọa độ sai: mã INVALID_ARGUMENT
+</span><span class="hl-k">rpc</span> <span class="hl-m">ListFeatures</span>(<span class="hl-t">Rectangle</span>) <span class="hl-k">returns</span> (stream <span class="hl-t">Feature</span>) {}        <span class="hl-c">// server streaming: trả địa danh dần
+</span><span class="hl-k">rpc</span> <span class="hl-m">RecordRoute</span>(stream <span class="hl-t">Point</span>) <span class="hl-k">returns</span> (<span class="hl-t">RouteSummary</span>) {}        <span class="hl-c">// client streaming: gửi lộ trình, nhận tổng kết
+</span><span class="hl-k">rpc</span> <span class="hl-m">RouteChat</span>(stream <span class="hl-t">RouteNote</span>) <span class="hl-k">returns</span> (stream <span class="hl-t">RouteNote</span>) {}  <span class="hl-c">// bidirectional streaming
+</span></pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>RecordRoute (client streaming):
 +  10 ms  sent 21.0288, 105.8360
 + 422 ms  sent 21.0368, 105.8347
 + 825 ms  sent 21.0479, 105.8368
@@ -336,12 +334,10 @@ Hiện dần: bước 1 khi đọc “Client đặt deadline”; bước 2 khi �
     </div>
   </header>
   <div class="canh-kb-noi-dung">
-    <div class="kb-slide-box"><div class="kb-slide-ma"><div class="kb-ma-head"><span class="kb-ma-tep">src/main/proto/route_guide.proto</span><button type="button" class="btn-kb-copy-ma" onclick="window.copyMa(this)" title="Sao chép đoạn mã">📋 Sao chép mã</button></div><pre><code>service RouteGuide {
-  rpc GetFeature(Point) returns (Feature) {}                     // unary; tọa độ sai: mã INVALID_ARGUMENT
-  rpc ListFeatures(Rectangle) returns (stream Feature) {}        // server streaming: trả địa danh dần
-  rpc RecordRoute(stream Point) returns (RouteSummary) {}        // client streaming: gửi lộ trình, nhận tổng kết
-  rpc RouteChat(stream RouteNote) returns (stream RouteNote) {}  // bidirectional streaming
-}</code></pre></div></div>
+    <div class="kb-slide-box"><div class="kb-slide-ma"><div class="kb-ma-head"><span class="kb-ma-tep">src/main/proto/route_guide.proto</span><button type="button" class="btn-kb-copy-ma" onclick="window.copyMa(this)" title="Sao chép đoạn mã">📋 Sao chép mã</button></div><pre><code>rpc GetFeature(Point) returns (Feature) {}                     // unary; tọa độ sai: mã INVALID_ARGUMENT
+rpc ListFeatures(Rectangle) returns (stream Feature) {}        // server streaming: trả địa danh dần
+rpc RecordRoute(stream Point) returns (RouteSummary) {}        // client streaming: gửi lộ trình, nhận tổng kết
+rpc RouteChat(stream RouteNote) returns (stream RouteNote) {}  // bidirectional streaming</code></pre></div></div>
     <div class="kb-thoai"><p>Trong file .proto, từ khóa stream đặt ở phía nào thì phía đó gửi một chuỗi message. Khi hiện thực bằng Java, mỗi chuỗi message đi qua một StreamObserver, interface đã gặp ở phía server của phần trước, với ba phương thức onNext cho từng message, onError cho lỗi và onCompleted cho kết thúc. Chương trình RouteClient dùng async stub, loại stub không chặn thread gọi, cho hai RPC mà client gửi một chuỗi message. Kết quả: với RecordRoute, client gửi bốn điểm của một lộ trình từ Văn Miếu tới Cầu Long Biên, và chỉ nhận bản tổng kết sau khi báo gửi xong. Bản tổng kết ghi bốn điểm, bốn địa danh, quãng đường khoảng 4,4 kilômét. Với RouteChat, mỗi khi nhận một ghi chú, server gửi lại các ghi chú trước đó ở cùng điểm, nên các ghi chú nhận về xen giữa các lần gửi. Lời gọi chỉ kết thúc sau khi client báo đã gửi xong.</p></div>
     <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả phía dưới. Highlight từ khóa stream ở dòng ListFeatures, RecordRoute, rồi hai chữ stream ở dòng RouteChat.
 Hiện dần: bước 1 khi đọc “Kết quả”.</div>

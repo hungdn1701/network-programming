@@ -82,18 +82,16 @@ public final class WebServer {
         }
         String path = parts[1].equals("/") ? "/index.html" : parts[1];
         Path file = root.resolve(path.substring(1));  // đường dẫn trong thư mục www/
-        if (!Files.isRegularFile(file)) {
-            return send(out, "404 Not Found", "text/plain; charset=utf-8", "404 Not Found\n".getBytes(UTF_8));
-        }
-        return send(out, "200 OK", contentType(path), Files.readAllBytes(file));
+        return Files.isRegularFile(file)
+                ? send(out, "200 OK", contentType(path), Files.readAllBytes(file))
+                : send(out, "404 Not Found", "text/plain; charset=utf-8", "404 Not Found\n".getBytes(UTF_8));
     }
 
     /** Status line, header, dòng trống, rồi body; HTTP kết thúc mỗi dòng bằng CRLF. */
     static String send(OutputStream out, String status, String type, byte[] body) throws IOException {
         String head = "HTTP/1.1 " + status + "\r\n"
                 + "Content-Type: " + type + "\r\n"
-                + "Content-Length: " + body.length + "\r\n"  // client biết body dài bao nhiêu byte
-                + "\r\n";
+                + "Content-Length: " + body.length + "\r\n\r\n";  // độ dài body (byte) và dòng trống cuối header
         out.write(head.getBytes(US_ASCII));
         out.write(body);
         return status;

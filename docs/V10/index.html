@@ -149,7 +149,6 @@
         } <span class="hl-k">catch</span> (<span class="hl-t">IOException</span> e) {  <span class="hl-c">// gồm cả SocketTimeoutException: lỗi của một kết nối không dừng server</span>
             log.<span class="hl-m">println</span>(<span class="hl-s">"</span><span class="hl-s">connection error: </span><span class="hl-s">"</span> + e.<span class="hl-m">getMessage</span>());
         }
-    }
 </pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>listening on port 9199, serving www/
 accepted local 127.0.0.1:9199, remote 127.0.0.1:52645
   GET / HTTP/1.1 -&gt; 200 OK
@@ -163,15 +162,13 @@ closed, requests: 1</pre></div></main><footer><span>Chương 2 · Lập trình s
 <section class="slide noi-dung" id="S05"><header><h1>Vòng lặp trong: đọc request, tìm file, gửi status line, header và body</h1></header><main class="bo-cuc-ma"><div class="ma-hang doc"><pre class="ma"><span class="nhan">Java</span><span class="hl-t">String</span>[] parts = requestLine.<span class="hl-m">split</span>(<span class="hl-s">"</span><span class="hl-s"> </span><span class="hl-s">"</span>);  <span class="hl-c">// phương thức, đường dẫn, phiên bản</span>
 <span class="hl-t">String</span> path = parts[<span class="hl-n">1</span>].<span class="hl-m">equals</span>(<span class="hl-s">"</span><span class="hl-s">/</span><span class="hl-s">"</span>) ? <span class="hl-s">"</span><span class="hl-s">/index.html</span><span class="hl-s">"</span> : parts[<span class="hl-n">1</span>];
 <span class="hl-t">Path</span> file = root.<span class="hl-m">resolve</span>(path.<span class="hl-m">substring</span>(<span class="hl-n">1</span>));  <span class="hl-c">// đường dẫn trong thư mục www/</span>
-<span class="hl-k">if</span> (!<span class="hl-t">Files</span>.<span class="hl-m">isRegularFile</span>(file)) {
-    <span class="hl-k">return</span> <span class="hl-m">send</span>(out, <span class="hl-s">"</span><span class="hl-s">404 Not Found</span><span class="hl-s">"</span>, <span class="hl-s">"</span><span class="hl-s">text/plain; charset=utf-8</span><span class="hl-s">"</span>, <span class="hl-s">"</span><span class="hl-s">404 Not Found</span><span class="hl-s">\</span><span class="hl-s">n</span><span class="hl-s">"</span>.<span class="hl-m">getBytes</span>(<span class="hl-t">UTF_8</span>));
-}
-<span class="hl-k">return</span> <span class="hl-m">send</span>(out, <span class="hl-s">"</span><span class="hl-s">200 OK</span><span class="hl-s">"</span>, <span class="hl-m">contentType</span>(path), <span class="hl-t">Files</span>.<span class="hl-m">readAllBytes</span>(file));
+<span class="hl-k">return</span> <span class="hl-t">Files</span>.<span class="hl-m">isRegularFile</span>(file)
+        ? <span class="hl-m">send</span>(out, <span class="hl-s">"</span><span class="hl-s">200 OK</span><span class="hl-s">"</span>, <span class="hl-m">contentType</span>(path), <span class="hl-t">Files</span>.<span class="hl-m">readAllBytes</span>(file))
+        : <span class="hl-m">send</span>(out, <span class="hl-s">"</span><span class="hl-s">404 Not Found</span><span class="hl-s">"</span>, <span class="hl-s">"</span><span class="hl-s">text/plain; charset=utf-8</span><span class="hl-s">"</span>, <span class="hl-s">"</span><span class="hl-s">404 Not Found</span><span class="hl-s">\</span><span class="hl-s">n</span><span class="hl-s">"</span>.<span class="hl-m">getBytes</span>(<span class="hl-t">UTF_8</span>));
 <span class="hl-k">static</span> <span class="hl-t">String</span> <span class="hl-m">send</span>(<span class="hl-t">OutputStream</span> out, <span class="hl-t">String</span> status, <span class="hl-t">String</span> type, <span class="hl-k">byte</span>[] body) <span class="hl-k">throws</span> <span class="hl-t">IOException</span> {
     <span class="hl-t">String</span> head = <span class="hl-s">"</span><span class="hl-s">HTTP/1.1 </span><span class="hl-s">"</span> + status + <span class="hl-s">"</span><span class="hl-s">\</span><span class="hl-s">r</span><span class="hl-s">\</span><span class="hl-s">n</span><span class="hl-s">"</span>
             + <span class="hl-s">"</span><span class="hl-s">Content-Type: </span><span class="hl-s">"</span> + type + <span class="hl-s">"</span><span class="hl-s">\</span><span class="hl-s">r</span><span class="hl-s">\</span><span class="hl-s">n</span><span class="hl-s">"</span>
-            + <span class="hl-s">"</span><span class="hl-s">Content-Length: </span><span class="hl-s">"</span> + body.length + <span class="hl-s">"</span><span class="hl-s">\</span><span class="hl-s">r</span><span class="hl-s">\</span><span class="hl-s">n</span><span class="hl-s">"</span>  <span class="hl-c">// client biết body dài bao nhiêu byte</span>
-            + <span class="hl-s">"</span><span class="hl-s">\</span><span class="hl-s">r</span><span class="hl-s">\</span><span class="hl-s">n</span><span class="hl-s">"</span>;
+            + <span class="hl-s">"</span><span class="hl-s">Content-Length: </span><span class="hl-s">"</span> + body.length + <span class="hl-s">"</span><span class="hl-s">\</span><span class="hl-s">r</span><span class="hl-s">\</span><span class="hl-s">n</span><span class="hl-s">\</span><span class="hl-s">r</span><span class="hl-s">\</span><span class="hl-s">n</span><span class="hl-s">"</span>;  <span class="hl-c">// độ dài body (byte) và dòng trống cuối header</span>
 </pre><pre class="kq" data-s="1"><span class="nhan">Kết quả chạy</span>$ curl -s -o /dev/null -w "%{http_code} %{content_type}\n" http://127.0.0.1:9199/
 200 text/html; charset=utf-8
 $ curl -s -o /dev/null -w "%{http_code} %{content_type}\n" http://127.0.0.1:9199/nothing.html
@@ -189,7 +186,6 @@ hello</pre></div></main><footer><span>Chương 2 · Lập trình socket TCP và 
     server.<span class="hl-m">setDaemon</span>(<span class="hl-k">true</span>);
     server.<span class="hl-m">start</span>();  <span class="hl-c">// server chạy song song với test; thread học ở nhóm đa luồng</span>
 }
-
 <span class="hl-a">@Test</span>
 <span class="hl-k">void</span> <span class="hl-m">missingFile</span>() <span class="hl-k">throws</span> <span class="hl-t">IOException</span> {
     <span class="hl-m">assertEquals</span>(<span class="hl-s">"</span><span class="hl-s">HTTP/1.1 404 Not Found</span><span class="hl-s">"</span>, <span class="hl-m">statusLine</span>(<span class="hl-s">"</span><span class="hl-s">GET /nothing.html HTTP/1.1</span><span class="hl-s">"</span>));
@@ -365,8 +361,7 @@ Hiện dần: bước 1 khi đọc “Khi nhiều client lần lượt kết n�
             log.println(&quot;closed, requests: &quot; + requests);
         } catch (IOException e) {  // gồm cả SocketTimeoutException: lỗi của một kết nối không dừng server
             log.println(&quot;connection error: &quot; + e.getMessage());
-        }
-    }</code></pre></div></div>
+        }</code></pre></div></div>
     <div class="kb-thoai"><p>Phương thức serve chứa vòng lặp ngoài. Lời gọi accept đặt trong khối try-with-resources, nên connected socket luôn được đóng khi phục vụ xong. Server đặt read timeout 5 giây cho kết nối, ghi log 4-tuple, rồi chuyển kết nối cho phương thức handle. Khối catch bắt IOException, kể cả SocketTimeoutException, nhờ đó lỗi ở một kết nối chỉ đóng kết nối đó, còn server vẫn chạy tiếp. Mình chạy server, rồi dùng curl gửi ba request nối tiếp nhau. Trong log, mỗi dòng accepted đi kèm request của kết nối đó và dòng closed, rồi kết nối sau mới được nhận.</p></div>
     <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, log của server phía dưới. Highlight lần lượt: dòng listener.accept(), dòng setSoTimeout(5_000), dòng handle(connected), khối catch.
 Hiện dần: bước 1 khi đọc “Mình chạy server”.</div>
@@ -386,15 +381,13 @@ Hiện dần: bước 1 khi đọc “Mình chạy server”.</div>
     <div class="kb-slide-box"><div class="kb-slide-ma"><div class="kb-ma-head"><span class="kb-ma-tep">src/netlab/web/WebServer.java</span><button type="button" class="btn-kb-copy-ma" onclick="window.copyMa(this)" title="Sao chép đoạn mã">📋 Sao chép mã</button></div><pre><code>String[] parts = requestLine.split(&quot; &quot;);  // phương thức, đường dẫn, phiên bản
 String path = parts[1].equals(&quot;/&quot;) ? &quot;/index.html&quot; : parts[1];
 Path file = root.resolve(path.substring(1));  // đường dẫn trong thư mục www/
-if (!Files.isRegularFile(file)) {
-    return send(out, &quot;404 Not Found&quot;, &quot;text/plain; charset=utf-8&quot;, &quot;404 Not Found\n&quot;.getBytes(UTF_8));
-}
-return send(out, &quot;200 OK&quot;, contentType(path), Files.readAllBytes(file));
+return Files.isRegularFile(file)
+        ? send(out, &quot;200 OK&quot;, contentType(path), Files.readAllBytes(file))
+        : send(out, &quot;404 Not Found&quot;, &quot;text/plain; charset=utf-8&quot;, &quot;404 Not Found\n&quot;.getBytes(UTF_8));
 static String send(OutputStream out, String status, String type, byte[] body) throws IOException {
     String head = &quot;HTTP/1.1 &quot; + status + &quot;\r\n&quot;
             + &quot;Content-Type: &quot; + type + &quot;\r\n&quot;
-            + &quot;Content-Length: &quot; + body.length + &quot;\r\n&quot;  // client biết body dài bao nhiêu byte
-            + &quot;\r\n&quot;;</code></pre></div></div>
+            + &quot;Content-Length: &quot; + body.length + &quot;\r\n\r\n&quot;;  // độ dài body (byte) và dòng trống cuối header</code></pre></div></div>
     <div class="kb-thoai"><p>Vòng lặp trong nằm ở phương thức handle, không có trên slide: mỗi vòng đọc request line, đọc bỏ các dòng header cho tới dòng trống, rồi gọi phương thức respond. Phương thức này tách request line thành phương thức HTTP, đường dẫn và phiên bản. Đường dẫn gốc được hiểu là index.html, và server tìm file tương ứng trong thư mục www. Không có file thì server trả 404, có file thì trả 200 kèm nội dung file. Phương thức send ghi status line, header Content-Type cho biết loại nội dung, header Content-Length cho biết body dài bao nhiêu byte, một dòng trống, rồi đến body. Mỗi dòng kết thúc bằng CRLF, như HTTP quy định. Mình thử bằng curl: hai lần đầu chỉ in mã trạng thái và loại nội dung, lần cuối dùng tùy chọn i để in cả header. Kết quả: đường dẫn gốc nhận 200 với trang HTML, đường dẫn không có file nhận 404, còn hello.txt nhận 200 với body 6 byte, đúng như Content-Length.</p></div>
     <div class="kb-dung"><b>Lưu ý dựng:</b> Mã phía trên, kết quả của curl phía dưới. Highlight dòng isRegularFile rồi khối head khi đọc tới. Kết quả dài: cho cuộn theo lời đọc, hoặc hiện ba khối request lần lượt.
 Hiện dần: bước 1 khi đọc “Kết quả”.</div>
@@ -418,7 +411,6 @@ static void startServer() throws IOException {
     server.setDaemon(true);
     server.start();  // server chạy song song với test; thread học ở nhóm đa luồng
 }
-
 @Test
 void missingFile() throws IOException {
     assertEquals(&quot;HTTP/1.1 404 Not Found&quot;, statusLine(&quot;GET /nothing.html HTTP/1.1&quot;));

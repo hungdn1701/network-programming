@@ -82,4 +82,4 @@ TS. Đặng Ngọc Hùng · 3 tín chỉ · Tiếng Việt · Java 21
 
 ---
 
-Repo này được sinh tự động từ nguồn biên soạn; không sửa trực tiếp. Cập nhật 2026-11-20.
+Repo này được sinh tự động từ nguồn biên soạn; không sửa trực tiếp. Cập nhật 2026-11-21.
